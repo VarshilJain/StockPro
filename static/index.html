@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockPro Analytics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<style>
+        :root {
+            /* Modern Professional Color Palette */
+            --primary-bg: #0a0e1a;
+            --secondary-bg: #111827;
+            --tertiary-bg: #1f2937;
+            --card-bg: rgba(31, 41, 55, 0.8);
+            --card-border: rgba(75, 85, 99, 0.3);
+            
+            --accent-primary: #06b6d4;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-muted: #9ca3af;
+            
+            --gradient-primary: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+            --gradient-card: linear-gradient(145deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 0.9) 100%);
+            --gradient-sidebar: linear-gradient(180deg, #111827 0%, #0a0e1a 100%);
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            
+            --border-radius: 12px;
+            --border-radius-lg: 16px;
+            --border-radius-xl: 20px;
+            
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+    body {
+            font-family: 'Inter', sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--gradient-sidebar);
+            border-right: 1px solid var(--card-border);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(20px);
+        }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 1.5rem 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            color: var(--text-primary);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .nav-item.active {
+            color: var(--accent-primary);
+            background: rgba(6, 182, 212, 0.15);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent-primary);
+        }
+
+        .nav-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--card-border);
+            text-align: center;
+        }
+
+        .footer-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+        min-height: 100vh;
+            background: var(--primary-bg);
+        }
+
+        .topbar {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        }
+
+        .page-title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 44px;
+            height: 44px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        font-weight: 700;
+            color: white;
+            font-size: 1.125rem;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-role {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* Container */
+    .container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--gradient-card);
+            border: 1px solid var(--card-border);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .card-subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Form Elements */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+        display: flex;
+            flex-direction: column;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .form-input,
+        .form-select {
+            padding: 0.875rem 1rem;
+            background: var(--tertiary-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--border-radius);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+        outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+        border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            font-size: 0.875rem;
+        cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: var(--tertiary-bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--card-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .spinner::after {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--card-border);
+            border-top: 4px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            visibility: hidden;
+        }
+
+        .spinner.active::after {
+            visibility: visible;
+        }
+
+        .spinner-text {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            visibility: hidden;
+        }
+
+        .spinner.active .spinner-text {
+            visibility: visible;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Table */
+    .table-container {
+            background: var(--gradient-card);
+            border: 1px solid var(--card-border);
+            border-radius: var(--border-radius-lg);
+            overflow-x: auto;
+            overflow-y: auto;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+            max-height: 70vh;
+        }
+
+        .table {
+        width: 100%;
+        min-width: 800px;
+        border-collapse: collapse;
+        }
+
+        .table th {
+            background: var(--tertiary-bg);
+            color: var(--text-primary);
+            font-weight: 600;
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--card-border);
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(6, 182, 212, 0.05);
+        }
+
+        .table tbody tr:hover td {
+            color: var(--text-primary);
+        }
+
+        .symbol-link {
+            color: var(--accent-primary);
+            font-weight: 600;
+        cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .symbol-link:hover {
+            color: var(--accent-secondary);
+        }
+
+        /* Chart Tooltip */
+    #chartTooltip {
+        display: none;
+        position: absolute;
+            z-index: 2000;
+        width: 520px;
+        height: 370px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--border-radius-lg);
+            padding: 1rem;
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(20px);
+        }
+
+        /* Status Indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-success);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--accent-warning);
+        }
+
+        .status-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-danger);
+        }
+
+        /* Volume Display */
+        .volume-metric {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: var(--gradient-card);
+            border: 1px solid var(--card-border);
+            border-radius: var(--border-radius);
+            margin-bottom: 1rem;
+        }
+
+        .volume-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .volume-info {
+            flex: 1;
+        }
+
+        .volume-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .volume-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .volume-symbol {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* No Data State */
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .no-data-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .no-data-text {
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .no-data-subtext {
+            font-size: 0.875rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .topbar {
+                padding: 1rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            #chartTooltip {
+                width: 90vw;
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .user-info {
+                display: none;
+            }
+
+            .form-grid {
+                gap: 1rem;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div>
+                    <div class="logo-text">StockPro</div>
+                    <div class="logo-subtitle">Analytics Dashboard</div>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" onclick="showSection('dashboard')">
+                <i class="fas fa-tachometer-alt nav-icon"></i>
+                Dashboard
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-chart-candlestick nav-icon"></i>
+                Technical Analysis
+            </a>
+            <a href="#" class="nav-item" onclick="showSection('scanner')">
+                <i class="fas fa-search nav-icon"></i>
+                Stock Scanner
+            </a>
+            <a href="#" class="nav-item" onclick="showSection('signalScanner')">
+                <i class="fas fa-chart-area nav-icon"></i>
+                Technical Signal Scanner
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-bell nav-icon"></i>
+                Alerts
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-cog nav-icon"></i>
+                Settings
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-question-circle nav-icon"></i>
+                Help & Support
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="footer-text">© 2024 StockPro Analytics</div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <h1 class="page-title">
+                <i class="fas fa-chart-line"></i>
+                Stock Analytics Dashboard
+            </h1>
+            <div class="user-profile">
+                <div class="user-info">
+                    <div class="user-name">Analyst</div>
+                    <div class="user-role">Professional Trader</div>
+                </div>
+                <div class="user-avatar">AP</div>
+            </div>
+        </div>
+
+        <!-- Container -->
+    <div class="container">
+            <!-- Search Form Card -->
+            <div class="card fade-in" id="stockDataAnalysisSection">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-search"></i>
+                        Stock Data Analysis
+                    </h2>
+                    <p class="card-subtitle">Select your criteria to analyze stock data and technical signals</p>
+                </div>
+                
+                <form onsubmit="fetchData(); return false;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="symbol" class="form-label">
+                                <i class="fas fa-chart-bar"></i>
+                                Stock Symbol
+                            </label>
+                            <select id="symbol" class="form-select" autocomplete="off">
+                                <option value="">Select a stock symbol</option>
+            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="start" class="form-label">
+                                <i class="fas fa-calendar-alt"></i>
+                                Start Date
+                            </label>
+                            <input type="date" id="start" class="form-input">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="end" class="form-label">
+                                <i class="fas fa-calendar-alt"></i>
+                                End Date
+                            </label>
+                            <input type="date" id="end" class="form-input">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="signal" class="form-label">
+                                <i class="fas fa-signal"></i>
+                                Technical Signal
+                            </label>
+                            <select id="signal" class="form-select">
+                                <option value="">All signals / Scanner</option>
+                                <optgroup label="Candlestick Patterns">
+                <option value="Hammer">Hammer</option>
+                                    <option value="Shooting_Star">Shooting Star</option>
+                <option value="Doji">Doji</option>
+                <option value="Engulfing">Engulfing</option>
+                                    <option value="Dark_Cloud_Cover">Dark Cloud Cover</option>
+                                    <option value="Morning_Star">Morning Star</option>
+                                    <option value="Evening_Star">Evening Star</option>
+                                    <option value="Piercing_Line">Piercing Line</option>
+                                </optgroup>
+                                <optgroup label="Moving Average Signals">
+                                    <option value="signal1">Close ↑ SMA9</option>
+                                    <option value="signal2">Close ↓ SMA9</option>
+                                    <option value="signal3">SMA9 ↑ SMA18</option>
+                                    <option value="signal4">Close: SMA200/SMA50</option>
+                                    <option value="signal5">Golden Cross (SMA50/SMA200)</option>
+                                </optgroup>
+                                <optgroup label="Market Signals">
+                                    <option value="top_decile">Top Decile</option>
+                                    <option value="new_52w_high">New 52 Week High</option>
+                                    <option value="new_52w_low">New 52 Week Low</option>
+                                    <option value="NR">Narrow Range (NR5-NR8)</option>
+                                    <option value="High_Relative_Volume_30">High Relative Volume (30)</option>
+                                    <option value="hit_2y_high_14d">2 Year High (14 Days)</option>
+                                    <option value="hit_5y_high_14d">5 Year High (14 Days)</option>
+                                    <option value="hit_10y_high_14d">10 Year High (14 Days)</option>
+                                    <option value="oversold">Oversold (RSI < 25)</option>
+                                    <option value="overbought">Overbought (RSI > 80)</option>
+                                    <option value="rsi_lt_30">RSI < 30</option>
+                                    <option value="rsi_gt_70">RSI > 70</option>
+
+                                </optgroup>
+            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i>
+                            Analyze Data
+                        </button>
+                        <button class="btn btn-secondary" type="button" onclick="downloadCSV()">
+                            <i class="fas fa-download"></i>
+                            Export CSV
+                        </button>
+                    </div>
+                </form>
+        </div>
+
+            <!-- Technical Signal Scanner Card -->
+            <div class="card fade-in" id="signalScannerSection" style="display: none;">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-chart-area"></i>
+                        Technical Signal Scanner
+                    </h2>
+                    <p class="card-subtitle">Scan for technical signals across all stocks using date range and signal criteria</p>
+                </div>
+                
+                <form onsubmit="fetchSignalData(); return false;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="signalStartDate" class="form-label">
+                                <i class="fas fa-calendar-alt"></i>
+                                Start Date
+                            </label>
+                            <input type="date" id="signalStartDate" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="signalEndDate" class="form-label">
+                                <i class="fas fa-calendar-alt"></i>
+                                End Date
+                            </label>
+                            <input type="date" id="signalEndDate" class="form-input" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="signalName" class="form-label">
+                                <i class="fas fa-signal"></i>
+                                Technical Signal
+                            </label>
+                            <select id="signalName" class="form-select" required>
+                                <option value="">Select a technical signal</option>
+                                <optgroup label="Candlestick Patterns">
+                                    <option value="Hammer">Hammer</option>
+                                    <option value="Shooting_Star">Shooting Star</option>
+                                    <option value="Doji">Doji</option>
+                                    <option value="Engulfing">Engulfing</option>
+                                    <option value="Dark_Cloud_Cover">Dark Cloud Cover</option>
+                                    <option value="Morning_Star">Morning Star</option>
+                                    <option value="Evening_Star">Evening Star</option>
+                                    <option value="Piercing_Line">Piercing Line</option>
+                                </optgroup>
+                                <optgroup label="Moving Average Signals">
+                                    <option value="signal1">Close ↑ SMA9</option>
+                                    <option value="signal2">Close ↓ SMA9</option>
+                                    <option value="signal3">SMA9 ↑ SMA18</option>
+                                    <option value="signal4">Close: SMA200/SMA50</option>
+                                    <option value="signal5">Golden Cross (SMA50/SMA200)</option>
+                                </optgroup>
+                                <optgroup label="Market Signals">
+                                    <option value="top_decile">Top Decile</option>
+                                    <option value="new_52w_high">New 52 Week High</option>
+                                    <option value="new_52w_low">New 52 Week Low</option>
+                                    <option value="NR">Narrow Range </option>
+                                    <option value="High_Relative_Volume_30">High Relative Volume (30)</option>
+                                    <option value="hit_2y_high_14d">2 Year High (last 14 days)</option>
+                                    <option value="hit_5y_high_14d">5 Year High (last 14 days)</option>
+                                    <option value="hit_10y_high_14d">10 Year High (last 14 days)</option>
+                                    <option value="rsi_lt_30">RSI < 30</option>
+                                    <option value="rsi_gt_70">RSI > 70</option>
+                                    <option value="oversold">Oversold (RSI < 25)</option>
+                                    <option value="overbought">Overbought (RSI > 80)</option>
+                                    
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i>
+                            Scan Signals
+                        </button>
+                        <button class="btn btn-secondary" type="button" onclick="downloadSignalCSV()">
+                            <i class="fas fa-download"></i>
+                            Export CSV
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Loading Spinner -->
+        <div class="spinner" id="spinner">
+            <div class="spinner-text">Loading data...</div>
+        </div>
+
+            <!-- Results Table -->
+            <div class="table-container fade-in" id="tableContainer" style="display: none;">
+                <div class="table-header" id="tableHeader" style="padding: 1rem; border-bottom: 1px solid var(--card-border); background: var(--tertiary-bg);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-primary); font-weight: 600;">Results</span>
+                        <span id="rowCount" style="color: var(--text-muted); font-size: 0.875rem;"></span>
+                    </div>
+                </div>
+                <table class="table" id="resultTable">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    </div>
+
+    <!-- Chart Tooltip -->
+    <div id="chartTooltip"></div>
+
+<script>
+    let chartContainer = document.getElementById("chartTooltip");
+
+        // Load Stock Symbols
+    async function loadSymbols() {
+            try {
+        let response = await fetch('/api/symbols');
+        let data = await response.json();
+        let select = document.getElementById('symbol');
+                select.innerHTML = "<option value=''>Select a stock symbol</option>";
+                
+        (data.symbols || []).forEach(sym => {
+            let option = document.createElement('option');
+            option.value = sym;
+            option.text = sym;
+            select.add(option);
+        });
+            } catch (error) {
+                console.error('Error loading symbols:', error);
+            }
+    }
+
+        // Fetch Data
+    async function fetchData() {
+        let symbol = document.getElementById('symbol').value;
+        let start = document.getElementById('start').value;
+        let end = document.getElementById('end').value;
+        let signal = document.getElementById('signal').value;
+            
+        if (!start || !end) {
+                alert("Please select a date range");
+            return;
+        }
+        // Allow fetching all data when no specific symbol or signal is selected
+            
+        let url = `/api/data?start_date=${start}&end_date=${end}`;
+            if (symbol) url += `&symbol=${symbol}`;
+            if (!symbol && signal) url += `&signal=${signal}`;
+            
+        document.getElementById('spinner').classList.add('active');
+            document.getElementById('tableContainer').style.display = 'none';
+            
+            try {
+        let response = await fetch(url);
+        let rows = await response.json();
+        document.getElementById('spinner').classList.remove('active');
+        renderTable(rows);
+            } catch (error) {
+                document.getElementById('spinner').classList.remove('active');
+                console.error('Error fetching data:', error);
+                alert('Error fetching data. Please try again.');
+            }
+    }
+
+        // Render Table with Chart-on-hover
+    function renderTable(rows) {
+        let table = document.getElementById('resultTable');
+        let thead = table.querySelector('thead');
+        let tbody = table.querySelector('tbody');
+            let tableContainer = document.getElementById('tableContainer');
+            
+        thead.innerHTML = "";
+        tbody.innerHTML = "";
+
+        let symbol = document.getElementById('symbol').value;
+        let signal = document.getElementById('signal').value;
+            let headers, filteredRows = rows;
+            
+        if (rows.length > 0) {
+            if (symbol && signal) {
+                filteredRows = rows.filter(row => String(row[signal]) === '1');
+                headers = Object.keys(rows[0]);
+            } else if (symbol) {
+                filteredRows = rows;
+                headers = Object.keys(rows[0]);
+            } else if (signal) {
+                filteredRows = rows;
+                headers = ["Symbol", "Timestamp", signal];
+            } else {
+                // No symbol and no signal selected - show all columns
+                filteredRows = rows;
+                headers = Object.keys(rows[0]);
+            }
+        }
+            
+        if (filteredRows.length > 0) {
+            let headerRow = document.createElement('tr');
+            headers.forEach(col => {
+                let th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            filteredRows.forEach(row => {
+                let tr = document.createElement('tr');
+                headers.forEach(col => {
+                    let td = document.createElement('td');
+                    if (col.toLowerCase() === "symbol") {
+                            td.innerHTML = `<span class="symbol-link" 
+                            onmouseover="showChart('${row[col]}', event)" 
+                                onmouseout="hideChart()">
+                            ${row[col]}
+                        </span>`;
+                    } else {
+                        td.textContent = row[col];
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+                
+                // Update row count
+                document.getElementById('rowCount').textContent = `${filteredRows.length} rows displayed`;
+                tableContainer.style.display = 'block';
+        } else {
+            let tr = document.createElement('tr');
+            let td = document.createElement('td');
+            td.colSpan = headers ? headers.length : 3;
+            td.className = "no-data";
+                td.innerHTML = `
+                    <div class="no-data-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="no-data-text">No data available</div>
+                    <div class="no-data-subtext">No data found for the selected criteria. Try adjusting your filters.</div>
+                `;
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+                tableContainer.style.display = 'block';
+        }
+    }
+
+        // Show Chart Tooltip on hover
+    function showChart(symbol, event) {
+        chartContainer.style.display = "block";
+        chartContainer.style.top = (event.pageY + 15) + "px";
+        chartContainer.style.left = (event.pageX + 15) + "px";
+            
+        let uniqueId = "tv_chart_" + Date.now();
+        chartContainer.innerHTML = `<div id="${uniqueId}" style="width:500px;height:350px;"></div>`;
+
+        if (typeof TradingView !== "undefined") {
+            new TradingView.widget({
+                "container_id": uniqueId,
+                "width": 500,
+                "height": 350,
+                "symbol": "NSE:" + symbol.toUpperCase(),
+                "interval": "D",
+                "timezone": "Asia/Kolkata",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "hide_top_toolbar": false,
+                "allow_symbol_change": false,
+                "autosize": false
+            });
+        }
+    }
+
+    function hideChart() {
+        chartContainer.style.display = "none";
+    }
+
+        // Download CSV
+    function downloadCSV() {
+        let table = document.getElementById('resultTable');
+        let rows = Array.from(table.querySelectorAll('tr')).map(tr =>
+            Array.from(tr.querySelectorAll('th, td')).map(td => td.textContent).join(',')
+        ).join('\n');
+            
+        let blob = new Blob([rows], { type: 'text/csv' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+            a.download = 'stock_analysis_data.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+        // Show/Hide sections
+    function showSection(sectionName) {
+            // Hide all sections
+            document.getElementById('signalScannerSection').style.display = 'none';
+            document.getElementById('stockDataAnalysisSection').style.display = 'none';
+            
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Show selected section and mark nav item as active
+            if (sectionName === 'signalScanner') {
+                document.getElementById('signalScannerSection').style.display = 'block';
+                event.target.classList.add('active');
+            } else if (sectionName === 'scanner') {
+                // Show the original scanner section (hide signal scanner)
+                document.getElementById('stockDataAnalysisSection').style.display = 'block';
+                event.target.classList.add('active');
+            } else if (sectionName === 'dashboard') {
+                // Show dashboard (hide both scanner sections)
+                document.getElementById('stockDataAnalysisSection').style.display = 'block';
+                event.target.classList.add('active');
+            }
+        }
+
+        // Toggle date inputs requirement based on selected signal
+    function updateSignalDateRequirement() {
+            const signalSelect = document.getElementById('signalName');
+            const startInput = document.getElementById('signalStartDate');
+            const endInput = document.getElementById('signalEndDate');
+            const autoSignals = new Set(["hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d"]);
+
+            if (autoSignals.has(signalSelect.value)) {
+                startInput.required = false;
+                endInput.required = false;
+                startInput.disabled = true;
+                endInput.disabled = true;
+                startInput.value = '';
+                endInput.value = '';
+            } else {
+                startInput.disabled = false;
+                endInput.disabled = false;
+                startInput.required = true;
+                endInput.required = true;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const signalSelect = document.getElementById('signalName');
+            if (signalSelect) {
+                signalSelect.addEventListener('change', updateSignalDateRequirement);
+                updateSignalDateRequirement();
+            }
+        });
+
+        // Fetch Signal Data
+    async function fetchSignalData() {
+            let startDate = document.getElementById('signalStartDate').value;
+            let endDate = document.getElementById('signalEndDate').value;
+            let signalName = document.getElementById('signalName').value;
+
+            if (!signalName) {
+                alert("Please select a signal");
+                return;
+            }
+
+            const autoSignals = new Set(["hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d"]);
+            let url;
+            if (autoSignals.has(signalName)) {
+                // For these signals, backend will auto-use last 14 days
+                url = `/api/signal-scanner?signal=${signalName}&limit=500`;
+            } else {
+                if (!startDate || !endDate) {
+                    alert("Please select start and end dates");
+                    return;
+                }
+                url = `/api/signal-scanner?start_date=${startDate}&end_date=${endDate}&signal=${signalName}&limit=500`;
+            }
+            
+            document.getElementById('spinner').classList.add('active');
+            document.getElementById('tableContainer').style.display = 'none';
+            
+            try {
+                let response = await fetch(url);
+                let rows = await response.json();
+                document.getElementById('spinner').classList.remove('active');
+                renderSignalTable(rows, signalName);
+            } catch (error) {
+                document.getElementById('spinner').classList.remove('active');
+                console.error('Error fetching signal data:', error);
+                alert('Error fetching signal data. Please try again.');
+            }
+        }
+
+        // Render Signal Table
+    function renderSignalTable(rows, signalName) {
+            let table = document.getElementById('resultTable');
+            let thead = table.querySelector('thead');
+            let tbody = table.querySelector('tbody');
+            let tableContainer = document.getElementById('tableContainer');
+            
+            thead.innerHTML = "";
+            tbody.innerHTML = "";
+
+            if (rows.length > 0) {
+                let headers = ["Symbol", "Timestamp", signalName];
+                
+                let headerRow = document.createElement('tr');
+                headers.forEach(col => {
+                    let th = document.createElement('th');
+                    th.textContent = col;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+
+                rows.forEach(row => {
+                    let tr = document.createElement('tr');
+                    headers.forEach(col => {
+                        let td = document.createElement('td');
+                        if (col.toLowerCase() === "symbol") {
+                            td.innerHTML = `<span class="symbol-link" 
+                            onmouseover="showChart('${row[col]}', event)" 
+                                onmouseout="hideChart()">
+                            ${row[col]}
+                        </span>`;
+                        } else {
+                            td.textContent = row[col];
+                        }
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                
+                // Update row count
+                document.getElementById('rowCount').textContent = `${rows.length} rows displayed`;
+                tableContainer.style.display = 'block';
+            } else {
+                let tr = document.createElement('tr');
+                let td = document.createElement('td');
+                td.colSpan = 3;
+                td.className = "no-data";
+                td.innerHTML = `
+                    <div class="no-data-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="no-data-text">No signal data found</div>
+                    <div class="no-data-subtext">No stocks found with the selected signal in the specified date range.</div>
+                `;
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                tableContainer.style.display = 'block';
+            }
+        }
+
+        // Download Signal CSV
+    function downloadSignalCSV() {
+            let table = document.getElementById('resultTable');
+            let rows = Array.from(table.querySelectorAll('tr')).map(tr =>
+                Array.from(tr.querySelectorAll('th, td')).map(td => td.textContent).join(',')
+            ).join('\n');
+            
+            let blob = new Blob([rows], { type: 'text/csv' });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = 'signal_scanner_data.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Initialize on page load
+    window.onload = loadSymbols;
+</script>
+</body>
+
+</html>
