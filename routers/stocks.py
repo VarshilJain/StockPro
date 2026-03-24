@@ -4,6 +4,12 @@ from pydantic import BaseModel
 from typing import List, Optional
 from database import get_connection
 from datetime import datetime
+from services import (
+    compute_signal_confidence,
+    generate_signal_explanation,
+    get_daily_pick,
+    dashboard_aggregate,
+)
 
 router = APIRouter()
 
@@ -55,7 +61,7 @@ def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), e
     allowed_signals = [
         "Hammer", "Shooting_Star", "Doji", "Engulfing", "Dark_Cloud_Cover", "Morning_Star", "Evening_Star", "Piercing_Line",
         "signal1", "signal2", "signal3", "signal4", "signal5", "top_decile", "new_52w_high", "new_52w_low", "NR", "High_Relative_Volume_30",
-        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70"
+        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70", "adx_trigger"
     ]
     if signal and signal not in allowed_signals:
         return JSONResponse(content=[])
@@ -174,7 +180,7 @@ def get_signal_scanner_data(start_date: Optional[str] = Query(None), end_date: O
     allowed_signals = [
         "Hammer", "Shooting_Star", "Doji", "Engulfing", "Dark_Cloud_Cover", "Morning_Star", "Evening_Star", "Piercing_Line",
         "signal1", "signal2", "signal3", "signal4", "signal5", "top_decile", "new_52w_high", "new_52w_low", "NR", "High_Relative_Volume_30",
-        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70"
+        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70", "adx_trigger"
     ]
     if signal not in allowed_signals:
         return JSONResponse(content=[], status_code=400)
@@ -229,4 +235,46 @@ def get_signal_scanner_data(start_date: Optional[str] = Query(None), end_date: O
             unique_rows.append(row)
 
     return JSONResponse(content=unique_rows)
-    
+
+
+# Phase 1: Signal Confidence
+@router.get("/signal-confidence/{symbol}")
+def signal_confidence(symbol: str):
+    try:
+        result = compute_signal_confidence(symbol)
+        return JSONResponse(content=result)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# Phase 1: Explain My Signal
+@router.get("/explain-signal/{symbol}")
+def explain_signal(symbol: str):
+    try:
+        text = generate_signal_explanation(symbol)
+        return {"symbol": symbol, "explanation": text}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# Phase 1: Daily Trade Idea
+@router.get("/daily-idea")
+def daily_idea():
+    try:
+        data = get_daily_pick()
+        return JSONResponse(content=data)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# =====================
+# Phase 2: Dashboard
+# =====================
+
+@router.get("/dashboard-data")
+def dashboard_data():
+    try:
+        return dashboard_aggregate()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
