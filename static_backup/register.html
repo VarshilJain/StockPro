@@ -1,0 +1,369 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account — StockPro Analytics</title>
+<meta name="description" content="Create your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+    :root {
+        --primary-bg: #0a0e1a;
+        --secondary-bg: #111827;
+        --tertiary-bg: #1f2937;
+        --card-bg: rgba(31, 41, 55, 0.8);
+        --card-border: rgba(75, 85, 99, 0.3);
+        --accent-primary: #06b6d4;
+        --accent-secondary: #8b5cf6;
+        --accent-success: #10b981;
+        --accent-danger: #ef4444;
+        --text-primary: #f9fafb;
+        --text-secondary: #d1d5db;
+        --text-muted: #9ca3af;
+        --gradient-primary: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+        --gradient-card: linear-gradient(145deg, rgba(31, 41, 55, 0.95) 0%, rgba(17, 24, 39, 0.95) 100%);
+        --shadow-xl: 0 20px 60px rgba(0,0,0,0.5);
+        --border-radius: 12px;
+        --border-radius-lg: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background: var(--primary-bg);
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    body::before, body::after {
+        content: '';
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.12;
+        pointer-events: none;
+        animation: pulse 8s ease-in-out infinite alternate;
+    }
+    body::before {
+        width: 600px; height: 600px;
+        background: #8b5cf6;
+        top: -200px; right: -200px;
+    }
+    body::after {
+        width: 500px; height: 500px;
+        background: #06b6d4;
+        bottom: -150px; left: -150px;
+        animation-delay: 4s;
+    }
+    @keyframes pulse {
+        from { transform: scale(1); opacity: 0.10; }
+        to   { transform: scale(1.15); opacity: 0.16; }
+    }
+
+    .auth-wrapper {
+        width: 100%;
+        max-width: 440px;
+        padding: 1.5rem;
+        z-index: 1;
+    }
+
+    .brand {
+        text-align: center;
+        margin-bottom: 2rem;
+        animation: fadeDown 0.5s ease both;
+    }
+    .brand-icon {
+        width: 64px; height: 64px;
+        background: var(--gradient-primary);
+        border-radius: var(--border-radius-lg);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 1.75rem; color: white;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 32px rgba(139,92,246,0.35);
+    }
+    .brand-name {
+        font-size: 2rem; font-weight: 800;
+        background: var(--gradient-primary);
+        background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        display: block;
+    }
+    .brand-sub { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    .auth-card {
+        background: var(--gradient-card);
+        border: 1px solid var(--card-border);
+        border-radius: var(--border-radius-lg);
+        padding: 2.25rem 2rem;
+        backdrop-filter: blur(24px);
+        box-shadow: var(--shadow-xl);
+        animation: fadeUp 0.5s ease 0.1s both;
+    }
+    .card-heading { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.375rem; }
+    .card-subheading { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 2rem; }
+
+    .form-group { display: flex; flex-direction: column; margin-bottom: 1.25rem; }
+    .form-label { font-size: 0.8125rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem; }
+    .input-wrapper { position: relative; }
+    .input-icon {
+        position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%);
+        color: var(--text-muted); font-size: 0.875rem; pointer-events: none;
+    }
+    .form-input {
+        width: 100%;
+        padding: 0.8rem 1rem 0.8rem 2.5rem;
+        background: rgba(15, 23, 42, 0.7);
+        border: 1px solid var(--card-border);
+        border-radius: var(--border-radius);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-family: 'Inter', sans-serif;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
+    }
+    .form-input::placeholder { color: var(--text-muted); }
+    .form-input.error { border-color: var(--accent-danger); }
+    .field-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; }
+
+    /* Password strength bar */
+    .strength-wrap { margin-top: 0.5rem; }
+    .strength-bar { height: 4px; border-radius: 2px; background: var(--tertiary-bg); overflow: hidden; }
+    .strength-fill { height: 100%; border-radius: 2px; transition: width 0.3s, background 0.3s; width: 0%; }
+    .strength-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    .btn-submit {
+        width: 100%;
+        padding: 0.9rem;
+        background: var(--gradient-primary);
+        border: none; border-radius: var(--border-radius);
+        color: white; font-size: 0.9375rem; font-weight: 700;
+        cursor: pointer; font-family: 'Inter', sans-serif;
+        transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .btn-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(139,92,246,0.35); }
+    .btn-submit:active:not(:disabled) { transform: translateY(0); }
+    .btn-submit:disabled { opacity: 0.65; cursor: not-allowed; }
+
+    .alert {
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius);
+        font-size: 0.8125rem; font-weight: 500;
+        margin-bottom: 1.25rem;
+        display: none; align-items: center; gap: 0.5rem;
+    }
+    .alert.show { display: flex; }
+    .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 1.5rem;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        animation: fadeUp 0.5s ease 0.2s both;
+    }
+    .auth-link { color: var(--accent-primary); font-weight: 600; text-decoration: none; transition: color 0.2s; }
+    .auth-link:hover { color: var(--accent-secondary); }
+
+    .btn-spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .btn-submit.loading .btn-spinner { display: block; }
+    .btn-submit.loading .btn-label { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp   { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="auth-wrapper">
+    <!-- Brand -->
+    <div class="brand">
+        <div class="brand-icon"><i class="fas fa-chart-line"></i></div>
+        <span class="brand-name">StockPro</span>
+        <div class="brand-sub">Analytics Dashboard</div>
+    </div>
+
+    <!-- Card -->
+    <div class="auth-card">
+        <h1 class="card-heading">Create account</h1>
+        <p class="card-subheading">Join StockPro Analytics — it's free</p>
+
+        <div class="alert alert-error" id="errorAlert" role="alert">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="errorMsg"></span>
+        </div>
+        <div class="alert alert-success" id="successAlert" role="status">
+            <i class="fas fa-check-circle"></i>
+            <span id="successMsg"></span>
+        </div>
+
+        <form id="registerForm" novalidate>
+            <div class="form-group">
+                <label class="form-label" for="name">Full name</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user input-icon"></i>
+                    <input class="form-input" type="text" id="name" name="name"
+                           placeholder="Varshil Jain" autocomplete="name" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">Email address</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input class="form-input" type="email" id="email" name="email"
+                           placeholder="you@example.com" autocomplete="email" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input class="form-input" type="password" id="password" name="password"
+                           placeholder="Min. 8 chars, include a digit" autocomplete="new-password" required>
+                </div>
+                <!-- Password strength indicator -->
+                <div class="strength-wrap">
+                    <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+                    <div class="strength-label" id="strengthLabel"></div>
+                </div>
+                <span class="field-hint">At least 8 characters, including a letter and a digit.</span>
+            </div>
+
+            <button class="btn-submit" type="submit" id="submitBtn">
+                <div class="btn-spinner"></div>
+                <span class="btn-label"><i class="fas fa-user-plus"></i> Create Account</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Footer -->
+    <div class="auth-footer">
+        Already have an account?
+        <a href="/login.html" class="auth-link">Sign in</a>
+    </div>
+</div>
+
+<script>
+const form         = document.getElementById('registerForm');
+const btn          = document.getElementById('submitBtn');
+const errorAlert   = document.getElementById('errorAlert');
+const errorMsg     = document.getElementById('errorMsg');
+const successAlert = document.getElementById('successAlert');
+const successMsg   = document.getElementById('successMsg');
+const pwdInput     = document.getElementById('password');
+const strengthFill = document.getElementById('strengthFill');
+const strengthLabel = document.getElementById('strengthLabel');
+
+function showError(msg) {
+    successAlert.classList.remove('show');
+    errorMsg.textContent = msg;
+    errorAlert.classList.add('show');
+}
+function showSuccess(msg) {
+    errorAlert.classList.remove('show');
+    successMsg.textContent = msg;
+    successAlert.classList.add('show');
+}
+function hideAlerts() {
+    errorAlert.classList.remove('show');
+    successAlert.classList.remove('show');
+}
+
+// Password strength meter
+pwdInput.addEventListener('input', () => {
+    const val = pwdInput.value;
+    let score = 0;
+    if (val.length >= 8)  score++;
+    if (/[A-Za-z]/.test(val)) score++;
+    if (/\d/.test(val))   score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+
+    const colors = ['', '#ef4444', '#f59e0b', '#06b6d4', '#10b981'];
+    const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+    strengthFill.style.width  = score ? (score * 25) + '%' : '0%';
+    strengthFill.style.background = colors[score] || '';
+    strengthLabel.textContent = labels[score] || '';
+    strengthLabel.style.color = colors[score] || '';
+});
+
+// Client-side validation helper
+function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAlerts();
+
+    const name     = document.getElementById('name').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = pwdInput.value;
+
+    // Client-side checks
+    if (!name) { showError('Please enter your full name.'); return; }
+    if (!validateEmail(email)) { showError('Please enter a valid email address.'); return; }
+    if (password.length < 8) { showError('Password must be at least 8 characters.'); return; }
+    if (!/[A-Za-z]/.test(password)) { showError('Password must contain at least one letter.'); return; }
+    if (!/\d/.test(password)) { showError('Password must contain at least one digit.'); return; }
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ name, email, password }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+            showSuccess('Account created! Redirecting to login…');
+            form.reset();
+            strengthFill.style.width = '0%';
+            strengthLabel.textContent = '';
+            setTimeout(() => { window.location.href = '/login.html'; }, 1500);
+            return;
+        }
+
+        if (res.status === 409) {
+            showError('An account with this email already exists. Try logging in instead.');
+        } else if (res.status === 422) {
+            // Pydantic validation error — extract first message
+            const detail = data.detail;
+            if (Array.isArray(detail) && detail.length > 0) {
+                showError(detail[0].msg || 'Validation error. Please check your input.');
+            } else {
+                showError(typeof detail === 'string' ? detail : 'Validation error. Please check your input.');
+            }
+        } else {
+            showError(data.detail || 'Registration failed. Please try again.');
+        }
+    } catch (err) {
+        showError('Network error. Please check your connection and try again.');
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+});
+</script>
+</body>
+</html>
+
+

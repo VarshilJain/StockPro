@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockPro Analytics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+        :root {
+            --primary-bg: #0a0e1a;
+            --secondary-bg: #111827;
+            --tertiary-bg: #1f2937;
+            --card-bg: rgba(31, 41, 55, 0.8);
+            --card-border: rgba(75, 85, 99, 0.3);
+            --accent-primary: #06b6d4;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-muted: #9ca3af;
+            --gradient-primary: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+            --gradient-card: linear-gradient(145deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 0.9) 100%);
+            --gradient-sidebar: linear-gradient(180deg, #111827 0%, #0a0e1a 100%);
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            --border-radius: 12px;
+            --border-radius-lg: 16px;
+            --border-radius-xl: 20px;
+            --sidebar-width: 280px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--primary-bg); color: var(--text-primary); line-height: 1.6; overflow-x: hidden; }
+        .sidebar { position: fixed; left: 0; top: 0; width: var(--sidebar-width); height: 100vh; background: var(--gradient-sidebar); border-right: 1px solid var(--card-border); z-index: 1000; display: flex; flex-direction: column; backdrop-filter: blur(20px); }
+        .sidebar-header { padding: 2rem 1.5rem; border-bottom: 1px solid var(--card-border); }
+        .logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+        .logo-icon { width: 40px; height: 40px; background: var(--gradient-primary); border-radius: var(--border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.25rem; font-weight: 700; }
+        .logo-text { font-size: 1.5rem; font-weight: 800; background: var(--gradient-primary); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .logo-subtitle { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; }
+        .sidebar-nav { flex: 1; padding: 1.5rem 0; }
+        .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1.5rem; color: var(--text-secondary); text-decoration: none; font-weight: 500; transition: all 0.2s ease; position: relative; cursor: pointer; }
+        .nav-item:hover { color: var(--text-primary); background: rgba(6, 182, 212, 0.1); }
+        .nav-item.active { color: var(--accent-primary); background: rgba(6, 182, 212, 0.15); }
+        .nav-item.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent-primary); }
+        .nav-icon { width: 20px; text-align: center; }
+        .sidebar-footer { padding: 1.5rem; border-top: 1px solid var(--card-border); text-align: center; }
+        .footer-text { font-size: 0.75rem; color: var(--text-muted); }
+        .main-content { margin-left: var(--sidebar-width); min-height: 100vh; background: var(--primary-bg); }
+        .topbar { background: var(--card-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--card-border); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .page-title { font-size: 1.875rem; font-weight: 700; background: var(--gradient-primary); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .user-profile { display: flex; align-items: center; gap: 1rem; }
+        .user-avatar { width: 44px; height: 44px; background: var(--gradient-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; font-size: 1.125rem; }
+        .user-info { display: flex; flex-direction: column; }
+        .user-name { font-weight: 600; color: var(--text-primary); }
+        .user-role { font-size: 0.875rem; color: var(--text-muted); }
+        .container { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+        .card { background: var(--gradient-card); border: 1px solid var(--card-border); border-radius: var(--border-radius-lg); padding: 2rem; margin-bottom: 2rem; backdrop-filter: blur(20px); box-shadow: var(--shadow-lg); }
+        .card-header { margin-bottom: 1.5rem; }
+        .card-title { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; }
+        .card-subtitle { color: var(--text-muted); font-size: 0.875rem; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-label { font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.875rem; }
+        .form-input, .form-select { padding: 0.875rem 1rem; background: var(--tertiary-bg); border: 1px solid var(--card-border); border-radius: var(--border-radius); color: var(--text-primary); font-size: 0.875rem; transition: all 0.2s ease; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1); }
+        .form-input::placeholder { color: var(--text-muted); }
+        .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.875rem 1.5rem; border: none; border-radius: var(--border-radius); font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s ease; text-decoration: none; }
+        .btn-primary { background: var(--gradient-primary); color: white; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+        .btn-secondary { background: var(--tertiary-bg); color: var(--text-secondary); border: 1px solid var(--card-border); }
+        .btn-secondary:hover { background: var(--card-bg); color: var(--text-primary); }
+        .btn-group { display: flex; gap: 1rem; margin-top: 1rem; }
+        .spinner { display: flex; justify-content: center; align-items: center; padding: 2rem; flex-direction: column; gap: 1rem; }
+        .spinner::after { content: ''; width: 40px; height: 40px; border: 4px solid var(--card-border); border-top: 4px solid var(--accent-primary); border-radius: 50%; animation: spin 1s linear infinite; visibility: hidden; }
+        .spinner.active::after { visibility: visible; }
+        .spinner-text { color: var(--text-muted); font-size: 0.875rem; visibility: hidden; }
+        .spinner.active .spinner-text { visibility: visible; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .table-container { background: var(--gradient-card); border: 1px solid var(--card-border); border-radius: var(--border-radius-lg); overflow-x: auto; overflow-y: auto; backdrop-filter: blur(20px); box-shadow: var(--shadow-lg); max-height: 70vh; }
+        .table { width: 100%; min-width: 800px; border-collapse: collapse; }
+        .table th { background: var(--tertiary-bg); color: var(--text-primary); font-weight: 600; padding: 1rem; text-align: left; border-bottom: 1px solid var(--card-border); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .table td { padding: 1rem; border-bottom: 1px solid var(--card-border); color: var(--text-secondary); font-size: 0.875rem; }
+        .table tbody tr:hover { background: rgba(6, 182, 212, 0.05); }
+        .table tbody tr:hover td { color: var(--text-primary); }
+        .symbol-link { color: var(--accent-primary); font-weight: 600; cursor: pointer; transition: color 0.2s ease; }
+        .symbol-link:hover { color: var(--accent-secondary); }
+        #chartTooltip { display: none; position: absolute; z-index: 2000; width: 520px; height: 370px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--border-radius-lg); padding: 1rem; box-shadow: var(--shadow-xl); backdrop-filter: blur(20px); }
+        .status-indicator { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .status-success { background: rgba(16, 185, 129, 0.1); color: var(--accent-success); }
+        .status-warning { background: rgba(245, 158, 11, 0.1); color: var(--accent-warning); }
+        .status-danger { background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); }
+        .no-data { text-align: center; padding: 3rem; color: var(--text-muted); }
+        .no-data-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+        .no-data-text { font-size: 1.125rem; margin-bottom: 0.5rem; }
+        .no-data-subtext { font-size: 0.875rem; }
+        @media (max-width: 1024px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; } .sidebar.open { transform: translateX(0); } .main-content { margin-left: 0; } .form-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .container { padding: 1rem; } .card { padding: 1.5rem; } .topbar { padding: 1rem; } .page-title { font-size: 1.5rem; } .btn-group { flex-direction: column; } #chartTooltip { width: 90vw; height: 300px; } }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* daily idea card */
+        .idea-card { background: linear-gradient(135deg,rgba(6,182,212,0.1),rgba(139,92,246,0.1)); border: 1px solid rgba(6,182,212,0.3); border-radius: var(--border-radius-lg); padding: 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 1.5rem; }
+        .idea-badge { font-size: 2.5rem; }
+        .idea-symbol { font-size: 1.5rem; font-weight: 800; color: var(--accent-primary); }
+        .idea-meta { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">
+            <div class="logo-icon"><i class="fas fa-chart-line"></i></div>
+            <div>
+                <div class="logo-text">StockPro</div>
+                <div class="logo-subtitle">Analytics Dashboard</div>
+            </div>
+        </div>
+    </div>
+    <nav class="sidebar-nav">
+        <!-- FIX: pass the click event explicitly so showSection can mark the correct nav item active -->
+        <a class="nav-item active" onclick="showSection('dashboard', this)">
+            <i class="fas fa-tachometer-alt nav-icon"></i>Dashboard
+        </a>
+        <a class="nav-item" onclick="showSection('scanner', this)">
+            <i class="fas fa-search nav-icon"></i>Stock Scanner
+        </a>
+        <a class="nav-item" onclick="showSection('signalScanner', this)">
+            <i class="fas fa-chart-area nav-icon"></i>Technical Signal Scanner
+        </a>
+    </nav>
+    <div class="sidebar-footer"><div class="footer-text">© 2024 StockPro Analytics</div></div>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+    <div class="topbar">
+        <h1 class="page-title"><i class="fas fa-chart-line"></i> Stock Analytics Dashboard</h1>
+        <div class="user-profile">
+            <div class="user-info">
+                <div class="user-name">Analyst</div>
+                <div class="user-role">Professional Trader</div>
+            </div>
+            <div class="user-avatar">AP</div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- Daily Idea Banner (always visible) -->
+        <div class="idea-card" id="dailyIdeaCard" style="display:none;">
+            <div class="idea-badge">💡</div>
+            <div>
+                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;">Today's Trade Idea</div>
+                <div class="idea-symbol" id="ideaSymbol">—</div>
+                <div class="idea-meta" id="ideaMeta">—</div>
+            </div>
+        </div>
+
+        <!-- ── DASHBOARD ── -->
+        <div class="card fade-in" id="dashboardSection">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-chart-pie"></i> Market Dashboard</h2>
+                <p class="card-subtitle">Top bullish/bearish stocks and market overview</p>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;">
+                <div class="card" style="margin:0;">
+                    <div class="card-title">🟢 Top Bullish</div>
+                    <div id="topBullish"><div style="color:var(--text-muted);font-size:0.875rem;">Loading…</div></div>
+                </div>
+                <div class="card" style="margin:0;">
+                    <div class="card-title">🔴 Top Bearish</div>
+                    <div id="topBearish"><div style="color:var(--text-muted);font-size:0.875rem;">Loading…</div></div>
+                </div>
+                <div class="card" style="margin:0;">
+                    <div class="card-title">Market Heat</div>
+                    <canvas id="heatChart" height="160"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── STOCK SCANNER ── -->
+        <div class="card fade-in" id="stockDataAnalysisSection" style="display:none;">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-search"></i> Stock Data Analysis</h2>
+                <p class="card-subtitle">Select criteria to analyse stock data and technical signals</p>
+            </div>
+            <form onsubmit="fetchData(); return false;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-chart-bar"></i> Stock Symbol</label>
+                        <select id="symbol" class="form-select">
+                            <option value="">Select a stock symbol</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-calendar-alt"></i> Start Date</label>
+                        <input type="date" id="start" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-calendar-alt"></i> End Date</label>
+                        <input type="date" id="end" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-signal"></i> Technical Signal</label>
+                        <select id="signal" class="form-select">
+                            <option value="">All signals / Scanner</option>
+                            <optgroup label="Candlestick Patterns">
+                                <option value="Hammer">Hammer</option>
+                                <option value="Shooting_Star">Shooting Star</option>
+                                <option value="Doji">Doji</option>
+                                <option value="Engulfing">Engulfing</option>
+                                <option value="Dark_Cloud_Cover">Dark Cloud Cover</option>
+                                <option value="Morning_Star">Morning Star</option>
+                                <option value="Evening_Star">Evening Star</option>
+                                <option value="Piercing_Line">Piercing Line</option>
+                            </optgroup>
+                            <optgroup label="Moving Average Signals">
+                                <option value="signal1">Close ↑ SMA9</option>
+                                <option value="signal2">Close ↓ SMA9</option>
+                                <option value="signal3">SMA9 ↑ SMA18</option>
+                                <option value="signal4">Close: SMA200/SMA50</option>
+                                <option value="signal5">Golden Cross (SMA50/SMA200)</option>
+                            </optgroup>
+                            <optgroup label="Market Signals">
+                                <option value="top_decile">Top Decile</option>
+                                <option value="new_52w_high">New 52 Week High</option>
+                                <option value="new_52w_low">New 52 Week Low</option>
+                                <option value="NR">Narrow Range (NR5-NR8)</option>
+                                <option value="High_Relative_Volume_30">High Relative Volume (30)</option>
+                                <option value="hit_2y_high_14d">2 Year High (14 Days)</option>
+                                <option value="hit_5y_high_14d">5 Year High (14 Days)</option>
+                                <option value="hit_10y_high_14d">10 Year High (14 Days)</option>
+                                <option value="oversold">Oversold (RSI &lt; 25)</option>
+                                <option value="overbought">Overbought (RSI &gt; 80)</option>
+                                <option value="rsi_lt_30">RSI &lt; 30</option>
+                                <option value="rsi_gt_70">RSI &gt; 70</option>
+                                <option value="adx_trigger">ADX Trigger</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Analyze Data</button>
+                    <button class="btn btn-secondary" type="button" onclick="downloadCSV()"><i class="fas fa-download"></i> Export CSV</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ── TECHNICAL SIGNAL SCANNER ── -->
+        <div class="card fade-in" id="signalScannerSection" style="display:none;">
+            <div class="card-header">
+                <h2 class="card-title"><i class="fas fa-chart-area"></i> Technical Signal Scanner</h2>
+                <p class="card-subtitle">Scan for technical signals across all stocks</p>
+            </div>
+            <form onsubmit="fetchSignalData(); return false;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-calendar-alt"></i> Start Date</label>
+                        <input type="date" id="signalStartDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-calendar-alt"></i> End Date</label>
+                        <input type="date" id="signalEndDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-signal"></i> Technical Signal</label>
+                        <select id="signalName" class="form-select" required onchange="updateSignalDateRequirement()">
+                            <option value="">Select a technical signal</option>
+                            <optgroup label="Candlestick Patterns">
+                                <option value="Hammer">Hammer</option>
+                                <option value="Shooting_Star">Shooting Star</option>
+                                <option value="Doji">Doji</option>
+                                <option value="Engulfing">Engulfing</option>
+                                <option value="Dark_Cloud_Cover">Dark Cloud Cover</option>
+                                <option value="Morning_Star">Morning Star</option>
+                                <option value="Evening_Star">Evening Star</option>
+                                <option value="Piercing_Line">Piercing Line</option>
+                            </optgroup>
+                            <optgroup label="Moving Average Signals">
+                                <option value="signal1">Close ↑ SMA9</option>
+                                <option value="signal2">Close ↓ SMA9</option>
+                                <option value="signal3">SMA9 ↑ SMA18</option>
+                                <option value="signal4">Close: SMA200/SMA50</option>
+                                <option value="signal5">Golden Cross (SMA50/SMA200)</option>
+                            </optgroup>
+                            <optgroup label="Market Signals">
+                                <option value="top_decile">Top Decile</option>
+                                <option value="new_52w_high">New 52 Week High</option>
+                                <option value="new_52w_low">New 52 Week Low</option>
+                                <option value="NR">Narrow Range</option>
+                                <option value="High_Relative_Volume_30">High Relative Volume (30)</option>
+                                <option value="hit_2y_high_14d">2 Year High (last 14 days)</option>
+                                <option value="hit_5y_high_14d">5 Year High (last 14 days)</option>
+                                <option value="hit_10y_high_14d">10 Year High (last 14 days)</option>
+                                <option value="rsi_lt_30">RSI &lt; 30</option>
+                                <option value="rsi_gt_70">RSI &gt; 70</option>
+                                <option value="oversold">Oversold (RSI &lt; 25)</option>
+                                <option value="overbought">Overbought (RSI &gt; 80)</option>
+                                <option value="adx_trigger">ADX Trigger</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Scan Signals</button>
+                    <button class="btn btn-secondary" type="button" onclick="downloadSignalCSV()"><i class="fas fa-download"></i> Export CSV</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="spinner" id="spinner">
+            <div class="spinner-text">Loading data…</div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="table-container fade-in" id="tableContainer" style="display:none;">
+            <div style="padding:1rem;border-bottom:1px solid var(--card-border);background:var(--tertiary-bg);display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:var(--text-primary);font-weight:600;">Results</span>
+                <span id="rowCount" style="color:var(--text-muted);font-size:0.875rem;"></span>
+            </div>
+            <table class="table" id="resultTable">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+    </div><!-- /container -->
+</div><!-- /main-content -->
+
+<!-- Chart Tooltip -->
+<div id="chartTooltip"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   GLOBALS
+═══════════════════════════════════════════════════════ */
+let chartContainer = document.getElementById('chartTooltip');
+let allSymbols = [];       // master list used by all symbol selects
+
+/* ═══════════════════════════════════════════════════════
+   FIX 1 — loadDailyIdea was missing entirely.
+   Also: loadSymbols now populates ALL selects from one
+   shared array instead of fragile cloneNode chains.
+═══════════════════════════════════════════════════════ */
+async function loadDailyIdea() {
+    try {
+        const res = await fetch('/api/daily-idea');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && data.symbol) {
+            document.getElementById('ideaSymbol').textContent = data.symbol;
+            document.getElementById('ideaMeta').textContent =
+                `${data.signal} · Confidence: ${data.confidence}% · ${data.date}`;
+            document.getElementById('dailyIdeaCard').style.display = 'flex';
+        }
+    } catch (e) {
+        console.warn('Daily idea unavailable:', e);
+    }
+}
+
+/* FIX 2 — populate selects properly from one master list */
+async function loadSymbols() {
+    try {
+        const res = await fetch('/api/symbols');
+        const data = await res.json();
+        allSymbols = Array.isArray(data) ? data : (data.symbols || []);
+    } catch (e) {
+        console.error('Symbol load failed:', e);
+        allSymbols = [];
+    }
+
+    if (!allSymbols.length) {
+        allSymbols = ['AAPL','MSFT','GOOGL','AMZN','TSLA'];
+    }
+
+    const ids = ['symbol'];
+    ids.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Select a stock symbol</option>';
+        allSymbols.forEach(sym => {
+            const opt = document.createElement('option');
+            opt.value = sym;
+            opt.text  = sym;
+            sel.add(opt);
+        });
+    });
+}
+
+/* ═══════════════════════════════════════════════════════
+   FIX 3 — showSection now receives the clicked element
+   directly so it never relies on a stale `event` global.
+═══════════════════════════════════════════════════════ */
+const SECTIONS = {
+    dashboard:     'dashboardSection',
+    scanner:       'stockDataAnalysisSection',
+    signalScanner: 'signalScannerSection',
+};
+
+function showSection(name, clickedEl) {
+    Object.values(SECTIONS).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+
+    const target = document.getElementById(SECTIONS[name]);
+    if (target) target.style.display = 'block';
+    if (clickedEl) clickedEl.classList.add('active');
+
+    // Side-effects on section open
+    if (name === 'dashboard') loadDashboard();
+}
+
+/* ═══════════════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════════════ */
+async function loadDashboard() {
+    try {
+        const res  = await fetch('/api/dashboard-data');
+        const data = await res.json();
+
+        document.getElementById('topBullish').innerHTML =
+            (data.top_bullish || []).map(x =>
+                `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--card-border);">
+                    <span style="color:var(--accent-primary);font-weight:600;">${x.symbol}</span>
+                    <span style="color:var(--accent-success);">${x.confidence}%</span>
+                </div>`).join('') || '<div style="color:var(--text-muted)">No data</div>';
+
+        document.getElementById('topBearish').innerHTML =
+            (data.top_bearish || []).map(x =>
+                `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--card-border);">
+                    <span style="color:var(--accent-primary);font-weight:600;">${x.symbol}</span>
+                    <span style="color:var(--accent-danger);">${x.confidence}%</span>
+                </div>`).join('') || '<div style="color:var(--text-muted)">No data</div>';
+
+        const ctx    = document.getElementById('heatChart').getContext('2d');
+        const sector = (data.sectors && data.sectors[0]) || { bullish: 50, bearish: 50 };
+        if (window._heatChart) window._heatChart.destroy();
+        window._heatChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Bullish %', 'Bearish %'],
+                datasets: [{ data: [sector.bullish, sector.bearish], backgroundColor: ['#10b981','#ef4444'] }]
+            },
+            options: { plugins: { legend: { labels: { color: '#d1d5db' } } } }
+        });
+    } catch (e) { console.error('Dashboard error', e); }
+}
+
+/* ═══════════════════════════════════════════════════════
+   STOCK SCANNER
+═══════════════════════════════════════════════════════ */
+async function fetchData() {
+    const symbol = document.getElementById('symbol').value;
+    const start  = document.getElementById('start').value;
+    const end    = document.getElementById('end').value;
+    const signal = document.getElementById('signal').value;
+    if (!start || !end) { alert('Please select a date range.'); return; }
+
+    let url = `/api/data?start_date=${start}&end_date=${end}`;
+    if (symbol) url += `&symbol=${symbol}`;
+    if (!symbol && signal) url += `&signal=${signal}`;
+
+    document.getElementById('spinner').classList.add('active');
+    document.getElementById('tableContainer').style.display = 'none';
+    try {
+        const res  = await fetch(url);
+        const rows = await res.json();
+        renderTable(rows);
+    } catch (e) {
+        console.error('Fetch data error', e);
+        alert('Error fetching data.');
+    } finally {
+        document.getElementById('spinner').classList.remove('active');
+    }
+}
+
+function renderTable(rows) {
+    const table   = document.getElementById('resultTable');
+    const thead   = table.querySelector('thead');
+    const tbody   = table.querySelector('tbody');
+    const signal  = document.getElementById('signal').value;
+    const symbol  = document.getElementById('symbol').value;
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+
+    if (!rows || !rows.length) {
+        tbody.innerHTML = `<tr><td colspan="10"><div class="no-data"><div class="no-data-icon"><i class="fas fa-chart-line"></i></div><div class="no-data-text">No data available</div><div class="no-data-subtext">Try adjusting your filters.</div></div></td></tr>`;
+        document.getElementById('tableContainer').style.display = 'block';
+        return;
+    }
+
+    let headers = Object.keys(rows[0]);
+    if (!symbol && signal) headers = ['Symbol', 'Timestamp', signal];
+
+    const hr = document.createElement('tr');
+    headers.forEach(col => { const th = document.createElement('th'); th.textContent = col; hr.appendChild(th); });
+    thead.appendChild(hr);
+
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        headers.forEach(col => {
+            const td = document.createElement('td');
+            if (col.toLowerCase() === 'symbol') {
+                td.innerHTML = `<span class="symbol-link" onmouseover="showChart('${row[col]}',event)" onmouseout="hideChart()">${row[col]}</span>`;
+            } else {
+                td.textContent = row[col] ?? '';
+            }
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('rowCount').textContent = `${rows.length} rows`;
+    document.getElementById('tableContainer').style.display = 'block';
+}
+
+/* ═══════════════════════════════════════════════════════
+   SIGNAL SCANNER
+═══════════════════════════════════════════════════════ */
+const AUTO_WINDOW_SIGNALS = new Set(['hit_2y_high_14d','hit_5y_high_14d','hit_10y_high_14d']);
+
+function updateSignalDateRequirement() {
+    const sig   = document.getElementById('signalName').value;
+    const start = document.getElementById('signalStartDate');
+    const end   = document.getElementById('signalEndDate');
+    const auto  = AUTO_WINDOW_SIGNALS.has(sig);
+    start.disabled = auto; end.disabled = auto;
+    start.required = !auto; end.required = !auto;
+    if (auto) { start.value = ''; end.value = ''; }
+}
+
+async function fetchSignalData() {
+    const startDate  = document.getElementById('signalStartDate').value;
+    const endDate    = document.getElementById('signalEndDate').value;
+    const signalName = document.getElementById('signalName').value;
+    if (!signalName) { alert('Please select a signal.'); return; }
+
+    let url;
+    if (AUTO_WINDOW_SIGNALS.has(signalName)) {
+        url = `/api/signal-scanner?signal=${signalName}&limit=500`;
+    } else {
+        if (!startDate || !endDate) { alert('Please select start and end dates.'); return; }
+        url = `/api/signal-scanner?start_date=${startDate}&end_date=${endDate}&signal=${signalName}&limit=500`;
+    }
+
+    document.getElementById('spinner').classList.add('active');
+    document.getElementById('tableContainer').style.display = 'none';
+    try {
+        const res  = await fetch(url);
+        const rows = await res.json();
+        renderSignalTable(rows, signalName);
+    } catch (e) {
+        console.error('Signal fetch error', e);
+        alert('Error fetching signal data.');
+    } finally {
+        document.getElementById('spinner').classList.remove('active');
+    }
+}
+
+function renderSignalTable(rows, signalName) {
+    const table = document.getElementById('resultTable');
+    const thead = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
+    thead.innerHTML = ''; tbody.innerHTML = '';
+
+    if (!rows || !rows.length) {
+        tbody.innerHTML = `<tr><td colspan="3"><div class="no-data"><div class="no-data-icon"><i class="fas fa-chart-area"></i></div><div class="no-data-text">No signal data found</div><div class="no-data-subtext">Try a different date range or signal.</div></div></td></tr>`;
+        document.getElementById('tableContainer').style.display = 'block';
+        return;
+    }
+
+    const headers = ['Symbol','Timestamp', signalName];
+    const hr = document.createElement('tr');
+    headers.forEach(col => { const th = document.createElement('th'); th.textContent = col; hr.appendChild(th); });
+    thead.appendChild(hr);
+
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        headers.forEach(col => {
+            const td = document.createElement('td');
+            if (col.toLowerCase() === 'symbol') {
+                td.innerHTML = `<span class="symbol-link" onmouseover="showChart('${row[col]}',event)" onmouseout="hideChart()">${row[col]}</span>`;
+            } else { td.textContent = row[col] ?? ''; }
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('rowCount').textContent = `${rows.length} rows`;
+    document.getElementById('tableContainer').style.display = 'block';
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHART HOVER
+═══════════════════════════════════════════════════════ */
+function showChart(symbol, event) {
+    chartContainer.style.display = 'block';
+    chartContainer.style.top  = (event.pageY + 15) + 'px';
+    chartContainer.style.left = (event.pageX + 15) + 'px';
+    const uid = 'tv_' + Date.now();
+    chartContainer.innerHTML = `<div id="${uid}" style="width:500px;height:350px;"></div>`;
+    if (typeof TradingView !== 'undefined') {
+        new TradingView.widget({ container_id: uid, width: 500, height: 350, symbol: 'NSE:' + symbol.toUpperCase(), interval: 'D', timezone: 'Asia/Kolkata', theme: 'dark', style: '1', locale: 'en', hide_top_toolbar: false, allow_symbol_change: false, autosize: false });
+    }
+}
+function hideChart() { chartContainer.style.display = 'none'; }
+
+/* ═══════════════════════════════════════════════════════
+   CSV EXPORT
+═══════════════════════════════════════════════════════ */
+function downloadCSV() { _downloadTable('stock_analysis_data.csv'); }
+function downloadSignalCSV() { _downloadTable('signal_scanner_data.csv'); }
+function _downloadTable(filename) {
+    const rows = Array.from(document.getElementById('resultTable').querySelectorAll('tr'))
+        .map(tr => Array.from(tr.querySelectorAll('th,td')).map(td => td.textContent).join(','))
+        .join('\n');
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([rows],{type:'text/csv'})), download: filename });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+   FIX: loadDailyIdea is now defined above and called here.
+   Each async call is wrapped in try/catch so one failure
+   never blocks the rest.
+═══════════════════════════════════════════════════════ */
+window.onload = async () => {
+    await loadSymbols();          // populate all selects + allSymbols
+    loadDailyIdea();              // non-blocking banner
+    loadDashboard();              // default section
+    updateSignalDateRequirement();
+};
+</script>
+</body>
+</html>

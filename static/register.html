@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account — StockPro Analytics</title>
+<meta name="description" content="Create your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="apple-theme.css">
+</head>
+<body class="auth-body">
+
+<div class="auth-wrapper">
+    <!-- Brand -->
+    <div class="brand">
+        <div class="brand-icon"><i class="fas fa-chart-line"></i></div>
+        <span class="brand-name">StockPro</span>
+        <div class="brand-sub">Analytics Dashboard</div>
+    </div>
+
+    <!-- Card -->
+    <div class="auth-card">
+        <h1 class="card-heading">Create account</h1>
+        <p class="card-subheading">Join StockPro Analytics — it's free</p>
+
+        <div class="alert alert-error" id="errorAlert" role="alert">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="errorMsg"></span>
+        </div>
+        <div class="alert alert-success" id="successAlert" role="status">
+            <i class="fas fa-check-circle"></i>
+            <span id="successMsg"></span>
+        </div>
+
+        <form id="registerForm" novalidate>
+            <div class="form-group">
+                <label class="form-label" for="name">Full name</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user input-icon"></i>
+                    <input class="form-input" type="text" id="name" name="name"
+                           placeholder="Varshil Jain" autocomplete="name" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email">Email address</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input class="form-input" type="email" id="email" name="email"
+                           placeholder="you@example.com" autocomplete="email" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input class="form-input" type="password" id="password" name="password"
+                           placeholder="Min. 8 chars, include a digit" autocomplete="new-password" required>
+                </div>
+                <!-- Password strength indicator -->
+                <div class="strength-wrap">
+                    <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+                    <div class="strength-label" id="strengthLabel"></div>
+                </div>
+                <span class="field-hint">At least 8 characters, including a letter and a digit.</span>
+            </div>
+
+            <button class="btn-submit" type="submit" id="submitBtn">
+                <div class="btn-spinner"></div>
+                <span class="btn-label"><i class="fas fa-user-plus"></i> Create Account</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Footer -->
+    <div class="auth-footer">
+        Already have an account?
+        <a href="/login.html" class="auth-link">Sign in</a>
+    </div>
+</div>
+
+<script>
+const form         = document.getElementById('registerForm');
+const btn          = document.getElementById('submitBtn');
+const errorAlert   = document.getElementById('errorAlert');
+const errorMsg     = document.getElementById('errorMsg');
+const successAlert = document.getElementById('successAlert');
+const successMsg   = document.getElementById('successMsg');
+const pwdInput     = document.getElementById('password');
+const strengthFill = document.getElementById('strengthFill');
+const strengthLabel = document.getElementById('strengthLabel');
+
+function showError(msg) {
+    successAlert.classList.remove('show');
+    errorMsg.textContent = msg;
+    errorAlert.classList.add('show');
+}
+function showSuccess(msg) {
+    errorAlert.classList.remove('show');
+    successMsg.textContent = msg;
+    successAlert.classList.add('show');
+}
+function hideAlerts() {
+    errorAlert.classList.remove('show');
+    successAlert.classList.remove('show');
+}
+
+// Password strength meter
+pwdInput.addEventListener('input', () => {
+    const val = pwdInput.value;
+    let score = 0;
+    if (val.length >= 8)  score++;
+    if (/[A-Za-z]/.test(val)) score++;
+    if (/\d/.test(val))   score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+
+    const colors = ['', '#ef4444', '#f59e0b', '#06b6d4', '#10b981'];
+    const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+    strengthFill.style.width  = score ? (score * 25) + '%' : '0%';
+    strengthFill.style.background = colors[score] || '';
+    strengthLabel.textContent = labels[score] || '';
+    strengthLabel.style.color = colors[score] || '';
+});
+
+// Client-side validation helper
+function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAlerts();
+
+    const name     = document.getElementById('name').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = pwdInput.value;
+
+    // Client-side checks
+    if (!name) { showError('Please enter your full name.'); return; }
+    if (!validateEmail(email)) { showError('Please enter a valid email address.'); return; }
+    if (password.length < 8) { showError('Password must be at least 8 characters.'); return; }
+    if (!/[A-Za-z]/.test(password)) { showError('Password must contain at least one letter.'); return; }
+    if (!/\d/.test(password)) { showError('Password must contain at least one digit.'); return; }
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ name, email, password }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+            showSuccess('Account created! Redirecting to login…');
+            form.reset();
+            strengthFill.style.width = '0%';
+            strengthLabel.textContent = '';
+            setTimeout(() => { window.location.href = '/login.html'; }, 1500);
+            return;
+        }
+
+        if (res.status === 409) {
+            showError('An account with this email already exists. Try logging in instead.');
+        } else if (res.status === 422) {
+            // Pydantic validation error — extract first message
+            const detail = data.detail;
+            if (Array.isArray(detail) && detail.length > 0) {
+                showError(detail[0].msg || 'Validation error. Please check your input.');
+            } else {
+                showError(typeof detail === 'string' ? detail : 'Validation error. Please check your input.');
+            }
+        } else {
+            showError(data.detail || 'Registration failed. Please try again.');
+        }
+    } catch (err) {
+        showError('Network error. Please check your connection and try again.');
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+});
+</script>
+</body>
+</html>
+
+

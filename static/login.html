@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — StockPro Analytics</title>
+<meta name="description" content="Sign in to your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="apple-theme.css">
+</head>
+<body class="auth-body">
+
+<div class="auth-wrapper">
+    <!-- Brand -->
+    <div class="brand">
+        <div class="brand-icon"><i class="fas fa-chart-line"></i></div>
+        <span class="brand-name">StockPro</span>
+        <div class="brand-sub">Analytics Dashboard</div>
+    </div>
+
+    <!-- Card -->
+    <div class="auth-card">
+        <h1 class="card-heading">Welcome back</h1>
+        <p class="card-subheading">Sign in to your account to continue</p>
+
+        <!-- Error alert -->
+        <div class="alert alert-error" id="errorAlert" role="alert">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="errorMsg"></span>
+        </div>
+
+        <form id="loginForm" novalidate>
+            <div class="form-group">
+                <label class="form-label" for="email">Email address</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input class="form-input" type="email" id="email" name="email"
+                           placeholder="you@example.com" autocomplete="email" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input class="form-input" type="password" id="password" name="password"
+                           placeholder="••••••••" autocomplete="current-password" required>
+                </div>
+            </div>
+
+            <button class="btn-submit" type="submit" id="submitBtn">
+                <div class="btn-spinner"></div>
+                <span class="btn-label"><i class="fas fa-sign-in-alt"></i> Sign In</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Footer -->
+    <div class="auth-footer">
+        Don't have an account?
+        <a href="/register.html" class="auth-link">Create one</a>
+    </div>
+</div>
+
+<script>
+const form = document.getElementById('loginForm');
+const btn  = document.getElementById('submitBtn');
+const errorAlert = document.getElementById('errorAlert');
+const errorMsg   = document.getElementById('errorMsg');
+
+function showError(msg) {
+    errorMsg.textContent = msg;
+    errorAlert.classList.add('show');
+}
+function hideError() { errorAlert.classList.remove('show'); }
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+        showError('Please enter your email and password.');
+        return;
+    }
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email, password }),
+        });
+
+        if (res.ok) {
+            window.location.href = '/';
+            return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+            showError('Too many login attempts. Please wait a minute and try again.');
+        } else if (res.status === 401) {
+            showError('Incorrect email or password. Please try again.');
+        } else {
+            showError(data.detail || 'Login failed. Please try again.');
+        }
+    } catch (err) {
+        showError('Network error. Please check your connection and try again.');
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+});
+
+// If already logged in, go straight to dashboard
+(async () => {
+    try {
+        const r = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        if (r.ok) window.location.href = '/';
+    } catch (_) {}
+})();
+</script>
+</body>
+</html>
+
+

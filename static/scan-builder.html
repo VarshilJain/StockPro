@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scan Builder — StockPro Analytics</title>
+<meta name="description" content="Build, save and run no-code stock scans using technical signals and candlestick patterns.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="apple-theme.css">
+<style>
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--card-border, rgba(0, 0, 0, 0.08));
+  margin-top: 1rem;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.custom-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  text-align: left;
+}
+
+.custom-table th {
+  background: rgba(0, 113, 227, 0.04);
+  color: var(--text-secondary, #515154);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.custom-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  color: var(--text-primary, #1d1d1f);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.custom-table tr:last-child td {
+  border-bottom: none;
+}
+
+.custom-table tr:hover td {
+  background: rgba(0, 113, 227, 0.02);
+}
+
+.symbol-link {
+  color: #0071E3;
+  text-decoration: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.symbol-link:hover {
+  text-decoration: underline;
+}
+
+.signal-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(52, 199, 89, 0.12);
+  color: #27a745;
+  font-weight: 600;
+  font-size: 12px;
+  border: 1px solid rgba(52, 199, 89, 0.25);
+}
+
+.rcs-badge-positive {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(52, 199, 89, 0.12);
+  color: #27a745;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.rcs-badge-negative {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 59, 48, 0.12);
+  color: #dc3545;
+  font-weight: 700;
+  font-size: 13px;
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon"><i class="fas fa-chart-line"></i></div>
+      <div>
+        <div class="logo-text">StockPro</div>
+        <div class="logo-subtitle">Scan Builder</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/?section=dashboard"><i class="fas fa-tachometer-alt nav-icon"></i>Dashboard</a>
+    <a class="nav-item" href="/?section=stockChart"><i class="fas fa-candlestick-chart nav-icon"></i>Stock Chart</a>
+    <a class="nav-item" href="/?section=scanner"><i class="fas fa-search nav-icon"></i>Stock Scanner</a>
+    <a class="nav-item" href="/?section=signalScanner"><i class="fas fa-chart-area nav-icon"></i>Technical Signal Scanner</a>
+    <a class="nav-item active" href="/scan-builder"><i class="fas fa-filter nav-icon"></i>Scan Builder</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main-content">
+  <div class="topbar">
+    <h1 class="page-title"><i class="fas fa-filter"></i> Scan Builder</h1>
+    <div class="user-profile">
+      <div class="user-info">
+        <div class="user-name" id="topbarUserName">Loading…</div>
+        <div class="user-role" id="topbarUserEmail"></div>
+      </div>
+      <div class="user-avatar" id="topbarAvatar">…</div>
+    </div>
+  </div>
+
+  <div class="content-grid">
+
+    <!-- ── LEFT: Builder + Results ── -->
+    <div>
+
+      <!-- Builder card -->
+      <div class="card">
+        <div class="card-title"><i class="fas fa-sliders-h"></i> Build Your Scan</div>
+        <p class="card-subtitle">Select signals and conditions, then run or save your scan.</p>
+
+        <!-- Date range -->
+        <div class="date-row">
+          <div class="form-group">
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="endDate">End Date</label>
+            <input type="date" id="endDate" class="form-input">
+          </div>
+        </div>
+
+        <!-- Logic toggle -->
+        <div class="logic-toggle">
+          <label>Combine conditions with:</label>
+          <div class="toggle-pills">
+            <span class="toggle-pill active" id="pillAnd" onclick="setLogic('AND')">AND</span>
+            <span class="toggle-pill" id="pillOr" onclick="setLogic('OR')">OR</span>
+          </div>
+        </div>
+
+        <!-- Condition rows -->
+        <div class="conditions-list" id="conditionsList"></div>
+
+        <button class="btn btn-secondary" onclick="addConditionRow()" id="addCondBtn">
+          <i class="fas fa-plus"></i> Add Condition
+        </button>
+
+        <!-- Summary -->
+        <div class="summary-banner" id="summaryBanner">
+          <i class="fas fa-info-circle summary-icon"></i>
+          <span class="summary-text" id="summaryText">Add conditions above to build your scan.</span>
+        </div>
+
+        <!-- Alert -->
+        <div class="alert alert-error" id="alertBox">
+          <i class="fas fa-exclamation-circle" style="flex-shrink:0;margin-top:1px;"></i>
+          <span id="alertMsg"></span>
+        </div>
+
+        <!-- Loading -->
+        <div class="spinner-wrap" id="loadingWrap">
+          <div class="spinner"></div>
+          <span>Running scan…</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="btn-group">
+          <button class="btn btn-primary" id="runBtn" onclick="runAdhoc()">
+            <i class="fas fa-play"></i> Run Scan
+          </button>
+          <button class="btn btn-success" id="saveBtn" onclick="openSaveModal()">
+            <i class="fas fa-save"></i> Save Scan
+          </button>
+          <button class="btn btn-secondary" onclick="resetBuilder()">
+            <i class="fas fa-undo"></i> Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Results card -->
+      <div class="card" id="resultsCard" style="display:none;">
+        <div class="results-header">
+          <div class="card-title"><i class="fas fa-table"></i> Scan Results</div>
+          <div class="results-count">Found <span id="resultsCount">0</span> matches</div>
+        </div>
+
+        <div id="resultsBody"></div>
+      </div>
+
+    </div><!-- end left col -->
+
+    <!-- ── RIGHT: Saved Scans sidebar ── -->
+    <div>
+      <div class="card">
+        <div class="card-title"><i class="fas fa-bookmark"></i> My Saved Scans</div>
+        <p class="card-subtitle">Click Run, Edit or Delete on any saved scan.</p>
+        <div id="savedScansList">
+          <div class="saved-empty"><i class="fas fa-bookmark" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:.5rem;"></i>No saved scans yet.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end grid -->
+</div><!-- end main -->
+
+<!-- Save / Edit modal -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Save Scan</div>
+    <input type="text" class="modal-input" id="scanNameInput" placeholder="e.g. Hammer + RSI Oversold" maxlength="128">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeSaveModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmSave()" id="confirmSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-title">Delete Scan</div>
+    <p class="confirm-text">Are you sure you want to delete "<span id="deleteScanName"></span>"? This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()"><i class="fas fa-trash"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// Field / operator schema (mirrors scan_engine.py)
+// ════════════════════════════════════════════════
+const FIELD_GROUPS = [
+  { label: "Relative Strength (vs NIFTY 500)", fields: [
+    {v:"RCS_30D", l:"RCS 30D (% vs NIFTY 500)"},
+  ]},
+  { label: "Candlestick Patterns", fields: [
+    {v:"Hammer",          l:"Hammer"},
+    {v:"Shooting_Star",   l:"Shooting Star"},
+    {v:"Doji",            l:"Doji"},
+    {v:"Engulfing",       l:"Engulfing"},
+    {v:"Dark_Cloud_Cover",l:"Dark Cloud Cover"},
+    {v:"Morning_Star",    l:"Morning Star"},
+    {v:"Evening_Star",    l:"Evening Star"},
+    {v:"Piercing_Line",   l:"Piercing Line"},
+  ]},
+  { label: "RSI Signals", fields: [
+    {v:"rsi_lt_30", l:"RSI < 30"},
+    {v:"rsi_gt_70", l:"RSI > 70"},
+    {v:"oversold",  l:"Oversold"},
+    {v:"overbought",l:"Overbought"},
+  ]},
+  { label: "Price Extremes", fields: [
+    {v:"new_52w_high",   l:"New 52-Week High"},
+    {v:"new_52w_low",    l:"New 52-Week Low"},
+    {v:"hit_2y_high_14d",l:"2-Year High (14d auto)"},
+    {v:"hit_5y_high_14d",l:"5-Year High (14d auto)"},
+    {v:"hit_10y_high_14d",l:"10-Year High (14d auto)"},
+  ]},
+  { label: "Volume & ADX", fields: [
+    {v:"High_Relative_Volume_30",l:"High Relative Volume (30d)"},
+    {v:"adx_trigger",           l:"ADX Trigger"},
+  ]},
+  { label: "Composite Signals", fields: [
+    {v:"signal1",   l:"Signal 1"},
+    {v:"signal2",   l:"Signal 2"},
+    {v:"signal3",   l:"Signal 3"},
+    {v:"signal4",   l:"Signal 4"},
+    {v:"signal5",   l:"Signal 5"},
+    {v:"top_decile",l:"Top Decile"},
+  ]},
+  { label: "Delivery Signals", fields: [
+    {v:"delivery_momentum_signal", l:"Delivery"},
+  ]},
+  { label: "Convergence Scanners", fields: [
+    {v:"convergence_3", l:"Convergence 3"},
+    {v:"convergence_4", l:"Convergence 4"},
+    {v:"convergence_5a", l:"Convergence 5A"},
+  ]},
+  { label: "Relative Strength", fields: [
+    {v:"RCS_30D", l:"RCS 30D (vs NIFTY 500)"},
+  ]},
+  { label: "Narrow Range", fields: [
+    {v:"NR", l:"Narrow Range (NR)"},
+  ]},
+];
+
+const NR_FIELDS      = new Set(["NR"]);
+const NUMERIC_FIELDS = new Set(["RCS_30D"]);
+const BINARY_FIELDS  = new Set(
+  FIELD_GROUPS.flatMap(g => g.fields.map(f => f.v)).filter(v => !NR_FIELDS.has(v) && !NUMERIC_FIELDS.has(v))
+);
+
+const FIELD_LABEL = {};
+FIELD_GROUPS.forEach(g => g.fields.forEach(f => { FIELD_LABEL[f.v] = f.l; }));
+
+// ════════════════════════════════════════════════
+// State
+// ════════════════════════════════════════════════
+let logic = "AND";
+let editScanId = null;      // null → save new; number → PUT update
+let deleteScanId = null;
+let rowCounter  = 0;
+
+// Default date: last 30 days
+function initDates() {
+  const today = new Date();
+  const from  = new Date(today); from.setDate(today.getDate() - 30);
+  document.getElementById("endDate").value   = today.toISOString().slice(0,10);
+  document.getElementById("startDate").value = from.toISOString().slice(0,10);
+}
+
+// ════════════════════════════════════════════════
+// Auth / user info
+// ════════════════════════════════════════════════
+async function loadUserInfo() {
+  try {
+    const r = await fetch("/api/auth/me", {credentials:"same-origin"});
+    if (!r.ok) { window.location.href = "/login.html"; return; }
+    const u = await r.json();
+    document.getElementById("topbarUserName").textContent = u.name || u.email;
+    document.getElementById("topbarUserEmail").textContent = u.email;
+    document.getElementById("topbarAvatar").textContent =
+      (u.name || u.email).charAt(0).toUpperCase();
+  } catch { window.location.href = "/login.html"; }
+}
+
+async function handleLogout() {
+  await fetch("/api/auth/logout", {method:"POST", credentials:"same-origin"});
+  window.location.href = "/login.html";
+}
+
+// ════════════════════════════════════════════════
+// Logic toggle
+// ════════════════════════════════════════════════
+function setLogic(val) {
+  logic = val;
+  document.getElementById("pillAnd").classList.toggle("active", val === "AND");
+  document.getElementById("pillOr" ).classList.toggle("active", val === "OR");
+  updateSummary();
+}
+
+// ════════════════════════════════════════════════
+// Condition rows
+// ════════════════════════════════════════════════
+function buildFieldOptions() {
+  let html = '<option value="" disabled selected>Select a signal…</option>';
+  FIELD_GROUPS.forEach(g => {
+    html += `<optgroup label="${g.label}">`;
+    g.fields.forEach(f => { html += `<option value="${f.v}">${f.l}</option>`; });
+    html += `</optgroup>`;
+  });
+  return html;
+}
+
+function addConditionRow(defaultField = "", defaultValue = 0) {
+  const id = ++rowCounter;
+  const isNR  = NR_FIELDS.has(defaultField);
+  const list  = document.getElementById("conditionsList");
+
+  const row = document.createElement("div");
+  row.className = "condition-row";
+  row.dataset.rowId = id;
+  row.innerHTML = `
+    <select class="form-select field-select" id="field_${id}" onchange="onFieldChange(${id})">
+      ${buildFieldOptions()}
+    </select>
+    <select class="form-select op-select" id="op_${id}" disabled>
+      <option value="==">==</option>
+      <option value=">">&gt;</option>
+    </select>
+    <input type="number" class="form-input val-input" id="val_${id}"
+      min="0" max="8" value="${defaultValue}"
+      style="display:${isNR ? 'block' : 'none'};"
+      placeholder="0–8">
+    <button class="remove-btn" onclick="removeRow(${id})" title="Remove condition">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+  list.appendChild(row);
+
+  if (defaultField) {
+    document.getElementById(`field_${id}`).value = defaultField;
+    onFieldChange(id, /* silent */ true);
+    if (isNR) document.getElementById(`val_${id}`).value = defaultValue;
+  }
+  updateSummary();
+}
+
+function onFieldChange(id, silent = false) {
+  const field   = document.getElementById(`field_${id}`).value;
+  const opSel   = document.getElementById(`op_${id}`);
+  const valInp  = document.getElementById(`val_${id}`);
+
+  if (NR_FIELDS.has(field)) {
+    opSel.innerHTML = '<option value=">">></option>';
+    opSel.disabled = false;
+    valInp.style.display = "block";
+    valInp.placeholder = "0–8";
+    valInp.step = "1";
+  } else if (NUMERIC_FIELDS.has(field)) {
+    opSel.innerHTML = '<option value=">">&gt;</option><option value="<">&lt;</option><option value=">=">&gt;=</option><option value="<=">&lt;=</option><option value="==">==</option>';
+    opSel.disabled = false;
+    valInp.style.display = "block";
+    valInp.placeholder = "e.g. 5.0 (%)";
+    valInp.step = "0.1";
+  } else {
+    opSel.innerHTML = '<option value="==">==</option>';
+    opSel.disabled = true;
+    valInp.style.display = "none";
+  }
+  if (!silent) updateSummary();
+}
+
+function removeRow(id) {
+  const row = document.querySelector(`.condition-row[data-row-id="${id}"]`);
+  if (row) row.remove();
+  updateSummary();
+}
+
+function getAllConditions() {
+  const rows = document.querySelectorAll(".condition-row");
+  return Array.from(rows).map(row => {
+    const id    = row.dataset.rowId;
+    const field = document.getElementById(`field_${id}`).value;
+    const op    = document.getElementById(`op_${id}`).value;
+    const val   = document.getElementById(`val_${id}`).value;
+    if (!field) return null;
+    const c = { field, operator: op };
+    if (NR_FIELDS.has(field)) c.value = parseInt(val, 10) || 0;
+    return c;
+  }).filter(Boolean);
+}
+
+// ════════════════════════════════════════════════
+// Plain-English summary
+// ════════════════════════════════════════════════
+function conditionToHuman(c) {
+  const label = FIELD_LABEL[c.field] || c.field;
+  if (NR_FIELDS.has(c.field)) return `${label} > ${c.value ?? 0}`;
+  return `${label} = True`;
+}
+
+function updateSummary() {
+  const conds = getAllConditions();
+  const el    = document.getElementById("summaryText");
+  if (conds.length === 0) {
+    el.textContent = "Add conditions above to build your scan.";
+  } else {
+    el.textContent = conds.map(conditionToHuman).join(` ${logic} `);
+  }
+}
+
+// ════════════════════════════════════════════════
+// Build request body
+// ════════════════════════════════════════════════
+function buildScanBody() {
+  return {
+    logic,
+    start_date: document.getElementById("startDate").value || null,
+    end_date:   document.getElementById("endDate").value   || null,
+    conditions: getAllConditions(),
+  };
+}
+
+// ════════════════════════════════════════════════
+// Alert helpers
+// ════════════════════════════════════════════════
+function showAlert(msg) {
+  const box = document.getElementById("alertBox");
+  document.getElementById("alertMsg").textContent = msg;
+  box.classList.add("show");
+}
+function clearAlert() {
+  document.getElementById("alertBox").classList.remove("show");
+}
+
+// ════════════════════════════════════════════════
+// Run scan
+// ════════════════════════════════════════════════
+async function runScan(url, body) {
+  clearAlert();
+  setLoading(true);
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      credentials: "same-origin",
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      showAlert(data.detail || "Scan failed. Please check your conditions.");
+      renderResults([], []);
+      return;
+    }
+    renderResults(data.results || [], Object.keys((data.results||[])[0]||{}).filter(k => k !== "Timestamp" && k !== "Symbol"));
+  } catch(e) {
+    showAlert("Network error. Is the server running?");
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function runAdhoc() {
+  const body = buildScanBody();
+  if (body.conditions.length === 0) { showAlert("Add at least one condition before running."); return; }
+  await runScan("/api/scans/run", body);
+}
+
+async function runSavedScan(id) {
+  clearAlert();
+  setLoading(true);
+  try {
+    const r = await fetch(`/api/scans/${id}/run`, {method:"POST", credentials:"same-origin"});
+    const data = await r.json();
+    if (!r.ok) { showAlert(data.detail || "Run failed."); renderResults([],[]);return; }
+    renderResults(data.results || [], Object.keys((data.results||[])[0]||{}).filter(k=>k!=="Timestamp"&&k!=="Symbol"));
+    // Scroll to results
+    document.getElementById("resultsCard").scrollIntoView({behavior:"smooth"});
+  } catch(e) { showAlert("Network error."); }
+  finally { setLoading(false); }
+}
+
+// ════════════════════════════════════════════════
+// Render results
+// ════════════════════════════════════════════════
+function renderResults(rows, signalCols) {
+  const card = document.getElementById("resultsCard");
+  const body = document.getElementById("resultsBody");
+  const cnt  = document.getElementById("resultsCount");
+  card.style.display = "block";
+  cnt.textContent = rows.length;
+
+  if (rows.length === 0) {
+    body.innerHTML = `
+      <div class="no-data" style="padding:2rem;text-align:center;">
+        <div class="no-data-icon" style="font-size:2rem;margin-bottom:0.5rem;"><i class="fas fa-search"></i></div>
+        <div class="no-data-text" style="font-weight:600;font-size:1.05rem;">No stocks matched your conditions</div>
+        <div class="no-data-subtext" style="color:var(--text-muted);font-size:0.85rem;">Try relaxing your filters or expanding the date range.</div>
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="table-container fade-in" style="margin-top:1rem;"><table class="table">
+    <thead><tr>
+      <th>Symbol</th>
+      <th>Date</th>
+      ${signalCols.map(c=>`<th>${c.replace(/_/g," ")}</th>`).join("")}
+    </tr></thead><tbody>`;
+
+  rows.forEach(row => {
+    const date = (row.Timestamp||"").slice(0,10);
+    html += `<tr>
+      <td><a href="/?symbol=${row.Symbol}&section=stockChart" class="symbol-link"><i class="fas fa-chart-line" style="font-size:0.8rem;margin-right:0.2rem;"></i> ${row.Symbol}</a></td>
+      <td style="color:var(--text-secondary);">${date}</td>
+      ${signalCols.map(c => {
+        const v = row[c];
+        if (v === 1 || v === "1" || v === true) return `<td><span style="display:inline-block;padding:3px 8px;border-radius:6px;background:rgba(52,199,89,0.12);color:#27a745;font-weight:600;font-size:12px;border:1px solid rgba(52,199,89,0.25);">✓ True</span></td>`;
+        if (v === 0 || v === "0" || v === false || v === null || v === undefined) return `<td><span style="color:var(--text-muted)">—</span></td>`;
+        if (typeof v === "number") {
+          const color = v >= 0 ? "#34C759" : "#FF3B30";
+          return `<td><span style="display:inline-block;padding:3px 8px;border-radius:6px;background:${v >= 0 ? 'rgba(52,199,89,0.12)' : 'rgba(255,59,48,0.12)'};color:${color};font-weight:700;font-size:12px;">${v > 0 ? '+' : ''}${v.toFixed(2)}%</span></td>`;
+        }
+        return `<td>${v}</td>`;
+      }).join("")}
+    </tr>`;
+  });
+
+  html += "</tbody></table></div>";
+  body.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════
+// Loading state
+// ════════════════════════════════════════════════
+function setLoading(on) {
+  document.getElementById("loadingWrap").classList.toggle("show", on);
+  document.getElementById("runBtn").disabled = on;
+}
+
+// ════════════════════════════════════════════════
+// Reset builder
+// ════════════════════════════════════════════════
+function resetBuilder() {
+  document.getElementById("conditionsList").innerHTML = "";
+  rowCounter = 0;
+  setLogic("AND");
+  initDates();
+  editScanId = null;
+  clearAlert();
+  document.getElementById("resultsCard").style.display = "none";
+  updateSummary();
+}
+
+// ════════════════════════════════════════════════
+// Save / Edit modal
+// ════════════════════════════════════════════════
+function openSaveModal() {
+  const body = buildScanBody();
+  if (body.conditions.length === 0) { showAlert("Add at least one condition before saving."); return; }
+  document.getElementById("modalTitle").textContent = editScanId ? "Update Scan" : "Save Scan";
+  document.getElementById("scanNameInput").value = "";
+  document.getElementById("saveModal").classList.add("show");
+  setTimeout(() => document.getElementById("scanNameInput").focus(), 100);
+}
+
+function closeSaveModal() {
+  document.getElementById("saveModal").classList.remove("show");
+}
+
+async function confirmSave() {
+  const name = document.getElementById("scanNameInput").value.trim();
+  if (!name) { document.getElementById("scanNameInput").focus(); return; }
+  const body = { name, ...buildScanBody() };
+
+  try {
+    const url    = editScanId ? `/api/scans/${editScanId}` : "/api/scans";
+    const method = editScanId ? "PUT" : "POST";
+    const r      = await fetch(url, {
+      method, headers:{"Content-Type":"application/json"},
+      credentials:"same-origin", body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) { showAlert(data.detail || "Save failed."); closeSaveModal(); return; }
+    closeSaveModal();
+    editScanId = null;
+    await loadSavedScans();
+  } catch { showAlert("Network error."); closeSaveModal(); }
+}
+
+// ════════════════════════════════════════════════
+// Load & populate saved scans list
+// ════════════════════════════════════════════════
+async function loadSavedScans() {
+  try {
+    const r = await fetch("/api/scans", {credentials:"same-origin"});
+    if (!r.ok) return;
+    const scans = await r.json();
+    renderSavedScans(scans);
+  } catch {}
+}
+
+function renderSavedScans(scans) {
+  const el = document.getElementById("savedScansList");
+  if (!scans.length) {
+    el.innerHTML = `<div class="saved-empty"><i class="fas fa-bookmark" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:.5rem;"></i>No saved scans yet.</div>`;
+    return;
+  }
+  el.innerHTML = scans.map(s => {
+    const dt = s.updated_at ? new Date(s.updated_at).toLocaleDateString() : "—";
+    return `<div class="scan-item" id="scanItem_${s.id}">
+      <div class="scan-item-name">${escHtml(s.name)}</div>
+      <div class="scan-item-meta">Updated ${dt}</div>
+      <div class="scan-item-actions">
+        <button class="btn btn-primary btn-sm" onclick="runSavedScan(${s.id})">
+          <i class="fas fa-play"></i> Run
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="editScan(${s.id})">
+          <i class="fas fa-edit"></i> Edit
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${s.id}, '${escHtml(s.name)}')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ════════════════════════════════════════════════
+// Edit saved scan — load conditions into builder
+// ════════════════════════════════════════════════
+async function editScan(id) {
+  try {
+    const r = await fetch(`/api/scans/${id}`, {credentials:"same-origin"});
+    if (!r.ok) { showAlert("Failed to load scan."); return; }
+    const scan = await r.json();
+    const raw  = scan.conditions;
+
+    // Reset builder
+    document.getElementById("conditionsList").innerHTML = "";
+    rowCounter = 0;
+    clearAlert();
+
+    // Set logic
+    setLogic(raw.logic || "AND");
+
+    // Set dates
+    if (raw.start_date) document.getElementById("startDate").value = raw.start_date;
+    if (raw.end_date)   document.getElementById("endDate").value   = raw.end_date;
+
+    // Rebuild rows
+    (raw.conditions || []).forEach(c => addConditionRow(c.field, c.value ?? 0));
+
+    editScanId = id;
+    updateSummary();
+    document.getElementById("scanNameInput").value = scan.name || "";
+
+    // Open save modal pre-filled so user can rename if they want, else just save
+    document.getElementById("modalTitle").textContent = "Update Scan";
+    document.getElementById("scanNameInput").value = scan.name || "";
+    // Don't open modal immediately — user can click Save Scan button themselves
+    // Scroll builder into view
+    document.querySelector(".card").scrollIntoView({behavior:"smooth"});
+  } catch(e) { showAlert("Failed to load scan for editing."); }
+}
+
+// ════════════════════════════════════════════════
+// Delete modal
+// ════════════════════════════════════════════════
+function openDeleteModal(id, name) {
+  deleteScanId = id;
+  document.getElementById("deleteScanName").textContent = name;
+  document.getElementById("deleteModal").classList.add("show");
+}
+function closeDeleteModal() {
+  document.getElementById("deleteModal").classList.remove("show");
+  deleteScanId = null;
+}
+async function confirmDelete() {
+  if (!deleteScanId) return;
+  try {
+    const r = await fetch(`/api/scans/${deleteScanId}`, {method:"DELETE", credentials:"same-origin"});
+    if (!r.ok && r.status !== 204) { const d=await r.json(); showAlert(d.detail||"Delete failed."); }
+    else await loadSavedScans();
+  } catch { showAlert("Network error."); }
+  closeDeleteModal();
+}
+
+// ════════════════════════════════════════════════
+// Utility
+// ════════════════════════════════════════════════
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ════════════════════════════════════════════════
+// Init
+// ════════════════════════════════════════════════
+(async function init() {
+  initDates();
+  await loadUserInfo();
+  await loadSavedScans();
+  // Start with one empty condition row
+  addConditionRow();
+})();
+</script>
+</body>
+</html>
+
+

@@ -63,6 +63,63 @@ def _compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+import yfinance as yf
+import time
+
+_BENCHMARK_CACHE = {}
+
+def _get_benchmark_maps(ticker: str = "^CRSLDX") -> dict:
+    global _BENCHMARK_CACHE
+    now = time.time()
+    if ticker in _BENCHMARK_CACHE and (now - _BENCHMARK_CACHE[ticker]["ts"] < 3600):
+        return _BENCHMARK_CACHE[ticker]["maps"]
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            "SELECT date, close FROM ohlc_data WHERE ticker = %s ORDER BY date ASC",
+            (ticker,)
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if not rows:
+            return {}
+
+        df = pd.DataFrame(rows)
+        df["close"] = df["close"].astype(float)
+        df["Timestamp"] = pd.to_datetime(df["date"])
+        df = df.sort_values("Timestamp").reset_index(drop=True)
+
+        maps = {}
+        n_pct = df["close"].pct_change(periods=30, fill_method=None)
+        maps["RCS_30D"] = dict(zip(df["Timestamp"].dt.date, n_pct))
+
+        _BENCHMARK_CACHE[ticker] = {"maps": maps, "ts": now}
+        return maps
+    except Exception as exc:
+        print(f"Error reading EOD benchmark {ticker} from DB: {exc}")
+        return {}
+
+
+def compute_rcs_for_symbol(df: pd.DataFrame, ticker: str = "^CRSLDX") -> pd.DataFrame:
+    if df.empty:
+        return df
+    maps = _get_benchmark_maps(ticker)
+    if not maps or "RCS_30D" not in maps:
+        df["RCS_30D"] = None
+        return df
+
+    df_dates = pd.to_datetime(df["Timestamp"]).dt.date
+    stock_pct = df["Close"].pct_change(periods=30, fill_method=None)
+    bench_pct = pd.Series(df_dates).map(maps["RCS_30D"]).values
+    rcs_vals = (stock_pct.values - bench_pct) * 100.0
+    df["RCS_30D"] = [None if pd.isna(v) else round(float(v), 2) for v in rcs_vals]
+    return df
+
+
 def _latest_row(df: pd.DataFrame) -> Optional[pd.Series]:
     if df.empty:
         return None
@@ -169,26 +226,7 @@ def generate_signal_explanation(symbol: str) -> str:
     return " ".join(parts)
 
 
-def _ensure_daily_pick_table() -> None:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS daily_pick (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            pick_date DATE NOT NULL,
-            symbol VARCHAR(64) NOT NULL,
-            confidence INT NOT NULL,
-            signal VARCHAR(32) NOT NULL,
-            reason TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY unique_pick_date (pick_date)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        """
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
+
 
 
 def _get_all_symbols() -> List[str]:
@@ -207,114 +245,11 @@ def _volume_spike_for_latest(symbol: str) -> bool:
     return bool(row is not None and int(row.get("VOL_SPIKE", 0)) == 1)
 
 
-def select_and_store_daily_pick(pick_for_date: Optional[date] = None) -> Dict[str, object]:
-    _ensure_daily_pick_table()
-    if pick_for_date is None:
-        pick_for_date = date.today()
-
-    # Try to return existing pick for the date
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM daily_pick WHERE pick_date = %s", (pick_for_date,))
-    row = cursor.fetchone()
-    if row:
-        cursor.close()
-        conn.close()
-        return {
-            "date": pick_for_date.strftime("%Y-%m-%d"),
-            "symbol": row["symbol"],
-            "confidence": row["confidence"],
-            "signal": row["signal"],
-            "reason": row.get("reason") or ""
-        }
-
-    # Compute over all symbols
-    symbols = _get_all_symbols()
-    best: Tuple[str, int, str, str] = ("", -1, "", "")
-    for sym in symbols:
-        conf = compute_signal_confidence(sym)
-        score = int(conf.get("confidence_score", 0))
-        label = str(conf.get("signal", ""))
-        vol_spike = _volume_spike_for_latest(sym)
-        reason = generate_signal_explanation(sym)
-
-        # Prefer volume spike ties, then higher score
-        current = (sym, score, label, reason)
-        if best[1] < 0:
-            best = current
-        else:
-            best_is_spike = _volume_spike_for_latest(best[0])
-            if vol_spike and not best_is_spike:
-                best = current
-            elif vol_spike == best_is_spike and score > best[1]:
-                best = current
-
-    if best[1] < 0:
-        cursor.close()
-        conn.close()
-        return {"date": pick_for_date.strftime("%Y-%m-%d"), "symbol": None, "confidence": 0, "signal": "", "reason": "No symbols available"}
-
-    # Store
-    cursor.execute(
-        "INSERT INTO daily_pick (pick_date, symbol, confidence, signal, reason) VALUES (%s, %s, %s, %s, %s)"
-        " ON DUPLICATE KEY UPDATE symbol = VALUES(symbol), confidence = VALUES(confidence), signal = VALUES(signal), reason = VALUES(reason)",
-        (pick_for_date, best[0], best[1], best[2], best[3])
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    return {
-        "date": pick_for_date.strftime("%Y-%m-%d"),
-        "symbol": best[0],
-        "confidence": best[1],
-        "signal": best[2],
-        "reason": best[3]
-    }
 
 
-def get_daily_pick() -> Dict[str, object]:
-    _ensure_daily_pick_table()
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM daily_pick ORDER BY pick_date DESC LIMIT 1")
-    row = cursor.fetchone()
-    cursor.close()
-    conn.close()
-    if not row:
-        return select_and_store_daily_pick()
-    return {
-        "date": row["pick_date"].strftime("%Y-%m-%d") if isinstance(row["pick_date"], (datetime, date)) else str(row["pick_date"]),
-        "symbol": row["symbol"],
-        "confidence": row["confidence"],
-        "signal": row["signal"],
-        "reason": row.get("reason") or ""
-    }
 
 
-# ==================================
-# Phase 2: Dashboard Aggregation API
-# ==================================
 
-def dashboard_aggregate() -> Dict[str, object]:
-    symbols = _get_all_symbols()
-    results: List[Tuple[str, int, str]] = []
-    for sym in symbols:
-        res = compute_signal_confidence(sym)
-        results.append((sym, int(res.get("confidence_score", 0)), str(res.get("signal"))))
 
-    top_bullish = sorted(results, key=lambda x: x[1], reverse=True)[:5]
-    top_bearish = sorted(results, key=lambda x: x[1])[:5]
-
-    # Placeholder sector heatmap (no sector table available); compute simple shares
-    bullish_share = int(round(sum(1 for _, s, _ in results if s >= 60) * 100.0 / max(1, len(results))))
-    bearish_share = 100 - bullish_share
-    sector_heatmap = [{"sector": "Market", "bullish": bullish_share, "bearish": bearish_share}]
-
-    return {
-        "top_bullish": [{"symbol": s, "confidence": c, "signal": lab} for s, c, lab in top_bullish],
-        "top_bearish": [{"symbol": s, "confidence": c, "signal": lab} for s, c, lab in top_bearish],
-        "sectors": sector_heatmap
-    }
 
 

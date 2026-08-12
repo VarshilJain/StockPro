@@ -1,0 +1,318 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — StockPro Analytics</title>
+<meta name="description" content="Sign in to your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+    :root {
+        --primary-bg: #0a0e1a;
+        --secondary-bg: #111827;
+        --tertiary-bg: #1f2937;
+        --card-bg: rgba(31, 41, 55, 0.8);
+        --card-border: rgba(75, 85, 99, 0.3);
+        --accent-primary: #06b6d4;
+        --accent-secondary: #8b5cf6;
+        --accent-success: #10b981;
+        --accent-danger: #ef4444;
+        --text-primary: #f9fafb;
+        --text-secondary: #d1d5db;
+        --text-muted: #9ca3af;
+        --gradient-primary: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+        --gradient-card: linear-gradient(145deg, rgba(31, 41, 55, 0.95) 0%, rgba(17, 24, 39, 0.95) 100%);
+        --shadow-xl: 0 20px 60px rgba(0,0,0,0.5);
+        --border-radius: 12px;
+        --border-radius-lg: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background: var(--primary-bg);
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Animated background glows */
+    body::before, body::after {
+        content: '';
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.12;
+        pointer-events: none;
+        animation: pulse 8s ease-in-out infinite alternate;
+    }
+    body::before {
+        width: 600px; height: 600px;
+        background: #06b6d4;
+        top: -200px; left: -200px;
+    }
+    body::after {
+        width: 500px; height: 500px;
+        background: #8b5cf6;
+        bottom: -150px; right: -150px;
+        animation-delay: 4s;
+    }
+    @keyframes pulse {
+        from { transform: scale(1); opacity: 0.10; }
+        to   { transform: scale(1.15); opacity: 0.16; }
+    }
+
+    .auth-wrapper {
+        width: 100%;
+        max-width: 440px;
+        padding: 1.5rem;
+        z-index: 1;
+    }
+
+    /* Brand header */
+    .brand {
+        text-align: center;
+        margin-bottom: 2.5rem;
+        animation: fadeDown 0.5s ease both;
+    }
+    .brand-icon {
+        width: 64px; height: 64px;
+        background: var(--gradient-primary);
+        border-radius: var(--border-radius-lg);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 1.75rem; color: white;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 32px rgba(6,182,212,0.35);
+    }
+    .brand-name {
+        font-size: 2rem; font-weight: 800;
+        background: var(--gradient-primary);
+        background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        display: block;
+    }
+    .brand-sub {
+        font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;
+    }
+
+    /* Card */
+    .auth-card {
+        background: var(--gradient-card);
+        border: 1px solid var(--card-border);
+        border-radius: var(--border-radius-lg);
+        padding: 2.25rem 2rem;
+        backdrop-filter: blur(24px);
+        box-shadow: var(--shadow-xl);
+        animation: fadeUp 0.5s ease 0.1s both;
+    }
+    .card-heading { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.375rem; }
+    .card-subheading { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 2rem; }
+
+    /* Form elements */
+    .form-group { display: flex; flex-direction: column; margin-bottom: 1.25rem; }
+    .form-label {
+        font-size: 0.8125rem; font-weight: 500;
+        color: var(--text-secondary); margin-bottom: 0.5rem;
+    }
+    .input-wrapper { position: relative; }
+    .input-icon {
+        position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%);
+        color: var(--text-muted); font-size: 0.875rem; pointer-events: none;
+    }
+    .form-input {
+        width: 100%;
+        padding: 0.8rem 1rem 0.8rem 2.5rem;
+        background: rgba(15, 23, 42, 0.7);
+        border: 1px solid var(--card-border);
+        border-radius: var(--border-radius);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-family: 'Inter', sans-serif;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 3px rgba(6,182,212,0.12);
+    }
+    .form-input::placeholder { color: var(--text-muted); }
+    .form-input.error { border-color: var(--accent-danger); }
+
+    /* Submit button */
+    .btn-submit {
+        width: 100%;
+        padding: 0.9rem;
+        background: var(--gradient-primary);
+        border: none; border-radius: var(--border-radius);
+        color: white; font-size: 0.9375rem; font-weight: 700;
+        cursor: pointer; font-family: 'Inter', sans-serif;
+        transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .btn-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(6,182,212,0.35); }
+    .btn-submit:active:not(:disabled) { transform: translateY(0); }
+    .btn-submit:disabled { opacity: 0.65; cursor: not-allowed; }
+
+    /* Error / success messages */
+    .alert {
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius);
+        font-size: 0.8125rem; font-weight: 500;
+        margin-bottom: 1.25rem;
+        display: none; align-items: center; gap: 0.5rem;
+    }
+    .alert.show { display: flex; }
+    .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+
+    /* Footer link */
+    .auth-footer {
+        text-align: center;
+        margin-top: 1.5rem;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        animation: fadeUp 0.5s ease 0.2s both;
+    }
+    .auth-link {
+        color: var(--accent-primary); font-weight: 600;
+        text-decoration: none; transition: color 0.2s;
+    }
+    .auth-link:hover { color: var(--accent-secondary); }
+
+    /* Spinner inside button */
+    .btn-spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .btn-submit.loading .btn-spinner { display: block; }
+    .btn-submit.loading .btn-label { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp   { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="auth-wrapper">
+    <!-- Brand -->
+    <div class="brand">
+        <div class="brand-icon"><i class="fas fa-chart-line"></i></div>
+        <span class="brand-name">StockPro</span>
+        <div class="brand-sub">Analytics Dashboard</div>
+    </div>
+
+    <!-- Card -->
+    <div class="auth-card">
+        <h1 class="card-heading">Welcome back</h1>
+        <p class="card-subheading">Sign in to your account to continue</p>
+
+        <!-- Error alert -->
+        <div class="alert alert-error" id="errorAlert" role="alert">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="errorMsg"></span>
+        </div>
+
+        <form id="loginForm" novalidate>
+            <div class="form-group">
+                <label class="form-label" for="email">Email address</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input class="form-input" type="email" id="email" name="email"
+                           placeholder="you@example.com" autocomplete="email" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Password</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input class="form-input" type="password" id="password" name="password"
+                           placeholder="••••••••" autocomplete="current-password" required>
+                </div>
+            </div>
+
+            <button class="btn-submit" type="submit" id="submitBtn">
+                <div class="btn-spinner"></div>
+                <span class="btn-label"><i class="fas fa-sign-in-alt"></i> Sign In</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Footer -->
+    <div class="auth-footer">
+        Don't have an account?
+        <a href="/register.html" class="auth-link">Create one</a>
+    </div>
+</div>
+
+<script>
+const form = document.getElementById('loginForm');
+const btn  = document.getElementById('submitBtn');
+const errorAlert = document.getElementById('errorAlert');
+const errorMsg   = document.getElementById('errorMsg');
+
+function showError(msg) {
+    errorMsg.textContent = msg;
+    errorAlert.classList.add('show');
+}
+function hideError() { errorAlert.classList.remove('show'); }
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+        showError('Please enter your email and password.');
+        return;
+    }
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email, password }),
+        });
+
+        if (res.ok) {
+            window.location.href = '/';
+            return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+            showError('Too many login attempts. Please wait a minute and try again.');
+        } else if (res.status === 401) {
+            showError('Incorrect email or password. Please try again.');
+        } else {
+            showError(data.detail || 'Login failed. Please try again.');
+        }
+    } catch (err) {
+        showError('Network error. Please check your connection and try again.');
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+});
+
+// If already logged in, go straight to dashboard
+(async () => {
+    try {
+        const r = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        if (r.ok) window.location.href = '/';
+    } catch (_) {}
+})();
+</script>
+</body>
+</html>
+
+

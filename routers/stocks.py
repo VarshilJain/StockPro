@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
@@ -7,9 +7,8 @@ from datetime import datetime
 from services import (
     compute_signal_confidence,
     generate_signal_explanation,
-    get_daily_pick,
-    dashboard_aggregate,
 )
+from auth import get_current_user
 
 router = APIRouter()
 
@@ -39,7 +38,7 @@ class StockData(BaseModel):
 
 
 @router.get("/symbols")
-def get_symbols():
+def get_symbols(_: dict = Depends(get_current_user)):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT DISTINCT Symbol FROM historical_data")
@@ -50,7 +49,7 @@ def get_symbols():
 
 
 @router.get("/data")
-def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), end_date: str = Query(...), signal: str = Query(None, description="Signal column to filter by")):
+def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), end_date: str = Query(...), signal: str = Query(None, description="Signal column to filter by"), _: dict = Depends(get_current_user)):
     # Convert date format from DD-MM-YYYY to YYYY-MM-DD
     start_date = convert_date_format(start_date)
     end_date = convert_date_format(end_date)
@@ -125,7 +124,7 @@ def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), e
 
 # ✅ NEW: POST endpoint to insert stock data
 @router.post("/data")
-def add_stock_data(data: List[StockData]):
+def add_stock_data(data: List[StockData], _: dict = Depends(get_current_user)):
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -163,83 +162,53 @@ def add_stock_data(data: List[StockData]):
 
 
 @router.get("/signal-scanner")
-def get_signal_scanner_data(start_date: Optional[str] = Query(None), end_date: Optional[str] = Query(None), signal: str = Query(...), limit: int = Query(1000, description="Maximum number of rows to return")):
+def get_signal_scanner_data(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    signal: str = Query(...),
+    limit: int = Query(1000, description="Maximum number of rows to return"),
+    _: dict = Depends(get_current_user),
+):
     """
-    Technical Signal Scanner endpoint
-    Returns stocks that have the specified signal = 1 within the date range
+    Technical Signal Scanner endpoint.
+    Returns stocks that have the specified signal = 1 within the date range.
+    Delegates to scan_engine.run_scan() so scanning logic lives in one place.
     """
-    # Convert date format from DD-MM-YYYY to YYYY-MM-DD
+    from scan_engine import ALLOWED_FIELDS, run_scan
+
+    if signal not in ALLOWED_FIELDS:
+        return JSONResponse(content=[], status_code=400)
+
+    # Convert DD-MM-YYYY to YYYY-MM-DD if needed
     if start_date:
         start_date = convert_date_format(start_date)
     if end_date:
         end_date = convert_date_format(end_date)
-    
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
 
-    allowed_signals = [
-        "Hammer", "Shooting_Star", "Doji", "Engulfing", "Dark_Cloud_Cover", "Morning_Star", "Evening_Star", "Piercing_Line",
-        "signal1", "signal2", "signal3", "signal4", "signal5", "top_decile", "new_52w_high", "new_52w_low", "NR", "High_Relative_Volume_30",
-        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70", "adx_trigger"
-    ]
-    if signal not in allowed_signals:
+    # NR default: match any NR day (> 0); RCS_30D match all valid rows
+    condition = {"field": signal, "operator": "=="}
+    if signal == "NR":
+        condition = {"field": "NR", "operator": ">", "value": 0}
+    elif signal == "RCS_30D":
+        condition = {"field": "RCS_30D", "operator": ">", "value": -999.0}
+
+    try:
+        rows = run_scan(
+            conditions=[condition],
+            logic="AND",
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except Exception:
         return JSONResponse(content=[], status_code=400)
 
-    # For 2y/5y/10y signals, ignore provided dates and auto-use last 14 days
-    auto_window_signals = {"hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d"}
-    if signal in auto_window_signals:
-        raw_cursor = conn.cursor()
-        raw_cursor.execute("SELECT DATE(MAX(Timestamp)) FROM historical_data")
-        last_date_row = raw_cursor.fetchone()
-        raw_cursor.close()
-        if not last_date_row or not last_date_row[0]:
-            cursor.close()
-            conn.close()
-            return JSONResponse(content=[])
-        last_date = last_date_row[0]
-        from datetime import timedelta
-        start_date = (last_date - timedelta(days=14)).strftime("%Y-%m-%d")
-        end_date = last_date.strftime("%Y-%m-%d")
-    else:
-        if not start_date or not end_date:
-            cursor.close()
-            conn.close()
-            return JSONResponse(content=[], status_code=400)
+    return JSONResponse(content=rows[:limit])
 
-    # Query to get stocks with the specified signal in the date range
-    if signal == "NR":
-        # For NR, we want values > 0 (5, 6, 7, or 8)
-        query = f"SELECT Symbol, Timestamp, {signal} FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND {signal} > 0 ORDER BY Timestamp ASC, Symbol ASC"
-    else:
-        # For other signals, we want value = 1
-        query = f"SELECT Symbol, Timestamp, {signal} FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND {signal} = 1 ORDER BY Timestamp ASC, Symbol ASC"
-    
-    params = [start_date, end_date]
-
-    print('Executing Signal Scanner SQL:', query)
-    print('With params:', params)
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    # ✅ Remove duplicates based on (Timestamp, Symbol)
-    unique_rows = []
-    seen = set()
-    for row in rows:
-        key = (row["Timestamp"], row["Symbol"])
-        if key not in seen:
-            seen.add(key)
-            if not isinstance(row["Timestamp"], str):
-                row["Timestamp"] = row["Timestamp"].strftime("%Y-%m-%d %H:%M:%S")
-            unique_rows.append(row)
-
-    return JSONResponse(content=unique_rows)
 
 
 # Phase 1: Signal Confidence
 @router.get("/signal-confidence/{symbol}")
-def signal_confidence(symbol: str):
+def signal_confidence(symbol: str, _: dict = Depends(get_current_user)):
     try:
         result = compute_signal_confidence(symbol)
         return JSONResponse(content=result)
@@ -249,7 +218,7 @@ def signal_confidence(symbol: str):
 
 # Phase 1: Explain My Signal
 @router.get("/explain-signal/{symbol}")
-def explain_signal(symbol: str):
+def explain_signal(symbol: str, _: dict = Depends(get_current_user)):
     try:
         text = generate_signal_explanation(symbol)
         return {"symbol": symbol, "explanation": text}
@@ -258,23 +227,118 @@ def explain_signal(symbol: str):
 
 
 # Phase 1: Daily Trade Idea
-@router.get("/daily-idea")
-def daily_idea():
+
+
+
+
+
+# =====================
+# Feature: Indicator Panel + Candlestick Chart Data
+# =====================
+
+@router.get("/indicators/{symbol}")
+def get_indicators(symbol: str, _: dict = Depends(get_current_user)):
+    """Return latest RSI14, MACD, MACD_SIGNAL, SMA20, SMA50, Close, and RCS 30D (vs NIFTY 500) for the indicator panel."""
     try:
-        data = get_daily_pick()
-        return JSONResponse(content=data)
+        from services import _fetch_symbol_df, _compute_indicators, compute_rcs_for_symbol
+        import pandas as pd
+        df = _fetch_symbol_df(symbol, lookback_days=250)
+        df = _compute_indicators(df)
+        df = compute_rcs_for_symbol(df, ticker="^CRSLDX")
+        if df.empty:
+            raise HTTPException(status_code=404, detail="No data found")
+        row = df.iloc[-1]
+        def safe(v):
+            return None if (v is None or (isinstance(v, float) and pd.isna(v))) else round(float(v), 2)
+        return {
+            "symbol": symbol,
+            "benchmark": "NIFTY 500",
+            "close": safe(row.get("Close")),
+            "rsi14": safe(row.get("RSI14")),
+            "macd": safe(row.get("MACD")),
+            "macd_signal": safe(row.get("MACD_SIGNAL")),
+            "sma20": safe(row.get("SMA20")),
+            "sma50": safe(row.get("SMA50")),
+            "vol_spike": bool(int(row.get("VOL_SPIKE", 0)) == 1),
+            "rcs_30d": safe(row.get("RCS_30D")),
+        }
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-# =====================
-# Phase 2: Dashboard
-# =====================
-
-@router.get("/dashboard-data")
-def dashboard_data():
+@router.get("/ohlcv/{symbol}")
+def get_ohlcv(symbol: str, days: int = Query(0, description="Number of recent days, 0 for all"), _: dict = Depends(get_current_user)):
+    """Return OHLCV data for candlestick chart rendering."""
     try:
-        return dashboard_aggregate()
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        fields = (
+            "DATE(Timestamp) as date, Open, High, Low, Close, Volume, "
+            "RSI14, "
+            "Hammer, Shooting_Star, Doji, Engulfing, Dark_Cloud_Cover, Morning_Star, Evening_Star, Piercing_Line, "
+            "signal1, signal2, signal3, signal4, signal5, top_decile, new_52w_high, new_52w_low, NR, High_Relative_Volume_30, "
+            "hit_2y_high_14d, hit_5y_high_14d, hit_10y_high_14d, oversold, overbought, rsi_lt_30, rsi_gt_70, adx_trigger, "
+            "convergence_3, convergence_4, convergence_5a"
+        )
+        if days > 0:
+            cursor.execute(
+                f"SELECT {fields} FROM historical_data WHERE Symbol = %s ORDER BY Timestamp DESC LIMIT %s",
+                (symbol, days)
+            )
+        else:
+            cursor.execute(
+                f"SELECT {fields} FROM historical_data WHERE Symbol = %s ORDER BY Timestamp DESC",
+                (symbol,)
+            )
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        rows = list(reversed(rows))
+        result = []
+        for r in rows:
+            d = r["date"]
+            result.append({
+                "time": d.isoformat() if hasattr(d, "isoformat") else str(d),
+                "open": float(r["Open"]),
+                "high": float(r["High"]),
+                "low": float(r["Low"]),
+                "close": float(r["Close"]),
+                "volume": int(r["Volume"]),
+                "rsi": float(r["RSI14"]) if r.get("RSI14") is not None else None,
+                "signals": {
+                    "Hammer": bool(r.get("Hammer") == 1),
+                    "Shooting_Star": bool(r.get("Shooting_Star") == 1),
+                    "Doji": bool(r.get("Doji") == 1),
+                    "Engulfing": bool(r.get("Engulfing") == 1),
+                    "Dark_Cloud_Cover": bool(r.get("Dark_Cloud_Cover") == 1),
+                    "Morning_Star": bool(r.get("Morning_Star") == 1),
+                    "Evening_Star": bool(r.get("Evening_Star") == 1),
+                    "Piercing_Line": bool(r.get("Piercing_Line") == 1),
+                    "signal1": bool(r.get("signal1") == 1),
+                    "signal2": bool(r.get("signal2") == 1),
+                    "signal3": bool(r.get("signal3") == 1),
+                    "signal4": bool(r.get("signal4") == 1),
+                    "signal5": bool(r.get("signal5") == 1),
+                    "top_decile": bool(r.get("top_decile") == 1),
+                    "new_52w_high": bool(r.get("new_52w_high") == 1),
+                    "new_52w_low": bool(r.get("new_52w_low") == 1),
+                    "NR": bool(r.get("NR", 0) and r.get("NR") > 0),
+                    "High_Relative_Volume_30": bool(r.get("High_Relative_Volume_30") == 1),
+                    "hit_2y_high_14d": bool(r.get("hit_2y_high_14d") == 1),
+                    "hit_5y_high_14d": bool(r.get("hit_5y_high_14d") == 1),
+                    "hit_10y_high_14d": bool(r.get("hit_10y_high_14d") == 1),
+                    "oversold": bool(r.get("oversold") == 1),
+                    "overbought": bool(r.get("overbought") == 1),
+                    "rsi_lt_30": bool(r.get("rsi_lt_30") == 1),
+                    "rsi_gt_70": bool(r.get("rsi_gt_70") == 1),
+                    "adx_trigger": bool(r.get("adx_trigger") == 1),
+                    "convergence_3": bool(r.get("convergence_3") == 1),
+                    "convergence_4": bool(r.get("convergence_4") == 1),
+                    "convergence_5a": bool(r.get("convergence_5a") == 1),
+                }
+            })
+        return result
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-

@@ -1,0 +1,827 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scan Builder — StockPro Analytics</title>
+<meta name="description" content="Build, save and run no-code stock scans using technical signals and candlestick patterns.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+  /* ── Design tokens (match dashboard) ── */
+  :root {
+    --primary-bg: #0a0e1a;
+    --secondary-bg: #111827;
+    --tertiary-bg: #1f2937;
+    --card-bg: rgba(31,41,55,0.8);
+    --card-border: rgba(75,85,99,0.3);
+    --accent-primary: #06b6d4;
+    --accent-secondary: #8b5cf6;
+    --accent-success: #10b981;
+    --accent-warning: #f59e0b;
+    --accent-danger: #ef4444;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --gradient-primary: linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%);
+    --gradient-card: linear-gradient(145deg,rgba(31,41,55,.9) 0%,rgba(17,24,39,.9) 100%);
+    --gradient-sidebar: linear-gradient(180deg,#111827 0%,#0a0e1a 100%);
+    --border-radius: 12px;
+    --border-radius-lg: 16px;
+    --sidebar-width: 280px;
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;background:var(--primary-bg);color:var(--text-primary);line-height:1.6;overflow-x:hidden;}
+
+  /* ── Sidebar ── */
+  .sidebar{position:fixed;left:0;top:0;width:var(--sidebar-width);height:100vh;background:var(--gradient-sidebar);border-right:1px solid var(--card-border);z-index:1000;display:flex;flex-direction:column;backdrop-filter:blur(20px);}
+  .sidebar-header{padding:2rem 1.5rem;border-bottom:1px solid var(--card-border);}
+  .logo{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;}
+  .logo-icon{width:40px;height:40px;background:var(--gradient-primary);border-radius:var(--border-radius);display:flex;align-items:center;justify-content:center;color:white;font-size:1.25rem;font-weight:700;}
+  .logo-text{font-size:1.5rem;font-weight:800;background:var(--gradient-primary);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .logo-subtitle{font-size:.875rem;color:var(--text-muted);font-weight:500;}
+  .sidebar-nav{flex:1;padding:1.5rem 0;}
+  .nav-item{display:flex;align-items:center;gap:.75rem;padding:.875rem 1.5rem;color:var(--text-secondary);text-decoration:none;font-weight:500;transition:all .2s ease;cursor:pointer;}
+  .nav-item:hover{color:var(--text-primary);background:rgba(6,182,212,.1);}
+  .nav-item.active{color:var(--accent-primary);background:rgba(6,182,212,.15);}
+  .nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent-primary);}
+  .nav-item{position:relative;}
+  .nav-icon{width:20px;text-align:center;}
+  .sidebar-footer{padding:1.5rem;border-top:1px solid var(--card-border);}
+  .btn-logout{display:inline-flex;align-items:center;gap:.5rem;padding:.5rem 1rem;border:1px solid var(--card-border);border-radius:var(--border-radius);background:var(--tertiary-bg);color:var(--text-secondary);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s ease;width:100%;justify-content:center;}
+  .btn-logout:hover{background:rgba(239,68,68,.15);border-color:var(--accent-danger);color:var(--accent-danger);}
+
+  /* ── Main layout ── */
+  .main-content{margin-left:var(--sidebar-width);min-height:100vh;}
+  .topbar{background:var(--card-bg);backdrop-filter:blur(20px);border-bottom:1px solid var(--card-border);padding:1.25rem 2rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;}
+  .page-title{font-size:1.5rem;font-weight:700;background:var(--gradient-primary);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .user-profile{display:flex;align-items:center;gap:1rem;}
+  .user-avatar{width:40px;height:40px;background:var(--gradient-primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;}
+  .user-info .user-name{font-weight:600;font-size:.9rem;}
+  .user-info .user-role{font-size:.75rem;color:var(--text-muted);}
+
+  .content-grid{display:grid;grid-template-columns:1fr 320px;gap:1.5rem;padding:1.5rem 2rem;align-items:start;}
+  @media(max-width:1200px){.content-grid{grid-template-columns:1fr;}}
+
+  /* ── Cards ── */
+  .card{background:var(--gradient-card);border:1px solid var(--card-border);border-radius:var(--border-radius-lg);padding:1.5rem;margin-bottom:1.5rem;backdrop-filter:blur(20px);box-shadow:var(--shadow-lg);}
+  .card-title{font-size:1.1rem;font-weight:600;color:var(--text-primary);margin-bottom:.25rem;display:flex;align-items:center;gap:.5rem;}
+  .card-subtitle{color:var(--text-muted);font-size:.825rem;margin-bottom:1.25rem;}
+
+  /* ── Buttons ── */
+  .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.25rem;border:none;border-radius:var(--border-radius);font-weight:600;font-size:.85rem;cursor:pointer;transition:all .2s ease;}
+  .btn-primary{background:var(--gradient-primary);color:white;}
+  .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow-lg);}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+  .btn-secondary{background:var(--tertiary-bg);color:var(--text-secondary);border:1px solid var(--card-border);}
+  .btn-secondary:hover{background:var(--card-bg);color:var(--text-primary);}
+  .btn-danger{background:rgba(239,68,68,.15);color:var(--accent-danger);border:1px solid rgba(239,68,68,.3);}
+  .btn-danger:hover{background:rgba(239,68,68,.25);}
+  .btn-success{background:rgba(16,185,129,.15);color:var(--accent-success);border:1px solid rgba(16,185,129,.3);}
+  .btn-success:hover{background:rgba(16,185,129,.25);}
+  .btn-sm{padding:.4rem .75rem;font-size:.78rem;}
+  .btn-icon{padding:.4rem .5rem;font-size:.78rem;}
+  .btn-group{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem;}
+
+  /* ── Logic toggle ── */
+  .logic-toggle{display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;}
+  .logic-toggle label{font-size:.85rem;font-weight:500;color:var(--text-secondary);}
+  .toggle-pills{display:flex;background:var(--tertiary-bg);border-radius:999px;padding:3px;border:1px solid var(--card-border);}
+  .toggle-pill{padding:.3rem .9rem;border-radius:999px;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;}
+  .toggle-pill.active{background:var(--gradient-primary);color:white;}
+  .toggle-pill:not(.active){color:var(--text-muted);}
+
+  /* ── Condition rows ── */
+  .conditions-list{display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem;}
+  .condition-row{display:grid;grid-template-columns:1fr auto auto auto;gap:.5rem;align-items:center;background:var(--tertiary-bg);border:1px solid var(--card-border);border-radius:var(--border-radius);padding:.75rem 1rem;transition:border-color .2s;}
+  .condition-row:hover{border-color:rgba(6,182,212,.3);}
+  .condition-row .form-select,.condition-row .form-input{padding:.55rem .75rem;background:var(--secondary-bg);border:1px solid var(--card-border);border-radius:8px;color:var(--text-primary);font-size:.85rem;transition:all .2s;}
+  .condition-row .form-select:focus,.condition-row .form-input:focus{outline:none;border-color:var(--accent-primary);box-shadow:0 0 0 3px rgba(6,182,212,.1);}
+  .condition-row .form-select option{background:var(--secondary-bg);}
+  .condition-row .field-select{flex:1;min-width:200px;}
+  .condition-row .op-select{width:90px;}
+  .condition-row .val-input{width:90px;}
+  .remove-btn{width:28px;height:28px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--accent-danger);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;transition:all .2s;flex-shrink:0;}
+  .remove-btn:hover{background:rgba(239,68,68,.25);}
+
+  /* ── Date range ── */
+  .date-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;}
+  .form-group label{font-size:.8rem;font-weight:500;color:var(--text-muted);margin-bottom:.3rem;display:block;}
+  .form-input{padding:.6rem .75rem;background:var(--tertiary-bg);border:1px solid var(--card-border);border-radius:8px;color:var(--text-primary);font-size:.85rem;width:100%;}
+  .form-input:focus{outline:none;border-color:var(--accent-primary);}
+
+  /* ── Summary banner ── */
+  .summary-banner{background:linear-gradient(135deg,rgba(6,182,212,.08),rgba(139,92,246,.08));border:1px solid rgba(6,182,212,.2);border-radius:var(--border-radius);padding:.875rem 1rem;margin-bottom:1rem;font-size:.85rem;color:var(--text-secondary);min-height:2.5rem;display:flex;align-items:center;gap:.5rem;}
+  .summary-banner .summary-icon{color:var(--accent-primary);flex-shrink:0;}
+  .summary-text{font-family:'Inter',monospace;font-weight:500;word-break:break-word;}
+
+  /* ── Alert ── */
+  .alert{padding:.875rem 1rem;border-radius:var(--border-radius);margin-bottom:1rem;font-size:.85rem;display:none;}
+  .alert-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;}
+  .alert-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;}
+  .alert.show{display:flex;align-items:flex-start;gap:.5rem;}
+
+  /* ── Loading ── */
+  .spinner-wrap{display:none;align-items:center;gap:.75rem;padding:.5rem 0;color:var(--text-muted);font-size:.85rem;}
+  .spinner-wrap.show{display:flex;}
+  .spinner{width:18px;height:18px;border:2px solid var(--card-border);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ── Results table ── */
+  .results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
+  .results-count{font-size:.85rem;color:var(--text-muted);}
+  .results-count span{color:var(--accent-primary);font-weight:700;}
+  .table-container{border:1px solid var(--card-border);border-radius:var(--border-radius);overflow:auto;max-height:450px;}
+  table{width:100%;border-collapse:collapse;font-size:.84rem;}
+  table th{background:var(--tertiary-bg);color:var(--text-primary);font-weight:600;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--card-border);text-transform:uppercase;letter-spacing:.04em;font-size:.75rem;position:sticky;top:0;z-index:1;}
+  table td{padding:.75rem 1rem;border-bottom:1px solid var(--card-border);color:var(--text-secondary);}
+  table tbody tr:hover{background:rgba(6,182,212,.04);}
+  table tbody tr:hover td{color:var(--text-primary);}
+  .symbol-cell{color:var(--accent-primary);font-weight:700;font-size:.9rem;}
+  .signal-badge{display:inline-block;padding:.15rem .5rem;border-radius:999px;font-size:.72rem;font-weight:600;background:rgba(6,182,212,.12);color:var(--accent-primary);border:1px solid rgba(6,182,212,.2);}
+
+  /* ── Empty state ── */
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted);}
+  .empty-icon{font-size:2.5rem;margin-bottom:.75rem;opacity:.5;}
+  .empty-title{font-size:1rem;font-weight:600;margin-bottom:.35rem;color:var(--text-secondary);}
+  .empty-sub{font-size:.825rem;}
+
+  /* ── Saved scans sidebar ── */
+  .saved-scans-list{display:flex;flex-direction:column;gap:.6rem;}
+  .scan-item{background:var(--tertiary-bg);border:1px solid var(--card-border);border-radius:var(--border-radius);padding:.875rem 1rem;transition:border-color .2s;}
+  .scan-item:hover{border-color:rgba(6,182,212,.3);}
+  .scan-item-name{font-weight:600;font-size:.9rem;color:var(--text-primary);margin-bottom:.25rem;word-break:break-word;}
+  .scan-item-meta{font-size:.72rem;color:var(--text-muted);margin-bottom:.6rem;}
+  .scan-item-actions{display:flex;gap:.4rem;flex-wrap:wrap;}
+  .saved-empty{text-align:center;padding:2rem 1rem;color:var(--text-muted);font-size:.85rem;}
+
+  /* ── Save modal ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--secondary-bg);border:1px solid var(--card-border);border-radius:var(--border-radius-lg);padding:2rem;width:min(420px,92vw);box-shadow:var(--shadow-xl);}
+  .modal-title{font-size:1.1rem;font-weight:700;margin-bottom:1rem;color:var(--text-primary);}
+  .modal-input{width:100%;padding:.75rem 1rem;background:var(--tertiary-bg);border:1px solid var(--card-border);border-radius:var(--border-radius);color:var(--text-primary);font-size:.9rem;margin-bottom:1rem;}
+  .modal-input:focus{outline:none;border-color:var(--accent-primary);}
+  .modal-actions{display:flex;gap:.75rem;justify-content:flex-end;}
+
+  /* ── Confirm modal ── */
+  .confirm-text{color:var(--text-secondary);font-size:.9rem;margin-bottom:1.25rem;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon"><i class="fas fa-chart-line"></i></div>
+      <div>
+        <div class="logo-text">StockPro</div>
+        <div class="logo-subtitle">Scan Builder</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/?section=dashboard"><i class="fas fa-tachometer-alt nav-icon"></i>Dashboard</a>
+    <a class="nav-item" href="/?section=stockChart"><i class="fas fa-candlestick-chart nav-icon"></i>Stock Chart</a>
+    <a class="nav-item" href="/?section=scanner"><i class="fas fa-search nav-icon"></i>Stock Scanner</a>
+    <a class="nav-item" href="/?section=signalScanner"><i class="fas fa-chart-area nav-icon"></i>Technical Signal Scanner</a>
+    <a class="nav-item active" href="/scan-builder"><i class="fas fa-filter nav-icon"></i>Scan Builder</a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main-content">
+  <div class="topbar">
+    <h1 class="page-title"><i class="fas fa-filter"></i> Scan Builder</h1>
+    <div class="user-profile">
+      <div class="user-info">
+        <div class="user-name" id="topbarUserName">Loading…</div>
+        <div class="user-role" id="topbarUserEmail"></div>
+      </div>
+      <div class="user-avatar" id="topbarAvatar">…</div>
+    </div>
+  </div>
+
+  <div class="content-grid">
+
+    <!-- ── LEFT: Builder + Results ── -->
+    <div>
+
+      <!-- Builder card -->
+      <div class="card">
+        <div class="card-title"><i class="fas fa-sliders-h"></i> Build Your Scan</div>
+        <p class="card-subtitle">Select signals and conditions, then run or save your scan.</p>
+
+        <!-- Date range -->
+        <div class="date-row">
+          <div class="form-group">
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="endDate">End Date</label>
+            <input type="date" id="endDate" class="form-input">
+          </div>
+        </div>
+
+        <!-- Logic toggle -->
+        <div class="logic-toggle">
+          <label>Combine conditions with:</label>
+          <div class="toggle-pills">
+            <span class="toggle-pill active" id="pillAnd" onclick="setLogic('AND')">AND</span>
+            <span class="toggle-pill" id="pillOr" onclick="setLogic('OR')">OR</span>
+          </div>
+        </div>
+
+        <!-- Condition rows -->
+        <div class="conditions-list" id="conditionsList"></div>
+
+        <button class="btn btn-secondary" onclick="addConditionRow()" id="addCondBtn">
+          <i class="fas fa-plus"></i> Add Condition
+        </button>
+
+        <!-- Summary -->
+        <div class="summary-banner" id="summaryBanner">
+          <i class="fas fa-info-circle summary-icon"></i>
+          <span class="summary-text" id="summaryText">Add conditions above to build your scan.</span>
+        </div>
+
+        <!-- Alert -->
+        <div class="alert alert-error" id="alertBox">
+          <i class="fas fa-exclamation-circle" style="flex-shrink:0;margin-top:1px;"></i>
+          <span id="alertMsg"></span>
+        </div>
+
+        <!-- Loading -->
+        <div class="spinner-wrap" id="loadingWrap">
+          <div class="spinner"></div>
+          <span>Running scan…</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="btn-group">
+          <button class="btn btn-primary" id="runBtn" onclick="runAdhoc()">
+            <i class="fas fa-play"></i> Run Scan
+          </button>
+          <button class="btn btn-success" id="saveBtn" onclick="openSaveModal()">
+            <i class="fas fa-save"></i> Save Scan
+          </button>
+          <button class="btn btn-secondary" onclick="resetBuilder()">
+            <i class="fas fa-undo"></i> Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Results card -->
+      <div class="card" id="resultsCard" style="display:none;">
+        <div class="results-header">
+          <div class="card-title"><i class="fas fa-table"></i> Scan Results</div>
+          <div class="results-count">Found <span id="resultsCount">0</span> matches</div>
+        </div>
+
+        <div id="resultsBody"></div>
+      </div>
+
+    </div><!-- end left col -->
+
+    <!-- ── RIGHT: Saved Scans sidebar ── -->
+    <div>
+      <div class="card">
+        <div class="card-title"><i class="fas fa-bookmark"></i> My Saved Scans</div>
+        <p class="card-subtitle">Click Run, Edit or Delete on any saved scan.</p>
+        <div id="savedScansList">
+          <div class="saved-empty"><i class="fas fa-bookmark" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:.5rem;"></i>No saved scans yet.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end grid -->
+</div><!-- end main -->
+
+<!-- Save / Edit modal -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Save Scan</div>
+    <input type="text" class="modal-input" id="scanNameInput" placeholder="e.g. Hammer + RSI Oversold" maxlength="128">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeSaveModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmSave()" id="confirmSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-title">Delete Scan</div>
+    <p class="confirm-text">Are you sure you want to delete "<span id="deleteScanName"></span>"? This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()"><i class="fas fa-trash"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// Field / operator schema (mirrors scan_engine.py)
+// ════════════════════════════════════════════════
+const FIELD_GROUPS = [
+  { label: "Candlestick Patterns", fields: [
+    {v:"Hammer",          l:"Hammer"},
+    {v:"Shooting_Star",   l:"Shooting Star"},
+    {v:"Doji",            l:"Doji"},
+    {v:"Engulfing",       l:"Engulfing"},
+    {v:"Dark_Cloud_Cover",l:"Dark Cloud Cover"},
+    {v:"Morning_Star",    l:"Morning Star"},
+    {v:"Evening_Star",    l:"Evening Star"},
+    {v:"Piercing_Line",   l:"Piercing Line"},
+  ]},
+  { label: "RSI Signals", fields: [
+    {v:"rsi_lt_30", l:"RSI < 30"},
+    {v:"rsi_gt_70", l:"RSI > 70"},
+    {v:"oversold",  l:"Oversold"},
+    {v:"overbought",l:"Overbought"},
+  ]},
+  { label: "Price Extremes", fields: [
+    {v:"new_52w_high",   l:"New 52-Week High"},
+    {v:"new_52w_low",    l:"New 52-Week Low"},
+    {v:"hit_2y_high_14d",l:"2-Year High (14d auto)"},
+    {v:"hit_5y_high_14d",l:"5-Year High (14d auto)"},
+    {v:"hit_10y_high_14d",l:"10-Year High (14d auto)"},
+  ]},
+  { label: "Volume & ADX", fields: [
+    {v:"High_Relative_Volume_30",l:"High Relative Volume (30d)"},
+    {v:"adx_trigger",           l:"ADX Trigger"},
+  ]},
+  { label: "Composite Signals", fields: [
+    {v:"signal1",   l:"Signal 1"},
+    {v:"signal2",   l:"Signal 2"},
+    {v:"signal3",   l:"Signal 3"},
+    {v:"signal4",   l:"Signal 4"},
+    {v:"signal5",   l:"Signal 5"},
+    {v:"top_decile",l:"Top Decile"},
+  ]},
+  { label: "Narrow Range", fields: [
+    {v:"NR", l:"Narrow Range (NR)"},
+  ]},
+];
+
+const NR_FIELDS    = new Set(["NR"]);
+const BINARY_FIELDS = new Set(
+  FIELD_GROUPS.flatMap(g => g.fields.map(f => f.v)).filter(v => !NR_FIELDS.has(v))
+);
+
+const FIELD_LABEL = {};
+FIELD_GROUPS.forEach(g => g.fields.forEach(f => { FIELD_LABEL[f.v] = f.l; }));
+
+// ════════════════════════════════════════════════
+// State
+// ════════════════════════════════════════════════
+let logic = "AND";
+let editScanId = null;      // null → save new; number → PUT update
+let deleteScanId = null;
+let rowCounter  = 0;
+
+// Default date: last 30 days
+function initDates() {
+  const today = new Date();
+  const from  = new Date(today); from.setDate(today.getDate() - 30);
+  document.getElementById("endDate").value   = today.toISOString().slice(0,10);
+  document.getElementById("startDate").value = from.toISOString().slice(0,10);
+}
+
+// ════════════════════════════════════════════════
+// Auth / user info
+// ════════════════════════════════════════════════
+async function loadUserInfo() {
+  try {
+    const r = await fetch("/api/auth/me", {credentials:"same-origin"});
+    if (!r.ok) { window.location.href = "/login.html"; return; }
+    const u = await r.json();
+    document.getElementById("topbarUserName").textContent = u.name || u.email;
+    document.getElementById("topbarUserEmail").textContent = u.email;
+    document.getElementById("topbarAvatar").textContent =
+      (u.name || u.email).charAt(0).toUpperCase();
+  } catch { window.location.href = "/login.html"; }
+}
+
+async function handleLogout() {
+  await fetch("/api/auth/logout", {method:"POST", credentials:"same-origin"});
+  window.location.href = "/login.html";
+}
+
+// ════════════════════════════════════════════════
+// Logic toggle
+// ════════════════════════════════════════════════
+function setLogic(val) {
+  logic = val;
+  document.getElementById("pillAnd").classList.toggle("active", val === "AND");
+  document.getElementById("pillOr" ).classList.toggle("active", val === "OR");
+  updateSummary();
+}
+
+// ════════════════════════════════════════════════
+// Condition rows
+// ════════════════════════════════════════════════
+function buildFieldOptions() {
+  let html = '<option value="" disabled selected>Select a signal…</option>';
+  FIELD_GROUPS.forEach(g => {
+    html += `<optgroup label="${g.label}">`;
+    g.fields.forEach(f => { html += `<option value="${f.v}">${f.l}</option>`; });
+    html += `</optgroup>`;
+  });
+  return html;
+}
+
+function addConditionRow(defaultField = "", defaultValue = 0) {
+  const id = ++rowCounter;
+  const isNR  = NR_FIELDS.has(defaultField);
+  const list  = document.getElementById("conditionsList");
+
+  const row = document.createElement("div");
+  row.className = "condition-row";
+  row.dataset.rowId = id;
+  row.innerHTML = `
+    <select class="form-select field-select" id="field_${id}" onchange="onFieldChange(${id})">
+      ${buildFieldOptions()}
+    </select>
+    <select class="form-select op-select" id="op_${id}" disabled>
+      <option value="==">==</option>
+      <option value=">">&gt;</option>
+    </select>
+    <input type="number" class="form-input val-input" id="val_${id}"
+      min="0" max="8" value="${defaultValue}"
+      style="display:${isNR ? 'block' : 'none'};"
+      placeholder="0–8">
+    <button class="remove-btn" onclick="removeRow(${id})" title="Remove condition">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+  list.appendChild(row);
+
+  if (defaultField) {
+    document.getElementById(`field_${id}`).value = defaultField;
+    onFieldChange(id, /* silent */ true);
+    if (isNR) document.getElementById(`val_${id}`).value = defaultValue;
+  }
+  updateSummary();
+}
+
+function onFieldChange(id, silent = false) {
+  const field   = document.getElementById(`field_${id}`).value;
+  const opSel   = document.getElementById(`op_${id}`);
+  const valInp  = document.getElementById(`val_${id}`);
+
+  if (NR_FIELDS.has(field)) {
+    opSel.innerHTML = '<option value=">">></option>';
+    opSel.disabled = false;
+    valInp.style.display = "block";
+  } else {
+    opSel.innerHTML = '<option value="==">==</option>';
+    opSel.disabled = true;
+    valInp.style.display = "none";
+  }
+  if (!silent) updateSummary();
+}
+
+function removeRow(id) {
+  const row = document.querySelector(`.condition-row[data-row-id="${id}"]`);
+  if (row) row.remove();
+  updateSummary();
+}
+
+function getAllConditions() {
+  const rows = document.querySelectorAll(".condition-row");
+  return Array.from(rows).map(row => {
+    const id    = row.dataset.rowId;
+    const field = document.getElementById(`field_${id}`).value;
+    const op    = document.getElementById(`op_${id}`).value;
+    const val   = document.getElementById(`val_${id}`).value;
+    if (!field) return null;
+    const c = { field, operator: op };
+    if (NR_FIELDS.has(field)) c.value = parseInt(val, 10) || 0;
+    return c;
+  }).filter(Boolean);
+}
+
+// ════════════════════════════════════════════════
+// Plain-English summary
+// ════════════════════════════════════════════════
+function conditionToHuman(c) {
+  const label = FIELD_LABEL[c.field] || c.field;
+  if (NR_FIELDS.has(c.field)) return `${label} > ${c.value ?? 0}`;
+  return `${label} = True`;
+}
+
+function updateSummary() {
+  const conds = getAllConditions();
+  const el    = document.getElementById("summaryText");
+  if (conds.length === 0) {
+    el.textContent = "Add conditions above to build your scan.";
+  } else {
+    el.textContent = conds.map(conditionToHuman).join(` ${logic} `);
+  }
+}
+
+// ════════════════════════════════════════════════
+// Build request body
+// ════════════════════════════════════════════════
+function buildScanBody() {
+  return {
+    logic,
+    start_date: document.getElementById("startDate").value || null,
+    end_date:   document.getElementById("endDate").value   || null,
+    conditions: getAllConditions(),
+  };
+}
+
+// ════════════════════════════════════════════════
+// Alert helpers
+// ════════════════════════════════════════════════
+function showAlert(msg) {
+  const box = document.getElementById("alertBox");
+  document.getElementById("alertMsg").textContent = msg;
+  box.classList.add("show");
+}
+function clearAlert() {
+  document.getElementById("alertBox").classList.remove("show");
+}
+
+// ════════════════════════════════════════════════
+// Run scan
+// ════════════════════════════════════════════════
+async function runScan(url, body) {
+  clearAlert();
+  setLoading(true);
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      credentials: "same-origin",
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      showAlert(data.detail || "Scan failed. Please check your conditions.");
+      renderResults([], []);
+      return;
+    }
+    renderResults(data.results || [], Object.keys((data.results||[])[0]||{}).filter(k => k !== "Timestamp" && k !== "Symbol"));
+  } catch(e) {
+    showAlert("Network error. Is the server running?");
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function runAdhoc() {
+  const body = buildScanBody();
+  if (body.conditions.length === 0) { showAlert("Add at least one condition before running."); return; }
+  await runScan("/api/scans/run", body);
+}
+
+async function runSavedScan(id) {
+  clearAlert();
+  setLoading(true);
+  try {
+    const r = await fetch(`/api/scans/${id}/run`, {method:"POST", credentials:"same-origin"});
+    const data = await r.json();
+    if (!r.ok) { showAlert(data.detail || "Run failed."); renderResults([],[]);return; }
+    renderResults(data.results || [], Object.keys((data.results||[])[0]||{}).filter(k=>k!=="Timestamp"&&k!=="Symbol"));
+    // Scroll to results
+    document.getElementById("resultsCard").scrollIntoView({behavior:"smooth"});
+  } catch(e) { showAlert("Network error."); }
+  finally { setLoading(false); }
+}
+
+// ════════════════════════════════════════════════
+// Render results
+// ════════════════════════════════════════════════
+function renderResults(rows, signalCols) {
+  const card = document.getElementById("resultsCard");
+  const body = document.getElementById("resultsBody");
+  const cnt  = document.getElementById("resultsCount");
+  card.style.display = "block";
+  cnt.textContent = rows.length;
+
+  if (rows.length === 0) {
+    body.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">No stocks matched your conditions</div>
+        <div class="empty-sub">Try relaxing your filters or expanding the date range.</div>
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="table-container"><table>
+    <thead><tr>
+      <th>Symbol</th>
+      <th>Date</th>
+      ${signalCols.map(c=>`<th>${c.replace(/_/g," ")}</th>`).join("")}
+    </tr></thead><tbody>`;
+
+  rows.forEach(row => {
+    const date = (row.Timestamp||"").slice(0,10);
+    html += `<tr>
+      <td class="symbol-cell">${row.Symbol}</td>
+      <td>${date}</td>
+      ${signalCols.map(c => {
+        const v = row[c];
+        if (v === 1 || v === "1") return `<td><span class="signal-badge">✓ True</span></td>`;
+        if (v === 0 || v === "0" || v === null || v === undefined) return `<td><span style="color:var(--text-muted)">—</span></td>`;
+        return `<td>${v}</td>`;
+      }).join("")}
+    </tr>`;
+  });
+
+  html += "</tbody></table></div>";
+  body.innerHTML = html;
+}
+
+// ════════════════════════════════════════════════
+// Loading state
+// ════════════════════════════════════════════════
+function setLoading(on) {
+  document.getElementById("loadingWrap").classList.toggle("show", on);
+  document.getElementById("runBtn").disabled = on;
+}
+
+// ════════════════════════════════════════════════
+// Reset builder
+// ════════════════════════════════════════════════
+function resetBuilder() {
+  document.getElementById("conditionsList").innerHTML = "";
+  rowCounter = 0;
+  setLogic("AND");
+  initDates();
+  editScanId = null;
+  clearAlert();
+  document.getElementById("resultsCard").style.display = "none";
+  updateSummary();
+}
+
+// ════════════════════════════════════════════════
+// Save / Edit modal
+// ════════════════════════════════════════════════
+function openSaveModal() {
+  const body = buildScanBody();
+  if (body.conditions.length === 0) { showAlert("Add at least one condition before saving."); return; }
+  document.getElementById("modalTitle").textContent = editScanId ? "Update Scan" : "Save Scan";
+  document.getElementById("scanNameInput").value = "";
+  document.getElementById("saveModal").classList.add("show");
+  setTimeout(() => document.getElementById("scanNameInput").focus(), 100);
+}
+
+function closeSaveModal() {
+  document.getElementById("saveModal").classList.remove("show");
+}
+
+async function confirmSave() {
+  const name = document.getElementById("scanNameInput").value.trim();
+  if (!name) { document.getElementById("scanNameInput").focus(); return; }
+  const body = { name, ...buildScanBody() };
+
+  try {
+    const url    = editScanId ? `/api/scans/${editScanId}` : "/api/scans";
+    const method = editScanId ? "PUT" : "POST";
+    const r      = await fetch(url, {
+      method, headers:{"Content-Type":"application/json"},
+      credentials:"same-origin", body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) { showAlert(data.detail || "Save failed."); closeSaveModal(); return; }
+    closeSaveModal();
+    editScanId = null;
+    await loadSavedScans();
+  } catch { showAlert("Network error."); closeSaveModal(); }
+}
+
+// ════════════════════════════════════════════════
+// Load & populate saved scans list
+// ════════════════════════════════════════════════
+async function loadSavedScans() {
+  try {
+    const r = await fetch("/api/scans", {credentials:"same-origin"});
+    if (!r.ok) return;
+    const scans = await r.json();
+    renderSavedScans(scans);
+  } catch {}
+}
+
+function renderSavedScans(scans) {
+  const el = document.getElementById("savedScansList");
+  if (!scans.length) {
+    el.innerHTML = `<div class="saved-empty"><i class="fas fa-bookmark" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:.5rem;"></i>No saved scans yet.</div>`;
+    return;
+  }
+  el.innerHTML = scans.map(s => {
+    const dt = s.updated_at ? new Date(s.updated_at).toLocaleDateString() : "—";
+    return `<div class="scan-item" id="scanItem_${s.id}">
+      <div class="scan-item-name">${escHtml(s.name)}</div>
+      <div class="scan-item-meta">Updated ${dt}</div>
+      <div class="scan-item-actions">
+        <button class="btn btn-primary btn-sm" onclick="runSavedScan(${s.id})">
+          <i class="fas fa-play"></i> Run
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="editScan(${s.id})">
+          <i class="fas fa-edit"></i> Edit
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${s.id}, '${escHtml(s.name)}')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ════════════════════════════════════════════════
+// Edit saved scan — load conditions into builder
+// ════════════════════════════════════════════════
+async function editScan(id) {
+  try {
+    const r = await fetch(`/api/scans/${id}`, {credentials:"same-origin"});
+    if (!r.ok) { showAlert("Failed to load scan."); return; }
+    const scan = await r.json();
+    const raw  = scan.conditions;
+
+    // Reset builder
+    document.getElementById("conditionsList").innerHTML = "";
+    rowCounter = 0;
+    clearAlert();
+
+    // Set logic
+    setLogic(raw.logic || "AND");
+
+    // Set dates
+    if (raw.start_date) document.getElementById("startDate").value = raw.start_date;
+    if (raw.end_date)   document.getElementById("endDate").value   = raw.end_date;
+
+    // Rebuild rows
+    (raw.conditions || []).forEach(c => addConditionRow(c.field, c.value ?? 0));
+
+    editScanId = id;
+    updateSummary();
+    document.getElementById("scanNameInput").value = scan.name || "";
+
+    // Open save modal pre-filled so user can rename if they want, else just save
+    document.getElementById("modalTitle").textContent = "Update Scan";
+    document.getElementById("scanNameInput").value = scan.name || "";
+    // Don't open modal immediately — user can click Save Scan button themselves
+    // Scroll builder into view
+    document.querySelector(".card").scrollIntoView({behavior:"smooth"});
+  } catch(e) { showAlert("Failed to load scan for editing."); }
+}
+
+// ════════════════════════════════════════════════
+// Delete modal
+// ════════════════════════════════════════════════
+function openDeleteModal(id, name) {
+  deleteScanId = id;
+  document.getElementById("deleteScanName").textContent = name;
+  document.getElementById("deleteModal").classList.add("show");
+}
+function closeDeleteModal() {
+  document.getElementById("deleteModal").classList.remove("show");
+  deleteScanId = null;
+}
+async function confirmDelete() {
+  if (!deleteScanId) return;
+  try {
+    const r = await fetch(`/api/scans/${deleteScanId}`, {method:"DELETE", credentials:"same-origin"});
+    if (!r.ok && r.status !== 204) { const d=await r.json(); showAlert(d.detail||"Delete failed."); }
+    else await loadSavedScans();
+  } catch { showAlert("Network error."); }
+  closeDeleteModal();
+}
+
+// ════════════════════════════════════════════════
+// Utility
+// ════════════════════════════════════════════════
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ════════════════════════════════════════════════
+// Init
+// ════════════════════════════════════════════════
+(async function init() {
+  initDates();
+  await loadUserInfo();
+  await loadSavedScans();
+  // Start with one empty condition row
+  addConditionRow();
+})();
+</script>
+</body>
+</html>
+
+
