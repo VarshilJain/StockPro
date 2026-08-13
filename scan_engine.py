@@ -46,6 +46,8 @@ _BINARY_FIELDS: frozenset[str] = frozenset([
     "convergence_5a", "convergence_3", "convergence_4",
     # Delivery Momentum Signal
     "delivery_momentum_signal",
+    # Pattern Screens
+    "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base",
 ])
 
 # Fields that use  WHERE col > value
@@ -108,6 +110,10 @@ FIELD_LABELS: dict[str, str] = {
     "convergence_4": "Convergence 4 (EMA 5,9,21,50)",
     "delivery_momentum_signal": "Delivery",
     "RCS_30D": "RCS 30-Day (% vs NIFTY 500)",
+    "screen_vcp": "VCP Contraction Base",
+    "screen_blue_sky": "Blue Sky Breakout",
+    "screen_multi_year_breakout": "Multi-Year Breakout",
+    "screen_ipo_base": "IPO Base",
 }
 
 # Grouped field list for the frontend dropdown
@@ -146,6 +152,10 @@ FIELD_GROUPS: list[dict] = [
     {
         "label": "Narrow Range",
         "fields": ["NR"],
+    },
+    {
+        "label": "Pattern Screens",
+        "fields": ["screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base"],
     },
 ]
 

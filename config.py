@@ -56,3 +56,21 @@ DELIVERY_MIN_BASELINE_DAYS = 15     # Minimum valid trading days required in bas
 DELIVERY_MIN_RECENT_DAYS   = 3      # Minimum valid trading days required in recent window
 DELIVERY_LAG_DAYS          = 0      # Default delivery publication lag (1 for T+1 publication)
 
+# Pattern Screens & Base Detection
+BASE_MIN_DROP_PCT = 5.0             # Minimum drop from a local high to establish a base pivot
+VCP_MAX_PIVOT_DIST_PCT = 20.0       # Max percent distance from pivot for breakouts
+VCP_MIN_CONTRACTIONS = 2            # Minimum successive contractions for VCP
+BLUE_SKY_ATH_PROXIMITY_PCT = 5.0    # Max percent distance from ATH for a base to qualify
+BLUE_SKY_PIVOT_ATH_PROXIMITY = 0.98 # Base high must be at least 98% of ATH
+MULTI_YEAR_BASE_MIN_DAYS = 365      # Minimum length (days) for a multi-year base
+IPO_BASE_MIN_WEEKS = 2              # Min weeks since listing
+IPO_BASE_MAX_WEEKS = 50             # Max weeks since listing
+IPO_BASE_MIN_DAYS = 21              # Min length (days) for IPO base
+IPO_BASE_MIN_DEPTH_PCT = 2.0        # Min depth percent for IPO base
+IPO_BASE_MAX_DEPTH_PCT = 35.0       # Max depth percent for IPO base
+
+# Missing Constants from Audit
+BASE_SWING_LOOKBACK_DAYS = 21       # Lookback window for swing high detection
+STAGE3_NET_PROGRESS_WINDOW = 30     # Days to check for net price progress in Stage 3
+STAGE3_MAX_PROGRESS_PCT = 5.0       # Max percent progress allowed to be considered "flattening"
+

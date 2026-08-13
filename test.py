@@ -10,6 +10,20 @@ from config import (
     RSI_OVERSOLD_LEVEL,
     RSI_OVERBOUGHT_LEVEL,
     TRADING_DAYS_PER_YEAR,
+    BASE_MIN_DROP_PCT,
+    VCP_MAX_PIVOT_DIST_PCT,
+    VCP_MIN_CONTRACTIONS,
+    BLUE_SKY_ATH_PROXIMITY_PCT,
+    BLUE_SKY_PIVOT_ATH_PROXIMITY,
+    MULTI_YEAR_BASE_MIN_DAYS,
+    IPO_BASE_MIN_WEEKS,
+    IPO_BASE_MAX_WEEKS,
+    IPO_BASE_MIN_DAYS,
+    IPO_BASE_MIN_DEPTH_PCT,
+    IPO_BASE_MAX_DEPTH_PCT,
+    BASE_SWING_LOOKBACK_DAYS,
+    STAGE3_NET_PROGRESS_WINDOW,
+    STAGE3_MAX_PROGRESS_PCT,
 )
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -153,6 +167,184 @@ def get_nr(row):
     else: return 0
 
 
+def detect_base(group: pd.DataFrame) -> pd.DataFrame:
+    """
+    detect_base: V1 Base Detection Algorithm
+    
+    Known Limitations:
+    1. Only walks forward from simple N-day trailing highs, which can miss complex double-bottom structures.
+    2. Deeply broken bases might artificially reset and create multiple 'micro bases' instead of one large base.
+    3. Contraction logic uses a simplified zigzag detector that may overcount minor noise.
+    4. Base lows are strict absolute minimums, ignoring momentary false breakdowns (shakeouts).
+    """
+    closes = group['Close'].values
+    highs = group['High'].values
+    lows = group['Low'].values
+    dates = group.index.values
+    
+    n = len(group)
+    base_active = np.zeros(n, dtype=int)
+    base_start_date = np.empty(n, dtype=object)
+    base_length_days = np.zeros(n, dtype=int)
+    base_high_arr = np.zeros(n, dtype=float)
+    base_low_arr = np.zeros(n, dtype=float)
+    base_depth_pct = np.zeros(n, dtype=float)
+    pct_from_pivot = np.zeros(n, dtype=float)
+    contraction_count = np.zeros(n, dtype=int)
+    breakout_today = np.zeros(n, dtype=int)
+    last_breakout_level = np.full(n, np.nan, dtype=float)
+    
+    in_base = False
+    cur_base_high = 0.0
+    cur_base_start_date = None
+    cur_base_low = float('inf')
+    cur_contractions = 0
+    cur_days_in_base = 0
+    cur_last_breakout_level = np.nan
+    
+    leg_high = 0.0
+    leg_low = float('inf')
+    last_swing_low = float('inf')
+    prev_swing_low = float('inf')
+    last_swing_high = float('inf')
+    trend = 0
+    
+    for i in range(n):
+        start_idx = max(0, i - BASE_SWING_LOOKBACK_DAYS)
+        window_highs = highs[start_idx:i+1]
+        
+        c = closes[i]
+        h = highs[i]
+        l = lows[i]
+        d = dates[i]
+        
+        if not in_base:
+            max_idx = start_idx + np.argmax(window_highs)
+            recent_high = window_highs.max()
+            recent_high_date = dates[max_idx]
+            
+            if recent_high > 0 and ((recent_high - c) / recent_high * 100) >= BASE_MIN_DROP_PCT:
+                in_base = True
+                cur_base_high = recent_high
+                cur_base_start_date = recent_high_date
+                cur_days_in_base = i - max_idx
+                cur_base_low = np.min(lows[max_idx:i+1])
+                cur_contractions = 0
+                
+                leg_high = h
+                leg_low = l
+                last_swing_low = float('inf')
+                prev_swing_low = float('inf')
+                last_swing_high = cur_base_high
+                trend = -1
+                
+        if in_base:
+            cur_days_in_base += 1
+            if l < cur_base_low:
+                cur_base_low = l
+                
+            if trend == -1:
+                if l < leg_low:
+                    leg_low = l
+                if i > 0 and c > highs[i-1]:
+                    trend = 1
+                    last_swing_low = leg_low
+                    leg_high = h
+            elif trend == 1:
+                if h > leg_high:
+                    leg_high = h
+                if i > 0 and c < lows[i-1]:
+                    trend = -1
+                    # Contraction counts if current high is lower than previous high,
+                    # AND current swing low is higher than previous swing low.
+                    if leg_high < last_swing_high and last_swing_low > prev_swing_low:
+                        cur_contractions += 1
+                    last_swing_high = leg_high
+                    prev_swing_low = last_swing_low
+                    leg_low = l
+
+            if c > cur_base_high and (i == 0 or closes[i-1] <= cur_base_high):
+                breakout_today[i] = 1
+                cur_last_breakout_level = cur_base_high
+                in_base = False
+            
+            base_active[i] = 1
+            base_start_date[i] = cur_base_start_date
+            base_length_days[i] = cur_days_in_base
+            base_high_arr[i] = cur_base_high
+            base_low_arr[i] = cur_base_low
+            base_depth_pct[i] = (cur_base_high - cur_base_low) / cur_base_high * 100
+            pct_from_pivot[i] = (cur_base_high - c) / cur_base_high * 100
+            contraction_count[i] = cur_contractions
+            
+        last_breakout_level[i] = cur_last_breakout_level
+        
+    group = group.copy()
+    group['base_active'] = base_active
+    group['base_start_date'] = pd.to_datetime(base_start_date)
+    group['base_length_days'] = base_length_days
+    group['base_high'] = base_high_arr
+    group['base_low'] = base_low_arr
+    group['base_depth_pct'] = base_depth_pct
+    group['pct_from_pivot'] = pct_from_pivot
+    group['contraction_count'] = contraction_count
+    group['breakout_today'] = breakout_today
+    group['last_breakout_level'] = last_breakout_level
+    return group
+
+
+def classify_stages(all_results: pd.DataFrame) -> pd.DataFrame:
+    """
+    Computes Stage 1-4 classification and buckets.
+    Operates on the entire concatenated dataframe (all symbols).
+    """
+    sma200_rising = (all_results['SMA200'] > all_results.groupby('Symbol')['SMA200'].shift(20))
+    sma200_falling = (all_results['SMA200'] < all_results.groupby('Symbol')['SMA200'].shift(20))
+    
+    stage_2_cond = (all_results['Close'] > all_results['SMA200']) & sma200_rising
+    stage_4_cond = (all_results['Close'] < all_results['SMA200']) & sma200_falling
+    
+    # Stage 3: Topping (net price progress < STAGE3_MAX_PROGRESS_PCT over STAGE3_NET_PROGRESS_WINDOW days)
+    past_close = all_results.groupby('Symbol')['Close'].shift(STAGE3_NET_PROGRESS_WINDOW)
+    net_progress = ((all_results['Close'] - past_close) / past_close).abs() * 100
+    stage_3_cond = (
+        (all_results['Close'] >= all_results['SMA200'] * 0.9) & 
+        (~sma200_rising) & (~sma200_falling) & 
+        (all_results['top_decile'] == 1) &
+        (net_progress <= STAGE3_MAX_PROGRESS_PCT)
+    )
+    
+    # Mutually exclusive assignment
+    cond_list = [stage_2_cond, stage_3_cond, stage_4_cond]
+    choice_list = [2, 3, 4]
+    all_results['stage'] = np.select(cond_list, choice_list, default=1)
+    
+    # Bucket mapping
+    stage_bucket = pd.Series("unknown", index=all_results.index)
+    
+    # forming -> stage == 1 AND base_active == 1
+    stage_bucket.loc[(all_results['stage'] == 1) & (all_results['base_active'] == 1)] = "forming"
+    
+    # fresh_breakout -> breakout_today == 1 in the last 5 trading sessions
+    recent_breakout = all_results.groupby('Symbol')['breakout_today'].rolling(5, min_periods=1).max().reset_index(level=0, drop=True) == 1
+    stage_bucket.loc[recent_breakout] = "fresh_breakout"
+    
+    # climbing -> stage == 2 AND breakout happened earlier
+    stage_bucket.loc[(all_results['stage'] == 2) & (~recent_breakout)] = "climbing"
+    
+    # played_out -> stage in (3, 4) AND had a breakout this calendar year that has since failed
+    current_year = all_results['Timestamp'].dt.year
+    breakout_year = pd.Series(np.where(all_results['breakout_today'] == 1, current_year, np.nan), index=all_results.index)
+    # Forward fill the breakout year per symbol to check if the last breakout was this year
+    last_breakout_year = breakout_year.groupby(all_results['Symbol']).ffill()
+    failed_breakout = (last_breakout_year == current_year) & (all_results['Close'] < all_results['last_breakout_level'])
+    
+    stage_bucket.loc[all_results['stage'].isin([3, 4]) & failed_breakout] = "played_out"
+    
+    all_results['stage_bucket'] = stage_bucket
+    return all_results
+
+
 def main():
     log.info("Loading OHLCV data from MySQL `ohlc_data` table...")
     conn = get_connection()
@@ -288,11 +480,84 @@ def main():
         adx = compute_adx(group, 14)
         group["adx_trigger"] = (adx >= ADX_THRESHOLD).astype(int)
 
-        group = group.drop(['NR5', 'NR6', 'NR7', 'NR8', 'min_5', 'min_6', 'min_7', 'min_8', 'avg_volume_30', 'Range'], axis=1)
+        # ---------------------------------------------------------
+        # NEW COLUMNS: ATH, Listing, Base Detection
+        # ---------------------------------------------------------
+        group['all_time_high'] = group['Close'].cummax()
+        group['is_at_ath'] = np.isclose(group['Close'], group['all_time_high']).astype(int)
+        
+        ath_changes = group['all_time_high'] != group['all_time_high'].shift(1)
+        group['days_since_ath'] = group.groupby(ath_changes.cumsum()).cumcount()
+
+        first_date = group.index[0]
+        # Flagging as first date in our DB, not verified IPO date.
+        group['first_listed_date'] = first_date
+        group['weeks_since_listing'] = (group.index - first_date).days // 7
+        
+        # RS Blend for relative strength ranking later
+        group['pct_63'] = group['Close'].pct_change(periods=63, fill_method=None)
+        group['pct_126'] = group['Close'].pct_change(periods=126, fill_method=None)
+        group['pct_252'] = group['Close'].pct_change(periods=252, fill_method=None)
+        group['rs_blend'] = 0.4 * group['pct_63'] + 0.3 * group['pct_126'] + 0.3 * group['pct_252']
+        
+        group = detect_base(group)
+
+        group = group.drop(['NR5', 'NR6', 'NR7', 'NR8', 'min_5', 'min_6', 'min_7', 'min_8', 'avg_volume_30', 'Range', 'pct_63', 'pct_126', 'pct_252'], axis=1)
         all_results_list.append(group)
 
     all_results = pd.concat(all_results_list)
     all_results.reset_index(inplace=True)
+
+    log.info("Computing relative strength ranks and pattern screens...")
+    # RS Rank (1-99), preserving NaNs for <12 months history
+    rs_rank_calc = (all_results.groupby('Timestamp')['rs_blend'].rank(pct=True) * 98 + 1).round(0)
+    all_results['rs_rank'] = np.where(all_results['rs_blend'].isna(), np.nan, rs_rank_calc)
+    
+    # ---------------------------------------------------------
+    # PATTERN SCREENS
+    # ---------------------------------------------------------
+    
+    # screen_vcp
+    all_results['screen_vcp'] = (
+        (all_results['Close'] > all_results['SMA50']) &
+        (all_results['SMA50'] > all_results['SMA200']) &
+        (all_results['base_active'] == 1) &
+        (all_results['contraction_count'] >= VCP_MIN_CONTRACTIONS) &
+        (all_results['pct_from_pivot'] <= VCP_MAX_PIVOT_DIST_PCT)
+    ).astype(int)
+    
+    # screen_blue_sky
+    blue_sky_base = (
+        (all_results['pct_from_pivot'] <= BLUE_SKY_ATH_PROXIMITY_PCT) &
+        (all_results['base_high'] >= all_results['all_time_high'] * BLUE_SKY_PIVOT_ATH_PROXIMITY)
+    )
+    all_results['screen_blue_sky'] = (
+        ((all_results['is_at_ath'] == 1) | blue_sky_base) &
+        (all_results['rs_rank'].between(70, 99)) &
+        (all_results['pct_from_pivot'] <= VCP_MAX_PIVOT_DIST_PCT)
+    ).astype(int)
+    
+    # screen_multi_year_breakout
+    all_results['screen_multi_year_breakout'] = (
+        (all_results['base_length_days'] >= MULTI_YEAR_BASE_MIN_DAYS) &
+        (all_results['Close'] > all_results['SMA200']) &
+        (all_results['rs_rank'].between(60, 99)) &
+        (all_results['pct_from_pivot'] <= VCP_MAX_PIVOT_DIST_PCT)
+    ).astype(int)
+    
+    # screen_ipo_base (RS Rank naturally low for IPOs, so we exclude it as requested)
+    all_results['screen_ipo_base'] = (
+        (all_results['weeks_since_listing'].between(IPO_BASE_MIN_WEEKS, IPO_BASE_MAX_WEEKS)) &
+        (all_results['base_length_days'] >= IPO_BASE_MIN_DAYS) &
+        (all_results['base_depth_pct'].between(IPO_BASE_MIN_DEPTH_PCT, IPO_BASE_MAX_DEPTH_PCT)) &
+        (all_results['Close'] > all_results['SMA50']) &
+        (all_results['pct_from_pivot'] <= VCP_MAX_PIVOT_DIST_PCT)
+    ).astype(int)
+    
+    # ---------------------------------------------------------
+    # STAGE CLASSIFICATION
+    # ---------------------------------------------------------
+    all_results = classify_stages(all_results)
 
     sql_columns = [
         "Timestamp", "Open", "High", "Low", "Close", "Volume", "Symbol",
@@ -306,7 +571,12 @@ def main():
         "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
         "RSI14", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70",
         "adx_trigger", "convergence_5a", "convergence_3", "convergence_4",
-        "RCS_30D"
+        "RCS_30D",
+        "all_time_high", "is_at_ath", "days_since_ath", "first_listed_date", "weeks_since_listing",
+        "rs_rank", "base_active", "base_start_date", "base_length_days", "base_high", "base_low", 
+        "base_depth_pct", "pct_from_pivot", "contraction_count", "breakout_today", "last_breakout_level",
+        "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base",
+        "stage", "stage_bucket"
     ]
 
     log.info("Saving results directly into MySQL `historical_data` table...")
@@ -334,6 +604,74 @@ def main():
             log.info("Inserted %d / %d rows into `historical_data`...", min(i + batch_size, total_rows), total_rows)
 
         log.info("Successfully updated `historical_data` with %d rows! ✅", total_rows)
+
+        # Create pattern_events table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pattern_events (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                symbol VARCHAR(20) NOT NULL,
+                screen_name VARCHAR(50) NOT NULL,
+                triggered_date DATE NOT NULL,
+                pivot_price DECIMAL(10,2) NOT NULL,
+                outcome VARCHAR(20) DEFAULT 'active',
+                outcome_date DATE,
+                UNIQUE KEY (symbol, screen_name, triggered_date)
+            )
+        """)
+        conn.commit()
+
+        # Rebuild pattern_events from full history
+        log.info("Rebuilding pattern_events from full history...")
+        cursor.execute("TRUNCATE TABLE pattern_events")
+        
+        screen_names = ['screen_vcp', 'screen_blue_sky', 'screen_multi_year_breakout', 'screen_ipo_base']
+        events_to_insert = []
+        
+        # We need a quick way to find future failed dates for each symbol
+        grouped = all_results.groupby('Symbol')
+        
+        # Identify all historical breakouts
+        breakout_mask = (all_results['breakout_today'] == 1) & (all_results[screen_names].sum(axis=1) > 0)
+        breakout_rows = all_results[breakout_mask]
+        
+        for _, row in breakout_rows.iterrows():
+            sym = row['Symbol']
+            trigger_date = row['Timestamp']
+            pivot = row['base_high']
+            
+            triggered_screens = [s for s in screen_names if row[s] == 1]
+            if not triggered_screens:
+                continue
+                
+            sym_df = grouped.get_group(sym)
+            # Find future rows where it drops below pivot AND stage is 3 or 4
+            future = sym_df[sym_df['Timestamp'] > trigger_date]
+            failed = future[(future['Close'] < pivot) & (future['stage'].isin([3, 4]))]
+            
+            outcome = 'active'
+            outcome_date = None
+            if not failed.empty:
+                outcome = 'failed'
+                first_failed = failed.iloc[0]['Timestamp']
+                outcome_date = first_failed.date() if hasattr(first_failed, 'date') else first_failed
+                
+            # Date for trigger
+            t_date = trigger_date.date() if hasattr(trigger_date, 'date') else trigger_date
+            
+            for screen in triggered_screens:
+                events_to_insert.append((sym, screen, t_date, pivot, outcome, outcome_date))
+                
+        if events_to_insert:
+            insert_event_query = """
+                INSERT INTO pattern_events (symbol, screen_name, triggered_date, pivot_price, outcome, outcome_date)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            batch_size = 10000
+            for i in range(0, len(events_to_insert), batch_size):
+                cursor.executemany(insert_event_query, events_to_insert[i:i + batch_size])
+            conn.commit()
+            log.info("Logged %d historical pattern events.", len(events_to_insert))
+            
     finally:
         cursor.close()
         conn.close()

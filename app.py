@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from routers import stocks, fundamentals, auth as auth_router, scans, dashboard as dashboard_router
+from routers import stocks, fundamentals, auth as auth_router, scans, dashboard as dashboard_router, screens
 
 app = FastAPI()
 
@@ -20,6 +20,7 @@ app.include_router(auth_router.router)                              # /api/auth/
 app.include_router(stocks.router, prefix="/api", tags=["stocks"])
 app.include_router(fundamentals.router, prefix="/api", tags=["Fundamentals"])
 app.include_router(scans.router, tags=["Scans"])                    # already has prefix="/api/scans"
+app.include_router(screens.router)                                  # /api/screens/..., /api/stage-summary
 app.include_router(dashboard_router.router)                         # /api/signals, /api/dashboard/...
 
 # ✅ Clean-URL routes for HTML pages (serve without .html extension)
