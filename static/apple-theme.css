@@ -1405,3 +1405,71 @@ div[id*="tv-attr-logo"] {
     margin-left: 0.25rem;
 }
 .auth-link:hover { text-decoration: underline; }
+
+/* Staging/Pattern screen stat-cards */
+.stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    backdrop-filter: blur(20px) saturate(150%);
+}
+
+.stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: transparent;
+    transition: background 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(0, 113, 227, 0.15);
+}
+
+.stat-card:active {
+    transform: translateY(0);
+}
+
+.stat-card.active-bucket {
+    border-color: var(--accent-primary);
+    background: rgba(0, 113, 227, 0.03);
+}
+
+.stat-card.active-bucket::after {
+    background: var(--accent-primary);
+}
+
+.stat-title {
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.1;
+    margin: 4px 0;
+}
+
+.stat-trend {
+    font-size: 11px;
+    color: var(--text-muted);
+}

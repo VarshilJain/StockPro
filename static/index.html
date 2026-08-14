@@ -954,6 +954,13 @@
             document.getElementById('ps-fresh-count').innerText = '...';
             document.getElementById('ps-climbing-count').innerText = '...';
             document.getElementById('ps-played-count').innerText = '...';
+            
+            // Remove active card highlights
+            ['forming', 'fresh', 'climbing', 'played'].forEach(b => {
+                const card = document.getElementById(`ps-card-${b}`);
+                if (card) card.classList.remove('active-bucket');
+            });
+            
             const cardsContainer = document.getElementById('patternCardsContainer');
             if (cardsContainer) cardsContainer.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">Select a bucket above to view symbols.</div>';
             
@@ -979,6 +986,18 @@
 
         async function showPatternSymbols(bucket) {
             if (!currentPatternData || !currentPatternData.stages) return;
+            
+            // Highlight selected card
+            ['forming', 'fresh', 'climbing', 'played'].forEach(b => {
+                const card = document.getElementById(`ps-card-${b}`);
+                if (card) {
+                    if (b === (bucket === 'fresh_breakout' ? 'fresh' : bucket)) {
+                        card.classList.add('active-bucket');
+                    } else {
+                        card.classList.remove('active-bucket');
+                    }
+                }
+            });
             
             const container = document.getElementById('patternCardsContainer');
             const symbols = currentPatternData.stages[bucket]?.symbols || [];
@@ -1066,6 +1085,12 @@
                         </div>
                     `;
                 } else {
+                    const breakoutDateHtml = bucket === 'played_out' && data.base_start_date ? `
+                        <div style="display:flex; justify-content:space-between; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px;">
+                            <span style="color:var(--text-muted);">Breakout Date</span>
+                            <span style="font-weight:600; color:var(--accent-primary);">${data.base_start_date}</span>
+                        </div>
+                    ` : '';
                     gridHtml = `
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:var(--text-muted);">RS rating</span>
@@ -1081,8 +1106,9 @@
                         </div>
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:var(--text-muted);">Now vs pivot</span>
-                            <span style="font-weight:600;">${distPivot}</span>
+                            <span style="font-weight:600; color: ${data.pct_from_pivot >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'};">${distPivot}</span>
                         </div>
+                        ${breakoutDateHtml}
                     `;
                 }
                 
