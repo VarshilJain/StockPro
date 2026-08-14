@@ -325,8 +325,8 @@ def classify_stages(all_results: pd.DataFrame) -> pd.DataFrame:
     # forming -> stage == 1 AND base_active == 1
     stage_bucket.loc[(all_results['stage'] == 1) & (all_results['base_active'] == 1)] = "forming"
     
-    # fresh_breakout -> breakout_today == 1 in the last 5 trading sessions
-    recent_breakout = all_results.groupby('Symbol')['breakout_today'].rolling(5, min_periods=1).max().reset_index(level=0, drop=True) == 1
+    # fresh_breakout -> breakout_today == 1 in the last 10 trading sessions
+    recent_breakout = all_results.groupby('Symbol')['breakout_today'].rolling(10, min_periods=1).max().reset_index(level=0, drop=True) == 1
     stage_bucket.loc[recent_breakout] = "fresh_breakout"
     
     # climbing -> stage == 2 AND breakout happened earlier
@@ -349,7 +349,7 @@ def main():
     log.info("Loading OHLCV data from MySQL `ohlc_data` table...")
     conn = get_connection()
     query = """
-        SELECT ticker AS Symbol, date AS Timestamp, open AS Open, high AS High, low AS Low, close AS Close, volume AS Volume
+        SELECT ticker AS Symbol, date AS Timestamp, open AS Open, high AS High, low AS Low, close AS Close, volume AS Volume, delivery_quantity AS delivery_quantity
         FROM ohlc_data
         ORDER BY ticker, date
     """
@@ -464,6 +464,9 @@ def main():
         group["min_8"] = group["Range"].rolling(8).min()
         group["avg_volume_30"] = group["Volume"].rolling(window=30, min_periods=1).mean()
         group["High_Relative_Volume_30"] = np.where(group["Volume"] > (group["avg_volume_30"] * 3), 1, 0)
+        group["screen_high_relative_volume"] = np.where(group["Volume"] > (group["avg_volume_30"] * 5), 1, 0)
+        group["delivery_pct"] = (group["delivery_quantity"] / group["Volume"].replace(0, np.nan)).clip(upper=1.0)
+        group["screen_high_delivery_volume"] = np.where(group["delivery_pct"] > 0.8, 1, 0)
         group["NR5"] = (group["Range"] == group["min_5"]).astype(int)
         group["NR6"] = (group["Range"] == group["min_6"]).astype(int)
         group["NR7"] = (group["Range"] == group["min_7"]).astype(int)
@@ -502,7 +505,7 @@ def main():
         
         group = detect_base(group)
 
-        group = group.drop(['NR5', 'NR6', 'NR7', 'NR8', 'min_5', 'min_6', 'min_7', 'min_8', 'avg_volume_30', 'Range', 'pct_63', 'pct_126', 'pct_252'], axis=1)
+        group = group.drop(['NR5', 'NR6', 'NR7', 'NR8', 'min_5', 'min_6', 'min_7', 'min_8', 'avg_volume_30', 'Range', 'pct_63', 'pct_126', 'pct_252', 'delivery_pct'], axis=1)
         all_results_list.append(group)
 
     all_results = pd.concat(all_results_list)
@@ -575,7 +578,7 @@ def main():
         "all_time_high", "is_at_ath", "days_since_ath", "first_listed_date", "weeks_since_listing",
         "rs_rank", "base_active", "base_start_date", "base_length_days", "base_high", "base_low", 
         "base_depth_pct", "pct_from_pivot", "contraction_count", "breakout_today", "last_breakout_level",
-        "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base",
+        "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base", "screen_high_relative_volume", "screen_high_delivery_volume",
         "stage", "stage_bucket"
     ]
 

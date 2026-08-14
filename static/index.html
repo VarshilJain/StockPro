@@ -60,6 +60,12 @@
             <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('ipo-base');" id="nav-pattern-ipo">
                 <i class="fas fa-rocket nav-icon"></i>IPO Base
             </a>
+            <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('high-relative-volume');" id="nav-pattern-high-vol">
+                <i class="fas fa-volume-up nav-icon"></i>High Relative Volume (5x)
+            </a>
+            <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('high-delivery-volume');" id="nav-pattern-high-deliv">
+                <i class="fas fa-truck-loading nav-icon"></i>High Delivery Volume (80%+)
+            </a>
         </nav>
         <div class="sidebar-footer">
             <div class="footer-text">© 2024 StockPro Analytics</div>
@@ -687,26 +693,26 @@
                 <!-- 4 TILES -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-bottom:1.5rem;">
                     <!-- Forming -->
-                    <div class="stat-card" style="cursor:pointer;" onclick="showPatternSymbols('forming')">
-                        <div class="stat-title" style="color:var(--text-secondary);">📊 Forming</div>
+                    <div class="stat-card" id="ps-card-forming" style="cursor:pointer;" onclick="showPatternSymbols('forming')">
+                        <div class="stat-title" id="ps-forming-title" style="color:var(--text-secondary);">📊 Forming</div>
                         <div class="stat-value" id="ps-forming-count">0</div>
                         <div class="stat-trend neutral" style="font-style:italic;" id="ps-forming-desc">resting before a breakout</div>
                     </div>
                     <!-- Fresh breakouts -->
-                    <div class="stat-card" style="cursor:pointer;" onclick="showPatternSymbols('fresh_breakout')">
-                        <div class="stat-title" style="color:var(--accent-success);">📈 Fresh breakouts</div>
+                    <div class="stat-card" id="ps-card-fresh" style="cursor:pointer;" onclick="showPatternSymbols('fresh_breakout')">
+                        <div class="stat-title" id="ps-fresh-title" style="color:var(--accent-success);">📈 Fresh breakouts</div>
                         <div class="stat-value" id="ps-fresh-count">0</div>
                         <div class="stat-trend positive" style="font-style:italic;" id="ps-fresh-desc">cleared it in the last 5 sessions</div>
                     </div>
                     <!-- Climbing -->
-                    <div class="stat-card" style="cursor:pointer;" onclick="showPatternSymbols('climbing')">
-                        <div class="stat-title" style="color:var(--accent-primary);">🚀 Climbing</div>
+                    <div class="stat-card" id="ps-card-climbing" style="cursor:pointer;" onclick="showPatternSymbols('climbing')">
+                        <div class="stat-title" id="ps-climbing-title" style="color:var(--accent-primary);">🚀 Climbing</div>
                         <div class="stat-value" id="ps-climbing-count">0</div>
                         <div class="stat-trend positive" style="font-style:italic;" id="ps-climbing-desc">broke out earlier, still rising</div>
                     </div>
                     <!-- Played out -->
-                    <div class="stat-card" style="cursor:pointer;" onclick="showPatternSymbols('played_out')">
-                        <div class="stat-title" style="color:var(--accent-danger);">📉 Played out</div>
+                    <div class="stat-card" id="ps-card-played" style="cursor:pointer;" onclick="showPatternSymbols('played_out')">
+                        <div class="stat-title" id="ps-played-title" style="color:var(--accent-danger);">📉 Played out</div>
                         <div class="stat-value" id="ps-played-count">0</div>
                         <div class="stat-trend negative" style="font-style:italic;" id="ps-played-desc">2026 breakouts, stopped or trailed out</div>
                     </div>
@@ -871,16 +877,78 @@
 
         let currentPatternData = null;
 
+        function formatVolume(vol) {
+            if (!vol) return '--';
+            if (vol >= 10000000) {
+                return (vol / 10000000).toFixed(2) + ' Cr';
+            } else if (vol >= 100000) {
+                return (vol / 100000).toFixed(2) + ' L';
+            } else if (vol >= 1000) {
+                return (vol / 1000).toFixed(1) + ' K';
+            }
+            return vol.toString();
+        }
+
         async function loadPatternScreen(screenName) {
             const titleMap = {
                 'vcp': 'Volatility Contraction (VCP)',
                 'blue-sky': 'Blue Sky Breakout',
                 'multi-year-breakout': 'Multi-Year Breakout',
-                'ipo-base': 'IPO Base'
+                'ipo-base': 'IPO Base',
+                'high-relative-volume': 'High Relative Volume (5x)',
+                'high-delivery-volume': 'High Delivery Volume (80%+)'
             };
             document.getElementById('patternScreenTitle').innerHTML = `<i class="fas fa-chart-bar" style="color:var(--accent-primary);margin-right:0.5rem;"></i>${titleMap[screenName] || screenName}`;
             document.getElementById('patternScreenSubtitle').innerText = 'Loading...';
             
+            // Adjust card labels based on screenName
+            const isCustomVol = (screenName === 'high-relative-volume' || screenName === 'high-delivery-volume');
+            const isHighVol = screenName === 'high-relative-volume';
+            const isHighDeliv = screenName === 'high-delivery-volume';
+            
+            const cardForming = document.getElementById('ps-card-forming');
+            const cardFresh = document.getElementById('ps-card-fresh');
+            const cardClimbing = document.getElementById('ps-card-climbing');
+            const cardPlayed = document.getElementById('ps-card-played');
+
+            const cardFormingTitle = document.getElementById('ps-forming-title');
+            const cardFormingDesc = document.getElementById('ps-forming-desc');
+            const cardFreshTitle = document.getElementById('ps-fresh-title');
+            const cardFreshDesc = document.getElementById('ps-fresh-desc');
+            const cardClimbingTitle = document.getElementById('ps-climbing-title');
+            const cardClimbingDesc = document.getElementById('ps-climbing-desc');
+            const cardPlayedTitle = document.getElementById('ps-played-title');
+            const cardPlayedDesc = document.getElementById('ps-played-desc');
+            
+            if (isCustomVol) {
+                if (cardForming) cardForming.style.display = 'none';
+                if (cardPlayed) cardPlayed.style.display = 'none';
+                
+                if (isHighVol) {
+                    if (cardFreshTitle) cardFreshTitle.innerHTML = '📈 Latest Date';
+                    if (cardFreshDesc) cardFreshDesc.innerText = 'spiked on latest date';
+                    if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🚀 Last 5 Days';
+                    if (cardClimbingDesc) cardClimbingDesc.innerText = 'spiked in last 5 days';
+                } else { // high-delivery-volume
+                    if (cardFreshTitle) cardFreshTitle.innerHTML = '📈 Latest Date';
+                    if (cardFreshDesc) cardFreshDesc.innerText = 'delivery >80% on latest date';
+                    if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🚀 Last 5 Days';
+                    if (cardClimbingDesc) cardClimbingDesc.innerText = 'delivery >80% in last 5 days';
+                }
+            } else {
+                if (cardForming) cardForming.style.display = 'block';
+                if (cardPlayed) cardPlayed.style.display = 'block';
+                
+                if (cardFormingTitle) cardFormingTitle.innerHTML = '📊 Forming';
+                if (cardFormingDesc) cardFormingDesc.innerText = 'resting before a breakout';
+                if (cardFreshTitle) cardFreshTitle.innerHTML = '📈 Fresh breakouts';
+                if (cardFreshDesc) cardFreshDesc.innerText = 'cleared it in the last 5 sessions';
+                if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🚀 Climbing';
+                if (cardClimbingDesc) cardClimbingDesc.innerText = 'broke out earlier, still rising';
+                if (cardPlayedTitle) cardPlayedTitle.innerHTML = '📉 Played out';
+                if (cardPlayedDesc) cardPlayedDesc.innerText = '2026 breakouts, stopped or trailed out';
+            }
+
             // Reset counts
             document.getElementById('ps-forming-count').innerText = '...';
             document.getElementById('ps-fresh-count').innerText = '...';
@@ -920,6 +988,9 @@
                 return;
             }
             
+            const isHighVol = currentPatternData.screen === 'high-relative-volume';
+            const isHighDeliv = currentPatternData.screen === 'high-delivery-volume';
+            
             container.innerHTML = symbols.map(data => {
                 const sym = typeof data === 'string' ? data : data.symbol;
                 const rsRank = data.rs_rank || '--';
@@ -939,17 +1010,63 @@
                     priceChange = `<span style="color:${color}; font-size:0.85rem; margin-left:8px;">(${sign}${pct.toFixed(2)}%)</span>`;
                 }
                 
-                return `
-                <div class="card" style="padding:1rem; display:flex; flex-direction:column; gap:0.5rem; position:relative;">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
-                        <div style="font-size:1.1rem; font-weight:700;">${sym}</div>
-                        <div style="font-size:0.85rem; color:var(--accent-primary); cursor:pointer;" onclick="document.getElementById('symbol').value='${sym}';showSection('stockChart');loadChart();">Open full chart ›</div>
-                    </div>
-                    <div style="font-size:1.2rem; font-weight:600; text-align:right;">
-                        ₹${price} ${priceChange}
-                    </div>
-                    <div id="mini-chart-${sym}" style="width:100%; height:200px; margin: 10px 0;"></div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.85rem;">
+                let gridHtml = '';
+                if (isHighVol) {
+                    const volMult = data.volume_multiple ? data.volume_multiple.toFixed(1) + 'x' : '--';
+                    const volFormatted = data.volume ? formatVolume(data.volume) : '--';
+                    const avgVolFormatted = data.avg_volume ? formatVolume(data.avg_volume) : '--';
+                    const spikeDate = data.base_start_date || '--';
+                    gridHtml = `
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">RS rating</span>
+                            <span style="font-weight:600;">${rsRank}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Vol Multiple</span>
+                            <span style="font-weight:600; color:var(--accent-primary);">${volMult}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Volume</span>
+                            <span style="font-weight:600;">${volFormatted}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">30d Avg Vol</span>
+                            <span style="font-weight:600;">${avgVolFormatted}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px;">
+                            <span style="color:var(--text-muted);">Spike Date</span>
+                            <span style="font-weight:600; color:var(--accent-primary);">${spikeDate}</span>
+                        </div>
+                    `;
+                } else if (isHighDeliv) {
+                    const delivPct = data.delivery_pct ? (data.delivery_pct * 100).toFixed(1) + '%' : '--';
+                    const delivQtyFormatted = data.delivery_qty ? formatVolume(data.delivery_qty) : '--';
+                    const volFormatted = data.volume ? formatVolume(data.volume) : '--';
+                    const spikeDate = data.base_start_date || '--';
+                    gridHtml = `
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">RS rating</span>
+                            <span style="font-weight:600;">${rsRank}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Delivery %</span>
+                            <span style="font-weight:600; color:var(--accent-success);">${delivPct}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Delivery Qty</span>
+                            <span style="font-weight:600;">${delivQtyFormatted}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Total Volume</span>
+                            <span style="font-weight:600;">${volFormatted}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px;">
+                            <span style="color:var(--text-muted);">Spike Date</span>
+                            <span style="font-weight:600; color:var(--accent-primary);">${spikeDate}</span>
+                        </div>
+                    `;
+                } else {
+                    gridHtml = `
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:var(--text-muted);">RS rating</span>
                             <span style="font-weight:600;">${rsRank}</span>
@@ -966,6 +1083,21 @@
                             <span style="color:var(--text-muted);">Now vs pivot</span>
                             <span style="font-weight:600;">${distPivot}</span>
                         </div>
+                    `;
+                }
+                
+                return `
+                <div class="card" style="padding:1rem; display:flex; flex-direction:column; gap:0.5rem; position:relative;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div style="font-size:1.1rem; font-weight:700;">${sym}</div>
+                        <div style="font-size:0.85rem; color:var(--accent-primary); cursor:pointer;" onclick="document.getElementById('symbol').value='${sym}';showSection('stockChart');loadChart();">Open full chart ›</div>
+                    </div>
+                    <div style="font-size:1.2rem; font-weight:600; text-align:right;">
+                        ₹${price} ${priceChange}
+                    </div>
+                    <div id="mini-chart-${sym}" style="width:100%; height:200px; margin: 10px 0;"></div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.85rem;">
+                        ${gridHtml}
                     </div>
                 </div>
                 `;

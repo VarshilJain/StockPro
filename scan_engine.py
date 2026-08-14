@@ -47,7 +47,7 @@ _BINARY_FIELDS: frozenset[str] = frozenset([
     # Delivery Momentum Signal
     "delivery_momentum_signal",
     # Pattern Screens
-    "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base",
+    "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base", "screen_high_relative_volume", "screen_high_delivery_volume",
 ])
 
 # Fields that use  WHERE col > value
@@ -114,6 +114,8 @@ FIELD_LABELS: dict[str, str] = {
     "screen_blue_sky": "Blue Sky Breakout",
     "screen_multi_year_breakout": "Multi-Year Breakout",
     "screen_ipo_base": "IPO Base",
+    "screen_high_relative_volume": "High Relative Volume (5x)",
+    "screen_high_delivery_volume": "High Delivery Volume (80%+)",
 }
 
 # Grouped field list for the frontend dropdown
@@ -155,7 +157,7 @@ FIELD_GROUPS: list[dict] = [
     },
     {
         "label": "Pattern Screens",
-        "fields": ["screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base"],
+        "fields": ["screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base", "screen_high_relative_volume", "screen_high_delivery_volume"],
     },
 ]
 

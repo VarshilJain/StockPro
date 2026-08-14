@@ -3,6 +3,7 @@ routers/auth.py — Registration, login, logout, and current-user endpoints.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from datetime import timedelta
