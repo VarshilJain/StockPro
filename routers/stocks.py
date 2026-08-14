@@ -59,7 +59,7 @@ def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), e
 
     allowed_signals = [
         "Hammer", "Shooting_Star", "Doji", "Engulfing", "Dark_Cloud_Cover", "Morning_Star", "Evening_Star", "Piercing_Line",
-        "signal1", "signal2", "signal3", "signal4", "signal5", "top_decile", "new_52w_high", "new_52w_low", "NR", "High_Relative_Volume_30",
+        "signal1", "signal2", "signal3", "signal4", "signal5", "top_decile", "new_52w_high", "new_52w_low", "near_52w_high", "NR", "High_Relative_Volume_30",
         "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70", "adx_trigger"
     ]
     if signal and signal not in allowed_signals:
@@ -278,7 +278,7 @@ def get_ohlcv(symbol: str, days: int = Query(0, description="Number of recent da
             "DATE(Timestamp) as date, Open, High, Low, Close, Volume, "
             "RSI14, "
             "Hammer, Shooting_Star, Doji, Engulfing, Dark_Cloud_Cover, Morning_Star, Evening_Star, Piercing_Line, "
-            "signal1, signal2, signal3, signal4, signal5, top_decile, new_52w_high, new_52w_low, NR, High_Relative_Volume_30, "
+            "signal1, signal2, signal3, signal4, signal5, top_decile, new_52w_high, new_52w_low, near_52w_high, NR, High_Relative_Volume_30, "
             "hit_2y_high_14d, hit_5y_high_14d, hit_10y_high_14d, oversold, overbought, rsi_lt_30, rsi_gt_70, adx_trigger, "
             "convergence_3, convergence_4, convergence_5a"
         )
@@ -324,6 +324,7 @@ def get_ohlcv(symbol: str, days: int = Query(0, description="Number of recent da
                     "top_decile": bool(r.get("top_decile") == 1),
                     "new_52w_high": bool(r.get("new_52w_high") == 1),
                     "new_52w_low": bool(r.get("new_52w_low") == 1),
+                    "near_52w_high": bool(r.get("near_52w_high") == 1),
                     "NR": bool(r.get("NR", 0) and r.get("NR") > 0),
                     "High_Relative_Volume_30": bool(r.get("High_Relative_Volume_30") == 1),
                     "hit_2y_high_14d": bool(r.get("hit_2y_high_14d") == 1),

@@ -390,11 +390,13 @@ def main():
         rcs_vals = (stock_pct_30.values - bench_pct_30) * 100.0
         group['RCS_30D'] = [None if pd.isna(v) else round(float(v), 2) for v in rcs_vals]
 
-        group['52w_high'] = group['Close'].rolling(window=TRADING_DAYS_PER_YEAR, min_periods=1).max()
-        group['52w_low'] = group['Close'].rolling(window=TRADING_DAYS_PER_YEAR, min_periods=1).min()
+        ref_window = TRADING_DAYS_PER_YEAR - 20
+        group['52w_high'] = group['Close'].rolling(window=ref_window, min_periods=1).max().shift(20)
+        group['52w_low'] = group['Close'].rolling(window=ref_window, min_periods=1).min().shift(20)
 
         group['new_52w_high'] = np.where(group['Close'] == group['52w_high'], 1, 0)
         group['new_52w_low'] = np.where(group['Close'] == group['52w_low'], 1, 0)
+        group['near_52w_high'] = np.where((group['Close'] >= group['52w_high'] * 0.97) & (group['Close'] < group['52w_high']), 1, 0)
 
         two_y_window = TRADING_DAYS_PER_YEAR * 2
         five_y_window = TRADING_DAYS_PER_YEAR * 5
@@ -431,10 +433,15 @@ def main():
         ema50 = group['Close'].ewm(span=50, adjust=False).mean()
         ema200 = group['Close'].ewm(span=200, adjust=False).mean()
 
-        # Convergence signals
-        group['convergence_5a'] = ((ema4 > ema9) & (ema9 > ema18) & (ema18 > ema50) & (ema50 > ema200)).astype(int)
-        group['convergence_3'] = ((ema4 > ema9) & (ema9 > ema18) & (group['Close'] > sma100) & (group['Close'] > sma150) & (group['Close'] > group['SMA200'])).astype(int)
-        group['convergence_4'] = ((ema5 > ema9) & (ema9 > ema21) & (ema21 > ema50)).astype(int)
+        # Convergence signals with tightness (squeeze) constraints
+        spread_3 = (ema4 - ema18) / ema18 * 100
+        group['convergence_3'] = ((ema4 > ema9) & (ema9 > ema18) & (spread_3 <= 1.5) & (group['Close'] > sma100) & (group['Close'] > sma150) & (group['Close'] > group['SMA200'])).astype(int)
+        
+        spread_4 = (ema5 - ema50) / ema50 * 100
+        group['convergence_4'] = ((ema5 > ema9) & (ema9 > ema21) & (ema21 > ema50) & (spread_4 <= 2.5)).astype(int)
+
+        spread_5a = (ema4 - ema200) / ema200 * 100
+        group['convergence_5a'] = ((ema4 > ema9) & (ema9 > ema18) & (ema18 > ema50) & (ema50 > ema200) & (spread_5a <= 5.0)).astype(int)
 
         cross_sma_below = (group['Close'] > group["SMA9"]) & (group['Close'].shift(1) < group["SMA9"].shift(1))
         group["signal1"] = np.where(cross_sma_below, 1, 0)
@@ -569,7 +576,7 @@ def main():
         "SMA4", "SMA9", "SMA18", "SMA50", "SMA200",
         "signal1", "signal2", "signal3", "signal4", "signal5",
         "PC", "STD", "top_decile",
-        "52w_high", "52w_low", "new_52w_high", "new_52w_low",
+        "52w_high", "52w_low", "new_52w_high", "new_52w_low", "near_52w_high",
         "NR", "High_Relative_Volume_30",
         "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
         "RSI14", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70",

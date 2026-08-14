@@ -49,16 +49,13 @@
             
             <div class="sidebar-header" style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); padding-left: 1.5rem; font-weight: 600;">Pattern Screens</div>
             <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('vcp');" id="nav-pattern-vcp">
-                <i class="fas fa-compress-alt nav-icon"></i>Volatility Contraction (VCP)
+                <i class="fas fa-compress-alt nav-icon"></i>Price Compression Setup (PCS)
             </a>
             <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('blue-sky');" id="nav-pattern-blue-sky">
-                <i class="fas fa-cloud nav-icon"></i>Blue Sky Breakout
+                <i class="fas fa-cloud nav-icon"></i>All-Time Peak Breakout (APB)
             </a>
             <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('multi-year-breakout');" id="nav-pattern-multi-year">
                 <i class="fas fa-calendar-alt nav-icon"></i>Multi-Year Breakout
-            </a>
-            <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('ipo-base');" id="nav-pattern-ipo">
-                <i class="fas fa-rocket nav-icon"></i>IPO Base
             </a>
             <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('high-relative-volume');" id="nav-pattern-high-vol">
                 <i class="fas fa-volume-up nav-icon"></i>High Relative Volume (5x)
@@ -319,6 +316,7 @@
                             <optgroup label="Market Signals">
                                 <option value="top_decile">Top Decile</option>
                                 <option value="new_52w_high">New 52W High</option>
+                                <option value="near_52w_high">Near 52W High (3%)</option>
                                 <option value="new_52w_low">New 52W Low</option>
                                 <option value="NR">Narrow Range</option>
                                 <option value="High_Relative_Volume_30">Volume Spike</option>
@@ -454,6 +452,7 @@
                                 <optgroup label="Market Signals">
                                     <option value="top_decile">Top Decile</option>
                                     <option value="new_52w_high">New 52 Week High</option>
+                                    <option value="near_52w_high">Near 52 Week High (within 3%)</option>
                                     <option value="new_52w_low">New 52 Week Low</option>
                                     <option value="NR">Narrow Range (NR5-NR8)</option>
                                     <option value="High_Relative_Volume_30">High Relative Volume (30)</option>
@@ -539,6 +538,7 @@
                                 <optgroup label="Market Signals">
                                     <option value="top_decile">Top Decile</option>
                                     <option value="new_52w_high">New 52 Week High</option>
+                                    <option value="near_52w_high">Near 52 Week High (within 3%)</option>
                                     <option value="new_52w_low">New 52 Week Low</option>
                                     <option value="NR">Narrow Range</option>
                                     <option value="High_Relative_Volume_30">High Relative Volume (30)</option>
@@ -690,8 +690,8 @@
                     </div>
                 </div>
 
-                <!-- 4 TILES -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-bottom:1.5rem;">
+                <!-- 3 TILES -->
+                <div id="ps-tiles-container" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:1rem;margin-bottom:1.5rem;">
                     <!-- Forming -->
                     <div class="stat-card" id="ps-card-forming" style="cursor:pointer;" onclick="showPatternSymbols('forming')">
                         <div class="stat-title" id="ps-forming-title" style="color:var(--text-secondary);">📊 Forming</div>
@@ -709,12 +709,6 @@
                         <div class="stat-title" id="ps-climbing-title" style="color:var(--accent-primary);">🚀 Climbing</div>
                         <div class="stat-value" id="ps-climbing-count">0</div>
                         <div class="stat-trend positive" style="font-style:italic;" id="ps-climbing-desc">broke out earlier, still rising</div>
-                    </div>
-                    <!-- Played out -->
-                    <div class="stat-card" id="ps-card-played" style="cursor:pointer;" onclick="showPatternSymbols('played_out')">
-                        <div class="stat-title" id="ps-played-title" style="color:var(--accent-danger);">📉 Played out</div>
-                        <div class="stat-value" id="ps-played-count">0</div>
-                        <div class="stat-trend negative" style="font-style:italic;" id="ps-played-desc">2026 breakouts, stopped or trailed out</div>
                     </div>
                 </div>
 
@@ -891,8 +885,8 @@
 
         async function loadPatternScreen(screenName) {
             const titleMap = {
-                'vcp': 'Volatility Contraction (VCP)',
-                'blue-sky': 'Blue Sky Breakout',
+                'vcp': 'Price Compression Setup (PCS)',
+                'blue-sky': 'All-Time Peak Breakout (APB)',
                 'multi-year-breakout': 'Multi-Year Breakout',
                 'ipo-base': 'IPO Base',
                 'high-relative-volume': 'High Relative Volume (5x)',
@@ -909,7 +903,6 @@
             const cardForming = document.getElementById('ps-card-forming');
             const cardFresh = document.getElementById('ps-card-fresh');
             const cardClimbing = document.getElementById('ps-card-climbing');
-            const cardPlayed = document.getElementById('ps-card-played');
 
             const cardFormingTitle = document.getElementById('ps-forming-title');
             const cardFormingDesc = document.getElementById('ps-forming-desc');
@@ -917,12 +910,11 @@
             const cardFreshDesc = document.getElementById('ps-fresh-desc');
             const cardClimbingTitle = document.getElementById('ps-climbing-title');
             const cardClimbingDesc = document.getElementById('ps-climbing-desc');
-            const cardPlayedTitle = document.getElementById('ps-played-title');
-            const cardPlayedDesc = document.getElementById('ps-played-desc');
             
+            const tilesContainer = document.getElementById('ps-tiles-container');
             if (isCustomVol) {
+                if (tilesContainer) tilesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
                 if (cardForming) cardForming.style.display = 'none';
-                if (cardPlayed) cardPlayed.style.display = 'none';
                 
                 if (isHighVol) {
                     if (cardFreshTitle) cardFreshTitle.innerHTML = '📈 Latest Date';
@@ -936,8 +928,8 @@
                     if (cardClimbingDesc) cardClimbingDesc.innerText = 'delivery >80% in last 5 days';
                 }
             } else {
+                if (tilesContainer) tilesContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
                 if (cardForming) cardForming.style.display = 'block';
-                if (cardPlayed) cardPlayed.style.display = 'block';
                 
                 if (cardFormingTitle) cardFormingTitle.innerHTML = '📊 Forming';
                 if (cardFormingDesc) cardFormingDesc.innerText = 'resting before a breakout';
@@ -945,18 +937,15 @@
                 if (cardFreshDesc) cardFreshDesc.innerText = 'cleared it in the last 5 sessions';
                 if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🚀 Climbing';
                 if (cardClimbingDesc) cardClimbingDesc.innerText = 'broke out earlier, still rising';
-                if (cardPlayedTitle) cardPlayedTitle.innerHTML = '📉 Played out';
-                if (cardPlayedDesc) cardPlayedDesc.innerText = '2026 breakouts, stopped or trailed out';
             }
 
             // Reset counts
             document.getElementById('ps-forming-count').innerText = '...';
             document.getElementById('ps-fresh-count').innerText = '...';
             document.getElementById('ps-climbing-count').innerText = '...';
-            document.getElementById('ps-played-count').innerText = '...';
             
             // Remove active card highlights
-            ['forming', 'fresh', 'climbing', 'played'].forEach(b => {
+            ['forming', 'fresh', 'climbing'].forEach(b => {
                 const card = document.getElementById(`ps-card-${b}`);
                 if (card) card.classList.remove('active-bucket');
             });
@@ -976,7 +965,6 @@
                 document.getElementById('ps-forming-count').innerText = data.stages?.forming?.count || 0;
                 document.getElementById('ps-fresh-count').innerText = data.stages?.fresh_breakout?.count || 0;
                 document.getElementById('ps-climbing-count').innerText = data.stages?.climbing?.count || 0;
-                document.getElementById('ps-played-count').innerText = data.stages?.played_out?.count || 0;
                 
             } catch (err) {
                 console.error(err);
@@ -988,7 +976,7 @@
             if (!currentPatternData || !currentPatternData.stages) return;
             
             // Highlight selected card
-            ['forming', 'fresh', 'climbing', 'played'].forEach(b => {
+            ['forming', 'fresh', 'climbing'].forEach(b => {
                 const card = document.getElementById(`ps-card-${b}`);
                 if (card) {
                     if (b === (bucket === 'fresh_breakout' ? 'fresh' : bucket)) {
@@ -1009,6 +997,7 @@
             
             const isHighVol = currentPatternData.screen === 'high-relative-volume';
             const isHighDeliv = currentPatternData.screen === 'high-delivery-volume';
+            const isBlueSky = currentPatternData.screen === 'blue-sky';
             
             container.innerHTML = symbols.map(data => {
                 const sym = typeof data === 'string' ? data : data.symbol;
@@ -1084,6 +1073,23 @@
                             <span style="font-weight:600; color:var(--accent-primary);">${spikeDate}</span>
                         </div>
                     `;
+                } else if (isBlueSky) {
+                    const pivotPrice = data.base_high != null ? '₹' + data.base_high.toFixed(2) : '--';
+                    gridHtml = `
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Pivot price</span>
+                            <span style="font-weight:600; color:var(--accent-primary);">${pivotPrice}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Now vs pivot</span>
+                            <span style="font-weight:600; color: ${data.pct_from_pivot >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'};">${distPivot}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; grid-column: span 2;">
+                            <span style="color:var(--text-muted);">RS rating</span>
+                            <span style="font-weight:600;">${rsRank}</span>
+                        </div>
+                        ${breakoutDateHtml}
+                    `;
                 } else {
                     const breakoutDateHtml = bucket === 'played_out' && data.base_start_date ? `
                         <div style="display:flex; justify-content:space-between; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px;">
@@ -1091,7 +1097,16 @@
                             <span style="font-weight:600; color:var(--accent-primary);">${data.base_start_date}</span>
                         </div>
                     ` : '';
+                    const pivotPrice = data.base_high != null ? '₹' + data.base_high.toFixed(2) : '--';
                     gridHtml = `
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Pivot price</span>
+                            <span style="font-weight:600; color:var(--accent-primary);">${pivotPrice}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Now vs pivot</span>
+                            <span style="font-weight:600; color: ${data.pct_from_pivot >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'};">${distPivot}</span>
+                        </div>
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:var(--text-muted);">RS rating</span>
                             <span style="font-weight:600;">${rsRank}</span>
@@ -1100,13 +1115,9 @@
                             <span style="color:var(--text-muted);">Base age</span>
                             <span style="font-weight:600;">${baseAge}</span>
                         </div>
-                        <div style="display:flex; justify-content:space-between;">
+                        <div style="display:flex; justify-content:space-between; grid-column: span 2;">
                             <span style="color:var(--text-muted);">Tightening (coil)</span>
                             <span style="font-weight:600;">${contraction}</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between;">
-                            <span style="color:var(--text-muted);">Now vs pivot</span>
-                            <span style="font-weight:600; color: ${data.pct_from_pivot >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'};">${distPivot}</span>
                         </div>
                         ${breakoutDateHtml}
                     `;
@@ -1165,10 +1176,41 @@
                     handleScale: false,
                 });
                 
+                // Create a mini-chart legend overlay
+                chartDiv.style.position = 'relative';
+                const legend = document.createElement('div');
+                legend.style.position = 'absolute';
+                legend.style.top = '5px';
+                legend.style.left = '5px';
+                legend.style.zIndex = '50';
+                legend.style.padding = '3px 6px';
+                legend.style.borderRadius = '4px';
+                legend.style.background = 'rgba(17, 24, 39, 0.8)';
+                legend.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                legend.style.fontFamily = 'monospace';
+                legend.style.fontSize = '9px';
+                legend.style.color = '#fff';
+                legend.style.pointerEvents = 'none';
+                legend.style.display = 'none';
+                chartDiv.appendChild(legend);
+                
                 const series = chart.addCandlestickSeries({
                     upColor: '#4caf50', downColor: '#ef5350', borderVisible: false, wickUpColor: '#4caf50', wickDownColor: '#ef5350'
                 });
                 series.setData(candleData);
+                
+                chart.subscribeCrosshairMove(param => {
+                    if (!param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
+                        legend.style.display = 'none';
+                        return;
+                    }
+                    const candle = param.seriesData.get(series);
+                    if (candle) {
+                        const dateStr = typeof param.time === 'string' ? param.time : (param.time.year + '-' + String(param.time.month).padStart(2, '0') + '-' + String(param.time.day).padStart(2, '0'));
+                        legend.innerHTML = `D: ${dateStr.substring(5)} | O: ${candle.open.toFixed(1)} | H: ${candle.high.toFixed(1)} | L: ${candle.low.toFixed(1)} | C: ${candle.close.toFixed(1)}`;
+                        legend.style.display = 'block';
+                    }
+                });
                 
                 if (data.base_high) {
                     series.createPriceLine({
@@ -1837,7 +1879,7 @@
         /* ═══════════════════════════════════════════════════════
            SIGNAL SCANNER
         ═══════════════════════════════════════════════════════ */
-        const AUTO_WINDOW_SIGNALS = new Set(['hit_2y_high_14d', 'hit_5y_high_14d', 'hit_10y_high_14d', 'RCS_30D', 'delivery_momentum_signal']);
+        const AUTO_WINDOW_SIGNALS = new Set(['hit_2y_high_14d', 'hit_5y_high_14d', 'hit_10y_high_14d', 'RCS_30D', 'delivery_momentum_signal', 'near_52w_high']);
 
         function updateSignalDateRequirement() {
             const sig = document.getElementById('signalName').value;
@@ -2030,6 +2072,55 @@
                     if (r) {
                         _volChart.timeScale().setVisibleLogicalRange(r);
                         if (_subPanelChart) _subPanelChart.timeScale().setVisibleLogicalRange(r);
+                    }
+                });
+                
+                // Create a legend element overlay for main chart
+                const mainChartDiv = document.getElementById('lwChart');
+                mainChartDiv.style.position = 'relative';
+                const mainLegend = document.createElement('div');
+                mainLegend.id = 'chartLegendOverlay';
+                mainLegend.style.position = 'absolute';
+                mainLegend.style.top = '10px';
+                mainLegend.style.left = '10px';
+                mainLegend.style.zIndex = '50';
+                mainLegend.style.padding = '8px 12px';
+                mainLegend.style.borderRadius = '8px';
+                mainLegend.style.background = 'rgba(17, 24, 39, 0.75)';
+                mainLegend.style.backdropFilter = 'blur(10px)';
+                mainLegend.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                mainLegend.style.fontFamily = 'monospace';
+                mainLegend.style.fontSize = '12px';
+                mainLegend.style.color = '#fff';
+                mainLegend.style.pointerEvents = 'none';
+                mainLegend.style.display = 'none';
+                mainChartDiv.appendChild(mainLegend);
+                
+                const fmtVal = (val) => val !== undefined && val !== null ? val.toFixed(2) : '--';
+                
+                _lwChart.subscribeCrosshairMove(param => {
+                    if (!param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
+                        if (_currentOhlcvData && _currentOhlcvData.length > 0) {
+                            const latest = _currentOhlcvData[_currentOhlcvData.length - 1];
+                            const dateStr = latest.time.split('T')[0];
+                            mainLegend.innerHTML = `<span style="color:var(--accent-primary); font-weight:700;">${document.getElementById('chartSymbol').value}</span> | Date: ${dateStr} | O: ${fmtVal(latest.open)} | H: ${fmtVal(latest.high)} | L: ${fmtVal(latest.low)} | C: ${fmtVal(latest.close)} | V: ${formatVolume(latest.volume)}`;
+                            mainLegend.style.display = 'block';
+                        } else {
+                            mainLegend.style.display = 'none';
+                        }
+                        return;
+                    }
+                    
+                    const data = param.seriesData.get(_candleSeries);
+                    if (data) {
+                        const dateStr = typeof param.time === 'string' ? param.time : (param.time.year + '-' + String(param.time.month).padStart(2, '0') + '-' + String(param.time.day).padStart(2, '0'));
+                        mainLegend.innerHTML = `<span style="color:var(--accent-primary); font-weight:700;">${document.getElementById('chartSymbol').value}</span> | Date: ${dateStr} | O: ${fmtVal(data.open)} | H: ${fmtVal(data.high)} | L: ${fmtVal(data.low)} | C: ${fmtVal(data.close)}`;
+                        
+                        const volData = param.seriesData.get(_volSeries);
+                        if (volData) {
+                            mainLegend.innerHTML += ` | V: ${formatVolume(volData.value)}`;
+                        }
+                        mainLegend.style.display = 'block';
                     }
                 });
 
@@ -2280,6 +2371,18 @@
                 ]);
                 if (loadMsg) loadMsg.style.display = 'none';
                 _currentOhlcvData = ohlcv;
+                
+                // Update legend to show latest data
+                if (ohlcv && ohlcv.length > 0) {
+                    const latest = ohlcv[ohlcv.length - 1];
+                    const dateStr = latest.time.split('T')[0];
+                    const legend = document.getElementById('chartLegendOverlay');
+                    const fmtVal = (val) => val !== undefined && val !== null ? val.toFixed(2) : '--';
+                    if (legend) {
+                        legend.innerHTML = `<span style="color:var(--accent-primary); font-weight:700;">${sym}</span> | Date: ${dateStr} | O: ${fmtVal(latest.open)} | H: ${fmtVal(latest.high)} | L: ${fmtVal(latest.low)} | C: ${fmtVal(latest.close)} | V: ${formatVolume(latest.volume)}`;
+                        legend.style.display = 'block';
+                    }
+                }
 
                 // Candlestick
                 _candleSeries.setData(ohlcv.map(r => ({ time: r.time, open: r.open, high: r.high, low: r.low, close: r.close })));
@@ -2854,6 +2957,7 @@
             {
                 label: "Price Extremes", fields: [
                     { v: "new_52w_high", l: "New 52-Week High" },
+                    { v: "near_52w_high", l: "Near 52-Week High (within 3%)" },
                     { v: "new_52w_low", l: "New 52-Week Low" },
                     { v: "hit_2y_high_14d", l: "2-Year High (14d auto)" },
                     { v: "hit_5y_high_14d", l: "5-Year High (14d auto)" },
@@ -3053,15 +3157,16 @@
 
         function sbUpdateSummary() {
             const conds = sbGetAllConditions();
-            const hasRcs = conds.some(c => c.field === 'RCS_30D' || c.field === 'delivery_momentum_signal');
+            const hasRcs = conds.some(c => c.field === 'RCS_30D' || c.field === 'delivery_momentum_signal' || c.field === 'near_52w_high');
             const sbStart = document.getElementById('sb_startDate');
             const sbEnd = document.getElementById('sb_endDate');
             if (sbStart && sbEnd) {
                 sbStart.disabled = hasRcs;
                 sbEnd.disabled = hasRcs;
                 if (hasRcs) {
-                    sbStart.title = 'RCS 30D / Delivery signal automatically locks scan to the latest trading date.';
-                    sbEnd.title = 'RCS 30D / Delivery signal automatically locks scan to the latest trading date.';
+                    const msg = 'RCS 30D / Delivery / Near 52W High automatically locks scan to the latest trading date.';
+                    sbStart.title = msg;
+                    sbEnd.title = msg;
                 } else {
                     sbStart.removeAttribute('title');
                     sbEnd.removeAttribute('title');

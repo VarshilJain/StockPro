@@ -34,7 +34,7 @@ _BINARY_FIELDS: frozenset[str] = frozenset([
     # Custom composite signals
     "signal1", "signal2", "signal3", "signal4", "signal5", "top_decile",
     # Price extremes (2y/5y/10y auto-window handled in run_scan)
-    "new_52w_high", "new_52w_low",
+    "new_52w_high", "new_52w_low", "near_52w_high",
     "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
     # RSI state flags
     "oversold", "overbought", "rsi_lt_30", "rsi_gt_70",
@@ -64,6 +64,7 @@ ALLOWED_FIELDS: frozenset[str] = _BINARY_FIELDS | _NR_FIELDS | _NUMERIC_FIELDS
 # Fields whose scan window is always forced to the latest date window
 _AUTO_WINDOW_FIELDS: frozenset[str] = frozenset([
     "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "RCS_30D", "delivery_momentum_signal",
+    "near_52w_high",
 ])
 
 # Operator rules per field type
@@ -95,6 +96,7 @@ FIELD_LABELS: dict[str, str] = {
     "top_decile": "Top Decile (Composite)",
     "new_52w_high": "New 52-Week High",
     "new_52w_low": "New 52-Week Low",
+    "near_52w_high": "Near 52-Week High (within 3%)",
     "hit_2y_high_14d": "2-Year High (last 14 days)",
     "hit_5y_high_14d": "5-Year High (last 14 days)",
     "hit_10y_high_14d": "10-Year High (last 14 days)",
@@ -110,8 +112,8 @@ FIELD_LABELS: dict[str, str] = {
     "convergence_4": "Convergence 4 (EMA 5,9,21,50)",
     "delivery_momentum_signal": "Delivery",
     "RCS_30D": "RCS 30-Day (% vs NIFTY 500)",
-    "screen_vcp": "VCP Contraction Base",
-    "screen_blue_sky": "Blue Sky Breakout",
+    "screen_vcp": "Price Compression Setup (PCS)",
+    "screen_blue_sky": "All-Time Peak Breakout (APB)",
     "screen_multi_year_breakout": "Multi-Year Breakout",
     "screen_ipo_base": "IPO Base",
     "screen_high_relative_volume": "High Relative Volume (5x)",
@@ -138,7 +140,7 @@ FIELD_GROUPS: list[dict] = [
     {
         "label": "Price Extremes",
         "fields": [
-            "new_52w_high", "new_52w_low",
+            "new_52w_high", "new_52w_low", "near_52w_high",
             "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
         ],
     },
@@ -290,7 +292,7 @@ def _resolve_date_window(
     - Mixed scans (some auto-window + some not) use the supplied date range for
       everything; auto-window fields still make sense in that window.
     """
-    has_rcs = any(c["field"] in ("RCS_30D", "delivery_momentum_signal") for c in conditions)
+    has_rcs = any(c["field"] in ("RCS_30D", "delivery_momentum_signal", "near_52w_high") for c in conditions)
     all_auto = all(c["field"] in _AUTO_WINDOW_FIELDS for c in conditions)
 
     if has_rcs or all_auto:
@@ -305,8 +307,8 @@ def _resolve_date_window(
             )
         last_date: date = row[0]
         if has_rcs:
-            # RCS and Delivery scans lock strictly to the latest trading date available if start/end date not explicitly passed
-            if start_date and end_date and not any(c["field"] == "RCS_30D" for c in conditions):
+            # RCS, Delivery, and Near 52W High scans lock strictly to the latest trading date available if start/end date not explicitly passed
+            if start_date and end_date and not any(c["field"] in ("RCS_30D", "near_52w_high") for c in conditions):
                 return (start_date, end_date)
             return (last_date.strftime("%Y-%m-%d"), last_date.strftime("%Y-%m-%d"))
         return (

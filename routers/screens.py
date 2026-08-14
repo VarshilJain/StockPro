@@ -167,10 +167,8 @@ def get_screen_stages(screen_name: str, current_user: dict = Depends(get_current
             triggered_dict = {r.Symbol: r for r in triggered_grouped.itertuples()}
             
             stages = {
-                "forming": {"count": 0, "symbols": []},       # Empty
                 "fresh_breakout": {"count": 0, "symbols": []}, # Latest Day Spike
-                "climbing": {"count": 0, "symbols": []},       # Last 5 Days Spike
-                "played_out": {"count": 0, "symbols": []}      # Empty
+                "climbing": {"count": 0, "symbols": []}        # Last 5 Days Spike
             }
             
             for r in latest_rows.itertuples():
@@ -290,49 +288,6 @@ def get_screen_stages(screen_name: str, current_user: dict = Depends(get_current
         cursor.execute(query_active, (max_date, max_date))
         active_rows = cursor.fetchall()
         
-        # 2. Fetch failed breakouts (played_out) from pattern_events
-        current_year = max_date.year if hasattr(max_date, 'year') else int(str(max_date)[:4])
-        query_failed_events = """
-            SELECT symbol, pivot_price, triggered_date
-            FROM pattern_events
-            WHERE screen_name = %s
-              AND outcome = 'failed'
-              AND YEAR(outcome_date) = %s
-            ORDER BY outcome_date DESC
-        """
-        cursor.execute(query_failed_events, (db_col, current_year))
-        failed_events = cursor.fetchall()
-        
-        failed_rows = []
-        if failed_events:
-            symbols = list(set([r['symbol'] for r in failed_events]))
-            format_strings = ','.join(['%s'] * len(symbols))
-            query_hd = f"""
-                SELECT Symbol, rs_rank, base_length_days, contraction_count, pct_from_pivot, Close, Open, breakout_today
-                FROM historical_data
-                WHERE Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
-                  AND Symbol IN ({format_strings})
-            """
-            cursor.execute(query_hd, [max_date, max_date] + symbols)
-            hd_rows = {r['Symbol']: r for r in cursor.fetchall()}
-            
-            for pe in failed_events:
-                sym = pe['symbol']
-                hd = hd_rows.get(sym, {})
-                failed_rows.append({
-                    "Symbol": sym,
-                    "sort_rank": hd.get("rs_rank", 0),
-                    "base_length_days": hd.get("base_length_days"),
-                    "contraction_count": hd.get("contraction_count"),
-                    "pct_from_pivot": hd.get("pct_from_pivot"),
-                    "base_high": pe["pivot_price"],
-                    "Close": hd.get("Close"),
-                    "Open": hd.get("Open"),
-                    "base_start_date": pe["triggered_date"],
-                    "breakout_today": hd.get("breakout_today", 0),
-                    "last_breakout_level": pe["pivot_price"]
-                })
-        
         cursor.close()
         conn.close()
         
@@ -340,49 +295,31 @@ def get_screen_stages(screen_name: str, current_user: dict = Depends(get_current
         stages = {
             "forming": {"count": 0, "symbols": []},
             "fresh_breakout": {"count": 0, "symbols": []},
-            "climbing": {"count": 0, "symbols": []},
-            "played_out": {"count": 0, "symbols": []}
+            "climbing": {"count": 0, "symbols": []}
         }
         
         # Populate active
         for r in active_rows:
             bucket = r["stage_bucket"]
             sym = r["Symbol"]
-            stages[bucket]["count"] += 1
-            if len(stages[bucket]["symbols"]) < 20:
-                stages[bucket]["symbols"].append({
-                    "symbol": sym,
-                    "rs_rank": r["sort_rank"],
-                    "base_length_days": r.get("base_length_days"),
-                    "contraction_count": r.get("contraction_count"),
-                    "pct_from_pivot": r.get("pct_from_pivot"),
-                    "base_high": float(r["base_high"]) if r.get("base_high") else None,
-                    "close": float(r["Close"]) if r.get("Close") else None,
-                    "open": float(r["Open"]) if r.get("Open") else None,
-                    "base_start_date": str(r["base_start_date"]) if r.get("base_start_date") else None,
-                    "breakout_today": r.get("breakout_today"),
-                    "last_breakout_level": float(r["last_breakout_level"]) if r.get("last_breakout_level") else None
-                })
-                
-        # Populate failed
-        for r in failed_rows:
-            sym = r["Symbol"]
-            # Unique symbols in list
-            if not any(x["symbol"] == sym for x in stages["played_out"]["symbols"]):
-                stages["played_out"]["count"] += 1
-                if len(stages["played_out"]["symbols"]) < 20:
-                    stages["played_out"]["symbols"].append({
+            if bucket in stages:
+                stages[bucket]["count"] += 1
+                if len(stages[bucket]["symbols"]) < 20:
+                    base_h = float(r["base_high"]) if r.get("base_high") else None
+                    last_b = float(r["last_breakout_level"]) if r.get("last_breakout_level") else None
+                    pivot = base_h if (base_h and base_h > 0) else last_b
+                    stages[bucket]["symbols"].append({
                         "symbol": sym,
                         "rs_rank": r["sort_rank"],
                         "base_length_days": r.get("base_length_days"),
                         "contraction_count": r.get("contraction_count"),
                         "pct_from_pivot": r.get("pct_from_pivot"),
-                        "base_high": float(r["base_high"]) if r.get("base_high") else None,
+                        "base_high": pivot,
                         "close": float(r["Close"]) if r.get("Close") else None,
                         "open": float(r["Open"]) if r.get("Open") else None,
                         "base_start_date": str(r["base_start_date"]) if r.get("base_start_date") else None,
                         "breakout_today": r.get("breakout_today"),
-                        "last_breakout_level": float(r["last_breakout_level"]) if r.get("last_breakout_level") else None
+                        "last_breakout_level": last_b
                     })
         
         return JSONResponse(content={
