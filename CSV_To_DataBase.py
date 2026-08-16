@@ -33,7 +33,7 @@ sql_columns = [
     "NR", "High_Relative_Volume_30",
     "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
     "RSI14", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70","adx_trigger",
-    "convergence_5a", "convergence_3", "convergence_4"
+    "convergence_5", "convergence_3", "convergence_4"
 ]
 df = df[sql_columns]
 

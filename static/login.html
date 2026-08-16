@@ -7,9 +7,11 @@
 <meta name="description" content="Sign in to your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="apple-theme.css">
+<link rel="stylesheet" href="apple-theme.css?v=2">
 </head>
 <body class="auth-body">
+<div class="bg-blur-circle bg-blur-1"></div>
+<div class="bg-blur-circle bg-blur-2"></div>
 
 <div class="auth-wrapper">
     <!-- Brand -->
@@ -25,7 +27,7 @@
         <p class="card-subheading">Sign in to your account to continue</p>
 
         <!-- Error alert -->
-        <div class="alert alert-error" id="errorAlert" role="alert">
+        <div class="alert alert-error" id="errorAlert" style="display: none;" role="alert">
             <i class="fas fa-exclamation-circle"></i>
             <span id="errorMsg"></span>
         </div>
@@ -71,9 +73,9 @@ const errorMsg   = document.getElementById('errorMsg');
 
 function showError(msg) {
     errorMsg.textContent = msg;
-    errorAlert.classList.add('show');
+    errorAlert.style.display = 'flex';
 }
-function hideError() { errorAlert.classList.remove('show'); }
+function hideError() { errorAlert.style.display = 'none'; }
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();

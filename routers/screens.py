@@ -102,12 +102,90 @@ def get_stage_summary(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(exc))
 
 @router.get("/screens/{screen_name}/stages")
-def get_screen_stages(screen_name: str, current_user: dict = Depends(get_current_user)):
+def get_screen_stages(screen_name: str, type: str = "convergence_3", current_user: dict = Depends(get_current_user)):
     """
     Returns the stage breakdown specifically for one screen, including
     historical failed breakouts from pattern_events for 'played_out'.
     """
-    if screen_name in ("high-relative-volume", "high-delivery-volume"):
+    if screen_name == "rsi-divergence":
+        try:
+            conn = get_connection()
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get latest 20 trading dates
+            cursor.execute("SELECT DISTINCT Timestamp FROM historical_data ORDER BY Timestamp DESC LIMIT 20")
+            dates = [r["Timestamp"] for r in cursor.fetchall()]
+            if not dates:
+                return JSONResponse(content={"screen": "rsi-divergence", "as_of_date": None, "stages": {}})
+            min_date = min(dates)
+            max_date = max(dates)
+            
+            # Fetch divergence rows in this window
+            # Order by score DESC so strongest signals are shown first
+            query = """
+                SELECT Symbol, Timestamp, rsi_divergence_type, rsi_divergence_direction, rsi_divergence_score, Close, Open, rs_rank
+                FROM historical_data
+                WHERE Timestamp >= %s
+                  AND rsi_divergence_type IS NOT NULL
+                ORDER BY rsi_divergence_score DESC
+            """
+            cursor.execute(query, (min_date,))
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            
+            stages = {
+                "fresh_breakout": {"count": 0, "symbols": []},  # Double divergence
+                "climbing": {"count": 0, "symbols": []}          # Triple divergence
+            }
+            
+            # Format and distribute rows
+            for r in rows:
+                t_type = r["rsi_divergence_type"]
+                t_dir = r["rsi_divergence_direction"]
+                score = r["rsi_divergence_score"]
+                sym = r["Symbol"]
+                
+                t_date_str = r["Timestamp"].strftime("%Y-%m-%d") if hasattr(r["Timestamp"], 'strftime') else str(r["Timestamp"])
+                t_date_str = t_date_str.split(' ')[0].split('T')[0]
+                
+                item = {
+                    "symbol": sym,
+                    "rs_rank": r["rs_rank"] if r["rs_rank"] is not None else None,
+                    "close": float(r["Close"]) if r["Close"] is not None else None,
+                    "open": float(r["Open"]) if r["Open"] is not None else None,
+                    "base_start_date": t_date_str, # trigger date
+                    "rsi_divergence_type": t_type,
+                    "rsi_divergence_direction": t_dir,
+                    "rsi_divergence_score": float(score) if score is not None else None,
+                }
+                
+                if t_type == "double":
+                    stages["fresh_breakout"]["symbols"].append(item)
+                elif t_type == "triple":
+                    stages["climbing"]["symbols"].append(item)
+                    
+            # Deduplicate by Symbol (keeping the latest trigger or highest score)
+            for key in stages:
+                seen_syms = set()
+                deduped = []
+                for item in stages[key]["symbols"]:
+                    if item["symbol"] not in seen_syms:
+                        seen_syms.add(item["symbol"])
+                        deduped.append(item)
+                stages[key]["symbols"] = deduped
+                stages[key]["count"] = len(deduped)
+                
+            return JSONResponse(content={
+                "screen": "rsi-divergence",
+                "as_of_date": max_date.strftime("%Y-%m-%d") if hasattr(max_date, 'strftime') else str(max_date),
+                "stages": stages
+            })
+        except Exception as exc:
+            logger.exception("Error dynamically computing rsi-divergence screen stages")
+            raise HTTPException(status_code=500, detail=str(exc))
+
+    elif screen_name in ("high-relative-volume", "high-delivery-volume"):
         try:
             import pandas as pd
             import numpy as np
@@ -246,6 +324,112 @@ def get_screen_stages(screen_name: str, current_user: dict = Depends(get_current
             logger.exception(f"Error dynamically computing {screen_name} screen stages")
             raise HTTPException(status_code=500, detail=str(exc))
 
+    # ── EMA CONVERGENCE SCREEN (days-based buckets, no stage dependency) ──────
+    if screen_name == "ema-convergence":
+        if type not in ("convergence_3", "convergence_4", "convergence_5"):
+            raise HTTPException(status_code=400, detail="Invalid convergence type")
+        db_col = type
+        try:
+            conn = get_connection()
+            cursor = conn.cursor(dictionary=True)
+
+            # Get the latest 20 trading dates to define our lookback window
+            cursor.execute(
+                "SELECT DISTINCT DATE(Timestamp) as d FROM historical_data ORDER BY d DESC LIMIT 20"
+            )
+            trading_dates = [r["d"] for r in cursor.fetchall()]
+            if not trading_dates:
+                return JSONResponse(content={"screen": screen_name, "as_of_date": None, "stages": {}})
+
+            max_date = trading_dates[0]  # most recent trading day
+
+            # For each symbol where the signal is ON today, count consecutive days it has been ON
+            # by looking back through recent trading dates.
+            # We fetch signal state for the last 20 days for all active symbols.
+            query = f"""
+                SELECT Symbol, DATE(Timestamp) as d, {db_col} as signal_on,
+                       IFNULL(rs_rank, 0) as rs_rank, Close, Open
+                FROM historical_data
+                WHERE DATE(Timestamp) >= %s AND DATE(Timestamp) <= %s
+                  AND {db_col} IS NOT NULL
+                ORDER BY Symbol, d DESC
+            """
+            lookback_start = trading_dates[-1] if len(trading_dates) >= 20 else trading_dates[-1]
+            cursor.execute(query, (lookback_start, max_date))
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+
+            # Build a dict: symbol -> sorted list of (date, signal_on, rs_rank, close, open)
+            from collections import defaultdict
+            sym_rows = defaultdict(list)
+            for r in rows:
+                sym_rows[r["Symbol"]].append(r)
+
+            stages = {
+                "fresh": {"count": 0, "symbols": []},      # signal turned ON today (new entry)
+                "recent": {"count": 0, "symbols": []},     # signal ON for 1–4 days
+                "sustained": {"count": 0, "symbols": []}   # signal ON for 5+ days
+            }
+
+            for sym, sym_data in sym_rows.items():
+                # sym_data is already sorted desc by date (most recent first)
+                # Only process symbols where signal is ON on the latest date
+                latest = sym_data[0]
+                if str(latest["d"]) != str(max_date):
+                    continue  # no data for latest date
+                if not latest["signal_on"]:
+                    continue  # signal is off today
+
+                # Count consecutive days the signal has been ON (starting from today)
+                consecutive_days = 0
+                for row in sym_data:
+                    if row["signal_on"]:
+                        consecutive_days += 1
+                    else:
+                        break  # streak broken
+
+                entry = {
+                    "symbol": sym,
+                    "rs_rank": float(latest["rs_rank"]) if latest.get("rs_rank") is not None else 0,
+                    "close": float(latest["Close"]) if latest.get("Close") else None,
+                    "open": float(latest["Open"]) if latest.get("Open") else None,
+                    "days_active": consecutive_days,
+                    "base_high": None,
+                    "pct_from_pivot": None,
+                    "base_length_days": None,
+                    "contraction_count": None,
+                    "base_start_date": None,
+                    "breakout_today": None,
+                    "breakout_date": None,
+                    "last_breakout_level": None
+                }
+
+                if consecutive_days == 1:
+                    bucket = "fresh"
+                elif consecutive_days <= 4:
+                    bucket = "recent"
+                else:
+                    bucket = "sustained"
+
+                stages[bucket]["count"] += 1
+                if len(stages[bucket]["symbols"]) < 50:
+                    stages[bucket]["symbols"].append(entry)
+
+            # Sort each bucket by rs_rank DESC
+            for b in stages:
+                stages[b]["symbols"].sort(key=lambda x: x["rs_rank"], reverse=True)
+
+            return JSONResponse(content={
+                "screen": screen_name,
+                "as_of_date": str(max_date),
+                "stages": stages
+            })
+        except Exception as exc:
+            logger.exception(f"Error fetching ema-convergence stages")
+            raise HTTPException(status_code=500, detail=str(exc))
+
+    # ── GENERIC STAGE-BUCKET SCREENS ─────────────────────────────────────────
     # Map API param to DB column name
     screen_map = {
         "vcp": "screen_vcp",
@@ -255,23 +439,23 @@ def get_screen_stages(screen_name: str, current_user: dict = Depends(get_current
         "high-relative-volume": "screen_high_relative_volume",
         "high-delivery-volume": "screen_high_delivery_volume"
     }
-    
+
     db_col = screen_map.get(screen_name)
     if not db_col:
         raise HTTPException(status_code=400, detail="Invalid screen name")
-        
+
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        
+
         # Get the latest date
         cursor.execute("SELECT DATE(MAX(Timestamp)) as max_date FROM historical_data")
         row = cursor.fetchone()
         if not row or not row["max_date"]:
             return JSONResponse(content={"screen": screen_name, "as_of_date": None, "stages": {}})
-            
+
         max_date = row["max_date"]
-        
+
         # 1. Fetch active buckets (forming, fresh_breakout, climbing) from historical_data
         # We order by rs_rank DESC natively in SQL so we can just grab the top 20 later.
         # But wait, rs_rank might be null, so we use IFNULL(rs_rank, 0)
@@ -287,17 +471,33 @@ def get_screen_stages(screen_name: str, current_user: dict = Depends(get_current
         """
         cursor.execute(query_active, (max_date, max_date))
         active_rows = cursor.fetchall()
-        
+
+        # 2. Get latest breakout dates for active symbols to show when the breakout occurred
+        breakout_dates = {}
+        if active_rows:
+            symbols_list = [r["Symbol"] for r in active_rows]
+            placeholders = ",".join(["%s"] * len(symbols_list))
+            query_breakouts = f"""
+                SELECT Symbol, DATE(MAX(Timestamp)) as latest_breakout_date
+                FROM historical_data
+                WHERE Symbol IN ({placeholders}) AND breakout_today = 1 AND Timestamp <= %s
+                GROUP BY Symbol
+            """
+            cursor.execute(query_breakouts, tuple(symbols_list) + (max_date,))
+            for br in cursor.fetchall():
+                d_val = br["latest_breakout_date"]
+                breakout_dates[br["Symbol"]] = d_val.strftime("%Y-%m-%d") if hasattr(d_val, "strftime") else str(d_val)
+
         cursor.close()
         conn.close()
-        
+
         # Format the response
         stages = {
             "forming": {"count": 0, "symbols": []},
             "fresh_breakout": {"count": 0, "symbols": []},
             "climbing": {"count": 0, "symbols": []}
         }
-        
+
         # Populate active
         for r in active_rows:
             bucket = r["stage_bucket"]
@@ -319,16 +519,80 @@ def get_screen_stages(screen_name: str, current_user: dict = Depends(get_current
                         "open": float(r["Open"]) if r.get("Open") else None,
                         "base_start_date": str(r["base_start_date"]) if r.get("base_start_date") else None,
                         "breakout_today": r.get("breakout_today"),
-                        "last_breakout_level": last_b
+                        "last_breakout_level": last_b,
+                        "breakout_date": breakout_dates.get(sym)
                     })
-        
+
         return JSONResponse(content={
             "screen": screen_name,
             "as_of_date": str(max_date),
             "stages": stages
         })
-        
+
     except Exception as exc:
         logger.exception(f"Error fetching stages for {screen_name}")
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/screens/rsi-divergence-points/{symbol}")
+def get_rsi_divergence_points(symbol: str, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT date as Timestamp, open as Open, high as High, low as Low, close as Close, volume as Volume
+        FROM ohlc_data
+        WHERE ticker = %s
+        ORDER BY date ASC
+    """, (symbol,))
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    if not rows:
+        raise HTTPException(status_code=404, detail="Symbol not found")
+        
+    import pandas as pd
+    df = pd.DataFrame(rows)
+    from services import compute_rsi, detect_rsi_divergence
+    df["RSI14"] = compute_rsi(df["Close"])
+    
+    # We query using the parameters left=4, right=4, min_spacing=4, lookback=len(df)
+    divs = detect_rsi_divergence(df, rsi_col="RSI14", lookback=len(df), left=4, right=4, min_spacing=4)
+    
+    df_list = []
+    for i, r in df.iterrows():
+        t_str = r["Timestamp"].strftime("%Y-%m-%d") if hasattr(r["Timestamp"], 'strftime') else str(r["Timestamp"])
+        df_list.append({
+            "time": t_str,
+            "open": float(r["Open"]),
+            "high": float(r["High"]),
+            "low": float(r["Low"]),
+            "close": float(r["Close"]),
+            "rsi": float(r["RSI14"]) if not pd.isna(r["RSI14"]) else None
+        })
+        
+    formatted_divs = []
+    for d in divs:
+        pivot_dates = []
+        for idx in d["pivot_indices"]:
+            p_time = df.loc[idx, "Timestamp"]
+            p_time_str = p_time.strftime("%Y-%m-%d") if hasattr(p_time, 'strftime') else str(p_time)
+            pivot_dates.append(p_time_str)
+            
+        trigger_time = df.loc[d["last_idx"], "Timestamp"]
+        trigger_time_str = trigger_time.strftime("%Y-%m-%d") if hasattr(trigger_time, 'strftime') else str(trigger_time)
+        
+        formatted_divs.append({
+            "divergence_type": d["divergence_type"],
+            "divergence_direction": d["divergence_direction"],
+            "score": d["score"],
+            "pivot_dates": pivot_dates,
+            "trigger_date": trigger_time_str
+        })
+        
+    return JSONResponse(content={
+        "symbol": symbol,
+        "ohlcv": df_list,
+        "divergences": formatted_divs
+    })
 

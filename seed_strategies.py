@@ -51,7 +51,7 @@ STRATEGIES = [
         "conditions": {
             "logic": "AND",
             "conditions": [
-                {"field": "convergence_5a", "operator": "=="},
+                {"field": "convergence_5", "operator": "=="},
                 {"field": "adx_trigger", "operator": "=="}
             ]
         }

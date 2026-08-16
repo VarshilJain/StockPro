@@ -70,7 +70,7 @@ SEED_SIGNALS = [
     ("Signal 4",        "Close between SMA200 and SMA50 - transition zone", "Composite Signals",     "signal4"),
     ("Golden Cross",    "SMA50 crosses above SMA200 - long-term bullish",   "Composite Signals",     "signal5"),
     ("Top Decile",      "Stock ranks in top decile by composite score",     "Composite Signals",     "top_decile"),
-    ("Convergence 5A",  "EMA 4/9/18/50/200 convergence - trend alignment",  "Composite Signals",     "convergence_5a"),
+    ("Convergence 5",   "EMA 4/9/18/50/200 convergence - trend alignment",  "Composite Signals",     "convergence_5"),
     ("Convergence 3",   "EMA 4/9/18 convergence + price above 100/150/200", "Composite Signals",    "convergence_3"),
     ("Convergence 4",   "EMA 5/9/21/50 convergence - medium-term trend",    "Composite Signals",     "convergence_4"),
     # Delivery Signals

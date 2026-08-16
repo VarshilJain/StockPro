@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime, date
 
 import pandas as pd
+import numpy as np
 
 from database import get_connection
 
@@ -27,6 +28,8 @@ def _fetch_symbol_df(symbol: str, lookback_days: int = 250) -> pd.DataFrame:
     # Ensure Timestamp is datetime
     if not pd.api.types.is_datetime64_any_dtype(df["Timestamp"]):
         df["Timestamp"] = pd.to_datetime(df["Timestamp"])
+    for col in ["Open", "High", "Low", "Close", "Volume"]:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
     if lookback_days:
         df = df.iloc[-lookback_days:]
     df = df.reset_index(drop=True)
@@ -42,11 +45,7 @@ def _compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df["SMA50"] = df["Close"].rolling(window=50, min_periods=50).mean()
 
     # RSI(14)
-    delta = df["Close"].diff()
-    gain = (delta.where(delta > 0, 0.0)).rolling(window=14, min_periods=14).mean()
-    loss = (-delta.where(delta < 0, 0.0)).rolling(window=14, min_periods=14).mean()
-    rs = gain / loss
-    df["RSI14"] = 100 - (100 / (1 + rs))
+    df["RSI14"] = compute_rsi(df["Close"], 14)
 
     # MACD (12,26,9)
     ema12 = df["Close"].ewm(span=12, adjust=False, min_periods=12).mean()
@@ -243,6 +242,261 @@ def _volume_spike_for_latest(symbol: str) -> bool:
     df = _compute_indicators(_fetch_symbol_df(symbol))
     row = _latest_row(df)
     return bool(row is not None and int(row.get("VOL_SPIKE", 0)) == 1)
+
+
+def compute_rsi(close_series: pd.Series, period: int = 14) -> pd.Series:
+    close_series = pd.Series(close_series).astype(float)
+    if len(close_series) <= period:
+        return pd.Series(np.nan, index=close_series.index)
+    delta = close_series.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    seed_gain = gain.rolling(window=period, min_periods=period).mean()
+    seed_loss = loss.rolling(window=period, min_periods=period).mean()
+    w_gain = pd.Series(np.nan, index=close_series.index, dtype=float)
+    w_loss = pd.Series(np.nan, index=close_series.index, dtype=float)
+    w_gain.iloc[period] = seed_gain.iloc[period]
+    w_loss.iloc[period] = seed_loss.iloc[period]
+    w_gain.iloc[period+1:] = gain.iloc[period+1:]
+    w_loss.iloc[period+1:] = loss.iloc[period+1:]
+    avg_gain = w_gain.ewm(alpha=1/period, adjust=False).mean()
+    avg_loss = w_loss.ewm(alpha=1/period, adjust=False).mean()
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+
+def detect_swing_points(df: pd.DataFrame, left: int = 4, right: int = 4, min_spacing: int = 5) -> Tuple[List[Tuple[int, float]], List[Tuple[int, float]]]:
+    lows = []
+    highs = []
+    
+    n = len(df)
+    if n <= left + right:
+        return [], []
+        
+    low_vals = df["Low"].values
+    high_vals = df["High"].values
+    
+    for i in range(left, n - right):
+        val_low = low_vals[i]
+        if val_low == np.min(low_vals[i-left : i+right+1]):
+            lows.append((i, val_low))
+            
+        val_high = high_vals[i]
+        if val_high == np.max(high_vals[i-left : i+right+1]):
+            highs.append((i, val_high))
+            
+    def dedup(pivots, is_low):
+        if not pivots:
+            return []
+        accepted = [pivots[0]]
+        for cand in pivots[1:]:
+            last = accepted[-1]
+            if cand[0] - last[0] <= min_spacing:
+                if is_low:
+                    if cand[1] < last[1]:
+                        accepted[-1] = cand
+                else:
+                    if cand[1] > last[1]:
+                        accepted[-1] = cand
+            else:
+                accepted.append(cand)
+        return accepted
+
+    return dedup(lows, is_low=True), dedup(highs, is_low=False)
+
+
+def detect_rsi_divergence(
+    df: pd.DataFrame,
+    rsi_col: str = "RSI14",
+    lookback: int = 80,
+    left: int = 4,
+    right: int = 4,
+    min_spacing: int = 5,
+    min_price_change_pct: float = 1.5,
+    min_rsi_change: float = 3.0,
+    bearish_rsi_floor: float = 60.0,
+    bullish_rsi_ceil: float = 40.0,
+    max_score: float = 10.0,
+    use_zone_filters: bool = True
+) -> List[Dict]:
+    if len(df) < lookback or rsi_col not in df.columns:
+        return []
+
+    # Ensure price and indicator columns are floats to avoid TypeError with Decimal objects
+    df = df.copy()
+    for col in ["Open", "High", "Low", "Close", "Volume", rsi_col]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    lows, highs = detect_swing_points(df, left=left, right=right, min_spacing=min_spacing)
+    
+    n = len(df)
+    lookback_start = n - lookback
+    lows = [p for p in lows if p[0] >= lookback_start]
+    highs = [p for p in highs if p[0] >= lookback_start]
+    
+    rsi_vals = df[rsi_col].values
+    
+    def get_price_change_pct(pA, pB):
+        return abs(pB[1] - pA[1]) / pA[1] * 100
+        
+    def get_rsi_change(idxA, idxB):
+        return abs(rsi_vals[idxB] - rsi_vals[idxA])
+        
+    def calculate_score(p_first, p_last, chain_weight):
+        price_delta_pct = abs(p_last[1] - p_first[1]) / p_first[1] * 100
+        rsi_delta = abs(rsi_vals[p_last[0]] - rsi_vals[p_first[0]])
+        safe_price_delta = max(price_delta_pct, min_price_change_pct)
+        raw_score = chain_weight * (rsi_delta / safe_price_delta)
+        return min(raw_score, max_score)
+
+    events = []
+    covered_pairs = set()
+
+    # --- A. BULLISH DIVERGENCE (using lows) ---
+    # 1. Check triples
+    for i in range(len(lows) - 2):
+        p1, p2, p3 = lows[i], lows[i+1], lows[i+2]
+        r1, r2, r3 = rsi_vals[p1[0]], rsi_vals[p2[0]], rsi_vals[p3[0]]
+        
+        if (p3[1] < p2[1] < p1[1]) and (r3 > r2 > r1):
+            if (get_price_change_pct(p1, p2) >= min_price_change_pct and
+                get_price_change_pct(p2, p3) >= min_price_change_pct and
+                get_rsi_change(p1[0], p2[0]) >= min_rsi_change and
+                get_rsi_change(p2[0], p3[0]) >= min_rsi_change):
+                
+                if not use_zone_filters or r3 < bullish_rsi_ceil:
+                    score = calculate_score(p1, p3, chain_weight=3)
+                    events.append({
+                        "divergence_type": "triple",
+                        "divergence_direction": "bullish",
+                        "pivot_indices": [p1[0], p2[0], p3[0]],
+                        "pivot_prices": [p1[1], p2[1], p3[1]],
+                        "pivot_rsi": [r1, r2, r3],
+                        "score": score,
+                        "last_idx": p3[0]
+                    })
+                    covered_pairs.add((p1[0], p2[0]))
+                    covered_pairs.add((p2[0], p3[0]))
+
+    # 2. Check doubles
+    for i in range(len(lows) - 1):
+        p1, p2 = lows[i], lows[i+1]
+        if (p1[0], p2[0]) in covered_pairs:
+            continue
+            
+        r1, r2 = rsi_vals[p1[0]], rsi_vals[p2[0]]
+        
+        if (p2[1] < p1[1]) and (r2 > r1):
+            if (get_price_change_pct(p1, p2) >= min_price_change_pct and
+                get_rsi_change(p1[0], p2[0]) >= min_rsi_change):
+                
+                if not use_zone_filters or r2 < bullish_rsi_ceil:
+                    score = calculate_score(p1, p2, chain_weight=2)
+                    events.append({
+                        "divergence_type": "double",
+                        "divergence_direction": "bullish",
+                        "pivot_indices": [p1[0], p2[0]],
+                        "pivot_prices": [p1[1], p2[1]],
+                        "pivot_rsi": [r1, r2],
+                        "score": score,
+                        "last_idx": p2[0]
+                    })
+
+    # --- B. BEARISH DIVERGENCE (using highs) ---
+    # 1. Check triples
+    for i in range(len(highs) - 2):
+        p1, p2, p3 = highs[i], highs[i+1], highs[i+2]
+        r1, r2, r3 = rsi_vals[p1[0]], rsi_vals[p2[0]], rsi_vals[p3[0]]
+        
+        if (p3[1] > p2[1] > p1[1]) and (r3 < r2 < r1):
+            if (get_price_change_pct(p1, p2) >= min_price_change_pct and
+                get_price_change_pct(p2, p3) >= min_price_change_pct and
+                get_rsi_change(p1[0], p2[0]) >= min_rsi_change and
+                get_rsi_change(p2[0], p3[0]) >= min_rsi_change):
+                
+                if not use_zone_filters or r3 > bearish_rsi_floor:
+                    score = calculate_score(p1, p3, chain_weight=3)
+                    events.append({
+                        "divergence_type": "triple",
+                        "divergence_direction": "bearish",
+                        "pivot_indices": [p1[0], p2[0], p3[0]],
+                        "pivot_prices": [p1[1], p2[1], p3[1]],
+                        "pivot_rsi": [r1, r2, r3],
+                        "score": score,
+                        "last_idx": p3[0]
+                    })
+                    covered_pairs.add((p1[0], p2[0]))
+                    covered_pairs.add((p2[0], p3[0]))
+
+    # 2. Check doubles
+    for i in range(len(highs) - 1):
+        p1, p2 = highs[i], highs[i+1]
+        if (p1[0], p2[0]) in covered_pairs:
+            continue
+            
+        r1, r2 = rsi_vals[p1[0]], rsi_vals[p2[0]]
+        
+        if (p2[1] > p1[1]) and (r2 < r1):
+            if (get_price_change_pct(p1, p2) >= min_price_change_pct and
+                get_rsi_change(p1[0], p2[0]) >= min_rsi_change):
+                
+                if not use_zone_filters or r2 > bearish_rsi_floor:
+                    score = calculate_score(p1, p2, chain_weight=2)
+                    events.append({
+                        "divergence_type": "double",
+                        "divergence_direction": "bearish",
+                        "pivot_indices": [p1[0], p2[0]],
+                        "pivot_prices": [p1[1], p2[1]],
+                        "pivot_rsi": [r1, r2],
+                        "score": score,
+                        "last_idx": p2[0]
+                    })
+
+    # --- C. HIDDEN DIVERGENCE (evaluated independently) ---
+    # 1. Hidden Bullish (using lows)
+    for i in range(len(lows) - 1):
+        p1, p2 = lows[i], lows[i+1]
+        r1, r2 = rsi_vals[p1[0]], rsi_vals[p2[0]]
+        
+        if (p2[1] > p1[1]) and (r2 < r1):
+            if (get_price_change_pct(p1, p2) >= min_price_change_pct and
+                get_rsi_change(p1[0], p2[0]) >= min_rsi_change):
+                
+                if not use_zone_filters or r2 < bullish_rsi_ceil:
+                    score = calculate_score(p1, p2, chain_weight=2)
+                    events.append({
+                        "divergence_type": "double",
+                        "divergence_direction": "hidden_bullish",
+                        "pivot_indices": [p1[0], p2[0]],
+                        "pivot_prices": [p1[1], p2[1]],
+                        "pivot_rsi": [r1, r2],
+                        "score": score,
+                        "last_idx": p2[0]
+                    })
+
+    # 2. Hidden Bearish (using highs)
+    for i in range(len(highs) - 1):
+        p1, p2 = highs[i], highs[i+1]
+        r1, r2 = rsi_vals[p1[0]], rsi_vals[p2[0]]
+        
+        if (p2[1] < p1[1]) and (r2 > r1):
+            if (get_price_change_pct(p1, p2) >= min_price_change_pct and
+                get_rsi_change(p1[0], p2[0]) >= min_rsi_change):
+                
+                if not use_zone_filters or r2 > bearish_rsi_floor:
+                    score = calculate_score(p1, p2, chain_weight=2)
+                    events.append({
+                        "divergence_type": "double",
+                        "divergence_direction": "hidden_bearish",
+                        "pivot_indices": [p1[0], p2[0]],
+                        "pivot_prices": [p1[1], p2[1]],
+                        "pivot_rsi": [r1, r2],
+                        "score": score,
+                        "last_idx": p2[0]
+                    })
+
+    return events
 
 
 

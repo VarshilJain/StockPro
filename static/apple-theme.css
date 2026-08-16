@@ -744,6 +744,7 @@ div[id*="tv-attr-logo"] {
     display: flex !important;
     flex-direction: column !important;
     gap: 8px !important;
+    overflow-y: auto !important;
 }
 
 .chart-canvas-wrap.is-fullscreen #fsHeader {
@@ -1269,10 +1270,29 @@ div[id*="tv-attr-logo"] {
 }
 
 .alert {
+    display: none;
     padding: 12px 16px;
     border-radius: 10px;
     margin-bottom: 20px;
     font-size: 13px;
+    align-items: center;
+    gap: 10px;
+    animation: slideDown 0.3s ease;
+}
+
+.alert.show {
+    display: flex;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .alert-error {
@@ -1281,9 +1301,15 @@ div[id*="tv-attr-logo"] {
     border: 1px solid rgba(255, 59, 48, 0.18);
 }
 
+.alert-success {
+    background: rgba(52, 199, 89, 0.08);
+    color: #248A3D;
+    border: 1px solid rgba(52, 199, 89, 0.18);
+}
+
 /* --- Auth Pages Specific Styles --- */
 .auth-body {
-    background: var(--primary-bg);
+    background: #f0f0f3;
     color: var(--text-primary);
     min-height: 100vh;
     display: flex;
@@ -1291,6 +1317,30 @@ div[id*="tv-attr-logo"] {
     justify-content: center;
     position: relative;
     overflow: hidden;
+}
+
+/* Decorative Background Glows for Modern Apple/Glassmorphism Feel */
+.bg-blur-circle {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.35;
+    z-index: 1;
+    pointer-events: none;
+}
+.bg-blur-1 {
+    width: 350px;
+    height: 350px;
+    background: var(--accent-primary);
+    top: -50px;
+    left: -50px;
+}
+.bg-blur-2 {
+    width: 450px;
+    height: 450px;
+    background: var(--accent-secondary);
+    bottom: -100px;
+    right: -100px;
 }
 
 .auth-wrapper {

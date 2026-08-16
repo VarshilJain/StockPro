@@ -63,6 +63,12 @@
             <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('high-delivery-volume');" id="nav-pattern-high-deliv">
                 <i class="fas fa-truck-loading nav-icon"></i>High Delivery Volume (80%+)
             </a>
+            <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('rsi-divergence');" id="nav-pattern-rsi-div">
+                <i class="fas fa-arrows-alt-h nav-icon"></i>RSI Divergence
+            </a>
+            <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('ema-convergence');" id="nav-pattern-ema-convergence">
+                <i class="fas fa-compress-arrows-alt nav-icon"></i>EMA Convergence (3, 4, 5)
+            </a>
         </nav>
         <div class="sidebar-footer">
             <div class="footer-text">© 2024 StockPro Analytics</div>
@@ -148,24 +154,27 @@
                 </div>
 
                 <!-- Controls row -->
-                <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-end;margin-bottom:1.5rem;">
-                    <div class="form-group" style="flex:1;min-width:190px;max-width:320px;">
-                        <label class="form-label" for="fundTicker">
+                <div style="display:flex;flex-wrap:wrap;gap:1.25rem;align-items:flex-start;margin-bottom:1.5rem;">
+                    <div class="form-group" style="flex:1;min-width:190px;max-width:320px;display:flex;flex-direction:column;gap:8px;">
+                        <label class="form-label" for="fundTicker" style="margin-bottom:0;display:flex;align-items:center;gap:0.5rem;height:20px;">
                             <i class="fas fa-search"></i> Ticker Symbol
                         </label>
-                        <input type="text" id="fundTicker" class="form-input" list="fundTickerList"
-                            placeholder="e.g. TATAPOWER.NS, AAPL" onkeypress="if(event.key==='Enter') fetchStmtData()"
-                            style="width:100%;text-transform:uppercase;" />
-                        <datalist id="fundTickerList"></datalist>
-                        <span style="font-size:0.72rem;color:var(--text-muted);margin-top:0.25rem;display:block;">Type
-                            to search — NSE tickers use the .NS suffix</span>
+                        <div style="position:relative;display:flex;flex-direction:column;">
+                            <input type="text" id="fundTicker" class="form-input" list="fundTickerList"
+                                placeholder="e.g. TATAPOWER.NS, AAPL" onkeypress="if(event.key==='Enter') fetchStmtData()"
+                                style="width:100%;text-transform:uppercase;height:42px;box-sizing:border-box;" />
+                            <datalist id="fundTickerList"></datalist>
+                            <span style="font-size:0.72rem;color:var(--text-muted);margin-top:0.35rem;position:absolute;top:42px;left:0;width:100%;display:block;white-space:nowrap;">
+                                Type to search — NSE tickers use the .NS suffix
+                            </span>
+                        </div>
                     </div>
 
-                    <div class="form-group" style="flex:1;min-width:220px;max-width:360px;">
-                        <label class="form-label" for="fundStatement">
+                    <div class="form-group" style="flex:1;min-width:220px;max-width:360px;display:flex;flex-direction:column;gap:8px;">
+                        <label class="form-label" for="fundStatement" style="margin-bottom:0;display:flex;align-items:center;gap:0.5rem;height:20px;">
                             <i class="fas fa-file-invoice"></i> Statement Type
                         </label>
-                        <select id="fundStatement" class="form-select" style="width:100%;">
+                        <select id="fundStatement" class="form-select" style="width:100%;height:42px;box-sizing:border-box;">
                             <optgroup label="Annual">
                                 <option value="balance_sheet">Balance Sheet</option>
                                 <option value="income_statement">Income Statement</option>
@@ -183,15 +192,18 @@
                         </select>
                     </div>
 
-                    <div style="display:flex;gap:0.5rem;align-items:flex-end;padding-bottom:0.05rem;">
-                        <button id="fundFetchBtn" class="btn btn-primary" onclick="fetchStmtData()">
-                            <i class="fas fa-download"></i> Fetch
-                        </button>
-                        <button id="fundCurrencyToggle" class="btn btn-secondary" onclick="toggleFundCurrency()"
-                            style="font-size:0.82rem;padding:0.55rem 1rem;border:1px solid rgba(6,182,212,0.35);transition:all 0.2s;"
-                            title="Toggle between ₹ INR and $ USD">
-                            <i class="fas fa-dollar-sign"></i> Show in $ USD
-                        </button>
+                    <div class="form-group" style="min-width:260px;display:flex;flex-direction:column;gap:8px;">
+                        <div style="height:20px;"></div>
+                        <div style="display:flex;gap:0.5rem;align-items:center;height:42px;box-sizing:border-box;">
+                            <button id="fundFetchBtn" class="btn btn-primary" onclick="fetchStmtData()" style="height:100%;padding:0 1.25rem;font-size:0.875rem;box-sizing:border-box;">
+                                <i class="fas fa-download"></i> Fetch
+                            </button>
+                            <button id="fundCurrencyToggle" class="btn btn-secondary" onclick="toggleFundCurrency()"
+                                style="height:100%;font-size:0.82rem;padding:0 1rem;border:1px solid rgba(6,182,212,0.35);transition:all 0.2s;box-sizing:border-box;"
+                                title="Toggle between ₹ INR and $ USD">
+                                <i class="fas fa-dollar-sign"></i> Show in $ USD
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -209,7 +221,7 @@
 
                 <!-- Results badge -->
                 <div id="fundMeta"
-                    style="display:none;margin-bottom:0.75rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+                    style="display:none;margin-bottom:0.75rem;gap:1rem;align-items:center;flex-wrap:wrap;">
                     <span id="fundMetaTicker"
                         style="font-size:1rem;font-weight:700;color:var(--accent-primary);"></span>
                     <span id="fundMetaStmt"
@@ -329,7 +341,7 @@
                             <optgroup label="Convergence Scanners">
                                 <option value="convergence_3">Convergence 3</option>
                                 <option value="convergence_4">Convergence 4</option>
-                                <option value="convergence_5a">Convergence 5A</option>
+                                <option value="convergence_5">Convergence 5</option>
                             </optgroup>
                             <optgroup label="Delivery Signals">
                                 <option value="delivery_momentum_signal">Delivery</option>
@@ -344,13 +356,22 @@
                             <option value="macd">MACD</option>
                         </select>
                     </div>
-                    <div style="display:flex;gap:0.5rem;align-items:center;padding-bottom:0.25rem;">
-                        <label class="sma-toggle"><input type="checkbox" id="sma20toggle" onchange="toggleSMA()"
-                                checked> SMA20</label>
-                        <label class="sma-toggle"><input type="checkbox" id="sma50toggle" onchange="toggleSMA()"
-                                checked> SMA50</label>
-                        <label class="sma-toggle"><input type="checkbox" id="sma200toggle" onchange="toggleSMA()">
-                            SMA200</label>
+                    <div class="form-group" style="min-width:160px;">
+                        <label class="form-label"><i class="fas fa-compress-arrows-alt"></i> EMA Overlay</label>
+                        <select id="emaOverlaySelect" class="form-select" onchange="changeEmaOverlay(this.value)">
+                            <option value="none">No EMA Overlay</option>
+                            <option value="all">All EMAs (4, 9, 18, 50, 200)</option>
+                            <option value="c3" selected>C3 Ribbon (4, 9, 18)</option>
+                            <option value="c4">C4 Ribbon (5, 9, 21, 50)</option>
+                            <option value="c5">C5 Ribbon (4, 9, 18, 50, 200)</option>
+                            <option value="ema4">EMA 4 only</option>
+                            <option value="ema5">EMA 5 only</option>
+                            <option value="ema9">EMA 9 only</option>
+                            <option value="ema18">EMA 18 only</option>
+                            <option value="ema21">EMA 21 only</option>
+                            <option value="ema50">EMA 50 only</option>
+                            <option value="ema200">EMA 200 only</option>
+                        </select>
                     </div>
                     <div style="display:flex;gap:0.35rem;padding-bottom:0.15rem;margin-left:auto;">
                         <button class="btn btn-secondary" onclick="resetChartZoom()" title="Reset zoom / Fit all"
@@ -465,10 +486,13 @@
                                     <option value="rsi_gt_70">RSI &gt; 70</option>
                                     <option value="adx_trigger">ADX Trigger</option>
                                 </optgroup>
+                                <optgroup label="RSI Divergence">
+                                    <option value="rsi_divergence">RSI Divergence</option>
+                                </optgroup>
                                 <optgroup label="Convergence Scanners">
                                     <option value="convergence_3">Convergence 3</option>
                                     <option value="convergence_4">Convergence 4</option>
-                                    <option value="convergence_5a">Convergence 5A</option>
+                                    <option value="convergence_5">Convergence 5</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -552,10 +576,13 @@
                                     <option value="adx_trigger">ADX Trigger</option>
                                     <option value="delivery_momentum_signal">Delivery</option>
                                 </optgroup>
+                                <optgroup label="RSI Divergence">
+                                    <option value="rsi_divergence">RSI Divergence</option>
+                                </optgroup>
                                 <optgroup label="Convergence Scanners">
                                     <option value="convergence_3">Convergence 3</option>
                                     <option value="convergence_4">Convergence 4</option>
-                                    <option value="convergence_5a">Convergence 5A</option>
+                                    <option value="convergence_5">Convergence 5</option>
                                 </optgroup>
                             </select>
                         </div>
@@ -688,24 +715,42 @@
                         </h2>
                         <p id="patternScreenSubtitle" style="color:var(--text-muted);font-size:0.82rem;margin:0.25rem 0 0;">As of date...</p>
                     </div>
+                    <!-- Toggle/Filter for Divergence (visible only when screen is rsi-divergence) -->
+                    <div id="divergenceToggleContainer" style="display:none; align-items:center; gap:0.5rem; background:var(--secondary-bg); padding:0.25rem 0.5rem; border-radius:30px; border:1px solid var(--card-border);">
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:600; margin-left:0.5rem; margin-right:0.25rem;">Divergence:</span>
+                        <div class="sb-toggle-pills" style="margin:0; display:inline-flex; gap:0.25rem;">
+                            <span class="sb-toggle-pill active" id="div_pillAll" onclick="setDivergenceFilter('all')" style="font-size:0.75rem; padding:0.35rem 0.75rem; border-radius:20px;">Show All</span>
+                            <span class="sb-toggle-pill" id="div_pillRegular" onclick="setDivergenceFilter('regular')" style="font-size:0.75rem; padding:0.35rem 0.75rem; border-radius:20px;">Regular Only</span>
+                            <span class="sb-toggle-pill" id="div_pillHidden" onclick="setDivergenceFilter('hidden')" style="font-size:0.75rem; padding:0.35rem 0.75rem; border-radius:20px;">Hidden Only</span>
+                        </div>
+                    </div>
+                    <!-- Toggle/Filter for EMA Convergence (visible only when screen is ema-convergence) -->
+                    <div id="convergenceToggleContainer" style="display:none; align-items:center; gap:0.5rem; background:var(--secondary-bg); padding:0.25rem 0.5rem; border-radius:30px; border:1px solid var(--card-border);">
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:600; margin-left:0.5rem; margin-right:0.25rem;">Type:</span>
+                        <div class="sb-toggle-pills" style="margin:0; display:inline-flex; gap:0.25rem;">
+                            <span class="sb-toggle-pill active" id="conv_pill3" onclick="setConvergenceFilter('convergence_3')" style="font-size:0.75rem; padding:0.35rem 0.75rem; border-radius:20px;">Convergence 3</span>
+                            <span class="sb-toggle-pill" id="conv_pill4" onclick="setConvergenceFilter('convergence_4')" style="font-size:0.75rem; padding:0.35rem 0.75rem; border-radius:20px;">Convergence 4</span>
+                            <span class="sb-toggle-pill" id="conv_pill5" onclick="setConvergenceFilter('convergence_5')" style="font-size:0.75rem; padding:0.35rem 0.75rem; border-radius:20px;">Convergence 5</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 3 TILES -->
                 <div id="ps-tiles-container" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:1rem;margin-bottom:1.5rem;">
-                    <!-- Forming -->
-                    <div class="stat-card" id="ps-card-forming" style="cursor:pointer;" onclick="showPatternSymbols('forming')">
+                    <!-- Forming / New Today -->
+                    <div class="stat-card" id="ps-card-forming" style="cursor:pointer;" onclick="showPatternBucket('forming')">
                         <div class="stat-title" id="ps-forming-title" style="color:var(--text-secondary);">📊 Forming</div>
                         <div class="stat-value" id="ps-forming-count">0</div>
                         <div class="stat-trend neutral" style="font-style:italic;" id="ps-forming-desc">resting before a breakout</div>
                     </div>
-                    <!-- Fresh breakouts -->
-                    <div class="stat-card" id="ps-card-fresh" style="cursor:pointer;" onclick="showPatternSymbols('fresh_breakout')">
+                    <!-- Fresh breakouts / Recent -->
+                    <div class="stat-card" id="ps-card-fresh" style="cursor:pointer;" onclick="showPatternBucket('fresh')">
                         <div class="stat-title" id="ps-fresh-title" style="color:var(--accent-success);">📈 Fresh breakouts</div>
                         <div class="stat-value" id="ps-fresh-count">0</div>
                         <div class="stat-trend positive" style="font-style:italic;" id="ps-fresh-desc">cleared it in the last 5 sessions</div>
                     </div>
-                    <!-- Climbing -->
-                    <div class="stat-card" id="ps-card-climbing" style="cursor:pointer;" onclick="showPatternSymbols('climbing')">
+                    <!-- Climbing / Sustained -->
+                    <div class="stat-card" id="ps-card-climbing" style="cursor:pointer;" onclick="showPatternBucket('climbing')">
                         <div class="stat-title" id="ps-climbing-title" style="color:var(--accent-primary);">🚀 Climbing</div>
                         <div class="stat-value" id="ps-climbing-count">0</div>
                         <div class="stat-trend positive" style="font-style:italic;" id="ps-climbing-desc">broke out earlier, still rising</div>
@@ -870,6 +915,79 @@
         };
 
         let currentPatternData = null;
+        let divergenceFilter = 'all';
+        let convergenceFilter = 'convergence_3';
+
+        // Smart tile click dispatcher: maps card ID to the correct bucket key
+        // for the current screen type, then calls showPatternSymbols.
+        function showPatternBucket(cardId) {
+            if (currentPatternData && currentPatternData.screen === 'ema-convergence') {
+                const map = { forming: 'fresh', fresh: 'recent', climbing: 'sustained' };
+                showPatternSymbols(map[cardId] || cardId);
+            } else if (currentPatternData && currentPatternData.screen !== 'high-relative-volume'
+                       && currentPatternData.screen !== 'high-delivery-volume'
+                       && currentPatternData.screen !== 'rsi-divergence') {
+                const map = { forming: 'forming', fresh: 'fresh_breakout', climbing: 'climbing' };
+                showPatternSymbols(map[cardId] || cardId);
+            } else {
+                // High-vol / high-deliv / rsi-div use fresh_breakout & climbing
+                const map = { fresh: 'fresh_breakout', climbing: 'climbing' };
+                showPatternSymbols(map[cardId] || cardId);
+            }
+        }
+
+        function setConvergenceFilter(filterType) {
+            convergenceFilter = filterType;
+            loadPatternScreen('ema-convergence');
+        }
+
+        function setDivergenceFilter(filterType) {
+            divergenceFilter = filterType;
+            // Update active pill styling
+            ['Regular', 'Hidden', 'All'].forEach(f => {
+                const pill = document.getElementById(`div_pill${f}`);
+                if (pill) {
+                    if (f.toLowerCase() === filterType.toLowerCase()) {
+                        pill.classList.add('active');
+                    } else {
+                        pill.classList.remove('active');
+                    }
+                }
+            });
+            
+            // Update the card counts dynamically
+            updateDivergenceCounts();
+            
+            // Re-render symbols based on the selected active bucket
+            const activeCard = ['forming', 'fresh', 'climbing'].find(b => {
+                const card = document.getElementById(`ps-card-${b}`);
+                return card && card.classList.contains('active-bucket');
+            });
+            if (activeCard) {
+                const bucket = activeCard === 'fresh' ? 'fresh_breakout' : activeCard;
+                showPatternSymbols(bucket);
+            }
+        }
+
+        function updateDivergenceCounts() {
+            if (!currentPatternData || currentPatternData.screen !== 'rsi-divergence') return;
+            
+            const stages = ['fresh_breakout', 'climbing'];
+            stages.forEach(stageKey => {
+                let symbols = currentPatternData.stages[stageKey]?.symbols || [];
+                if (divergenceFilter === 'regular') {
+                    symbols = symbols.filter(s => s.rsi_divergence_direction && !s.rsi_divergence_direction.includes('hidden'));
+                } else if (divergenceFilter === 'hidden') {
+                    symbols = symbols.filter(s => s.rsi_divergence_direction && s.rsi_divergence_direction.includes('hidden'));
+                }
+                
+                const countSpanId = stageKey === 'fresh_breakout' ? 'ps-fresh-count' : 'ps-climbing-count';
+                const countSpan = document.getElementById(countSpanId);
+                if (countSpan) {
+                    countSpan.innerText = symbols.length;
+                }
+            });
+        }
 
         function formatVolume(vol) {
             if (!vol) return '--';
@@ -890,15 +1008,51 @@
                 'multi-year-breakout': 'Multi-Year Breakout',
                 'ipo-base': 'IPO Base',
                 'high-relative-volume': 'High Relative Volume (5x)',
-                'high-delivery-volume': 'High Delivery Volume (80%+)'
+                'high-delivery-volume': 'High Delivery Volume (80%+)',
+                'rsi-divergence': 'RSI Divergence',
+                'ema-convergence': 'EMA Convergence Setup'
             };
             document.getElementById('patternScreenTitle').innerHTML = `<i class="fas fa-chart-bar" style="color:var(--accent-primary);margin-right:0.5rem;"></i>${titleMap[screenName] || screenName}`;
             document.getElementById('patternScreenSubtitle').innerText = 'Loading...';
             
+            // Divergence toggle visibility and reset
+            const divToggle = document.getElementById('divergenceToggleContainer');
+            if (divToggle) {
+                divToggle.style.display = (screenName === 'rsi-divergence') ? 'flex' : 'none';
+            }
+            if (screenName === 'rsi-divergence') {
+                divergenceFilter = 'all';
+                ['All', 'Regular', 'Hidden'].forEach(f => {
+                    const pill = document.getElementById(`div_pill${f}`);
+                    if (pill) {
+                        if (f === 'All') pill.classList.add('active');
+                        else pill.classList.remove('active');
+                    }
+                });
+            }
+
+            // Convergence toggle visibility and reset
+            const convToggle = document.getElementById('convergenceToggleContainer');
+            if (convToggle) {
+                convToggle.style.display = (screenName === 'ema-convergence') ? 'flex' : 'none';
+            }
+            if (screenName === 'ema-convergence') {
+                ['3', '4', '5'].forEach(f => {
+                    const pill = document.getElementById(`conv_pill${f}`);
+                    if (pill) {
+                        if (`convergence_${f}` === convergenceFilter) pill.classList.add('active');
+                        else pill.classList.remove('active');
+                    }
+                });
+            }
+            
             // Adjust card labels based on screenName
-            const isCustomVol = (screenName === 'high-relative-volume' || screenName === 'high-delivery-volume');
+            const isTwoCards = (screenName === 'high-relative-volume' || screenName === 'high-delivery-volume' || screenName === 'rsi-divergence' || screenName === 'multi-year-breakout');
             const isHighVol = screenName === 'high-relative-volume';
             const isHighDeliv = screenName === 'high-delivery-volume';
+            const isRsiDiv = screenName === 'rsi-divergence';
+            const isMultiYear = screenName === 'multi-year-breakout';
+            const isEmaConv = screenName === 'ema-convergence';
             
             const cardForming = document.getElementById('ps-card-forming');
             const cardFresh = document.getElementById('ps-card-fresh');
@@ -912,7 +1066,7 @@
             const cardClimbingDesc = document.getElementById('ps-climbing-desc');
             
             const tilesContainer = document.getElementById('ps-tiles-container');
-            if (isCustomVol) {
+            if (isTwoCards) {
                 if (tilesContainer) tilesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
                 if (cardForming) cardForming.style.display = 'none';
                 
@@ -921,12 +1075,32 @@
                     if (cardFreshDesc) cardFreshDesc.innerText = 'spiked on latest date';
                     if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🚀 Last 5 Days';
                     if (cardClimbingDesc) cardClimbingDesc.innerText = 'spiked in last 5 days';
-                } else { // high-delivery-volume
+                } else if (isHighDeliv) {
                     if (cardFreshTitle) cardFreshTitle.innerHTML = '📈 Latest Date';
                     if (cardFreshDesc) cardFreshDesc.innerText = 'delivery >80% on latest date';
                     if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🚀 Last 5 Days';
                     if (cardClimbingDesc) cardClimbingDesc.innerText = 'delivery >80% in last 5 days';
+                } else if (isRsiDiv) {
+                    if (cardFreshTitle) cardFreshTitle.innerHTML = '📊 Double Divergence';
+                    if (cardFreshDesc) cardFreshDesc.innerText = 'pivots showing divergence';
+                    if (cardClimbingTitle) cardClimbingTitle.innerHTML = '📊 Triple Divergence';
+                    if (cardClimbingDesc) cardClimbingDesc.innerText = '3-point monotonic divergence';
+                } else if (isMultiYear) {
+                    if (cardFreshTitle) cardFreshTitle.innerHTML = '💥 Fresh Breakout';
+                    if (cardFreshDesc) cardFreshDesc.innerText = 'broke multi-year high in last 5 days';
+                    if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🚀 Climbing';
+                    if (cardClimbingDesc) cardClimbingDesc.innerText = 'sustained run above multi-year high';
                 }
+            } else if (isEmaConv) {
+                // EMA Convergence: 3 buckets based on consecutive days signal is ON
+                if (tilesContainer) tilesContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
+                if (cardForming) cardForming.style.display = 'block';
+                if (cardFormingTitle) cardFormingTitle.innerHTML = '✨ New Today';
+                if (cardFormingDesc) cardFormingDesc.innerText = 'ribbon just squeezed today';
+                if (cardFreshTitle) cardFreshTitle.innerHTML = '📈 Recent (2–4 days)';
+                if (cardFreshDesc) cardFreshDesc.innerText = 'ribbon tight for 2–4 sessions';
+                if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🔒 Sustained (5+ days)';
+                if (cardClimbingDesc) cardClimbingDesc.innerText = 'ribbon tight for 5+ sessions';
             } else {
                 if (tilesContainer) tilesContainer.style.gridTemplateColumns = 'repeat(3, 1fr)';
                 if (cardForming) cardForming.style.display = 'block';
@@ -955,16 +1129,31 @@
             
             try {
                 const token = localStorage.getItem('token');
-                const res = await fetch(`/api/screens/${screenName}/stages`, { headers: { 'Authorization': `Bearer ${token}` } });
+                let url = `/api/screens/${screenName}/stages`;
+                if (screenName === 'ema-convergence') {
+                    url += `?type=${convergenceFilter}`;
+                }
+                const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (!res.ok) throw new Error("Failed to load pattern stages");
                 const data = await res.json();
                 currentPatternData = data;
                 
                 document.getElementById('patternScreenSubtitle').innerText = `As of ${data.as_of_date || 'N/A'}`;
                 
-                document.getElementById('ps-forming-count').innerText = data.stages?.forming?.count || 0;
-                document.getElementById('ps-fresh-count').innerText = data.stages?.fresh_breakout?.count || 0;
-                document.getElementById('ps-climbing-count').innerText = data.stages?.climbing?.count || 0;
+                if (screenName === 'ema-convergence') {
+                    // Convergence uses fresh/recent/sustained bucket keys
+                    document.getElementById('ps-forming-count').innerText = data.stages?.fresh?.count || 0;
+                    document.getElementById('ps-fresh-count').innerText = data.stages?.recent?.count || 0;
+                    document.getElementById('ps-climbing-count').innerText = data.stages?.sustained?.count || 0;
+                } else {
+                    document.getElementById('ps-forming-count').innerText = data.stages?.forming?.count || 0;
+                    document.getElementById('ps-fresh-count').innerText = data.stages?.fresh_breakout?.count || 0;
+                    document.getElementById('ps-climbing-count').innerText = data.stages?.climbing?.count || 0;
+                }
+                
+                if (screenName === 'rsi-divergence') {
+                    updateDivergenceCounts();
+                }
                 
             } catch (err) {
                 console.error(err);
@@ -975,20 +1164,38 @@
         async function showPatternSymbols(bucket) {
             if (!currentPatternData || !currentPatternData.stages) return;
             
+            const isEmaConv = currentPatternData.screen === 'ema-convergence';
+
+            // For EMA convergence the card IDs map to different bucket keys
+            // forming card -> 'fresh' bucket, fresh card -> 'recent', climbing card -> 'sustained'
+            const convBucketMap = { forming: 'fresh', fresh: 'recent', climbing: 'sustained' };
+            const convBucketMapReverse = { fresh: 'forming', recent: 'fresh', sustained: 'climbing' };
+
             // Highlight selected card
             ['forming', 'fresh', 'climbing'].forEach(b => {
                 const card = document.getElementById(`ps-card-${b}`);
                 if (card) {
-                    if (b === (bucket === 'fresh_breakout' ? 'fresh' : bucket)) {
-                        card.classList.add('active-bucket');
+                    let match;
+                    if (isEmaConv) {
+                        match = (b === (convBucketMapReverse[bucket] || bucket));
                     } else {
-                        card.classList.remove('active-bucket');
+                        match = (b === (bucket === 'fresh_breakout' ? 'fresh' : bucket));
                     }
+                    if (match) card.classList.add('active-bucket');
+                    else card.classList.remove('active-bucket');
                 }
             });
             
             const container = document.getElementById('patternCardsContainer');
-            const symbols = currentPatternData.stages[bucket]?.symbols || [];
+            let symbols = currentPatternData.stages[bucket]?.symbols || [];
+            
+            if (currentPatternData.screen === 'rsi-divergence') {
+                if (divergenceFilter === 'regular') {
+                    symbols = symbols.filter(s => s.rsi_divergence_direction && !s.rsi_divergence_direction.includes('hidden'));
+                } else if (divergenceFilter === 'hidden') {
+                    symbols = symbols.filter(s => s.rsi_divergence_direction && s.rsi_divergence_direction.includes('hidden'));
+                }
+            }
             
             if (symbols.length === 0) {
                 container.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">No symbols in this bucket.</div>';
@@ -998,6 +1205,7 @@
             const isHighVol = currentPatternData.screen === 'high-relative-volume';
             const isHighDeliv = currentPatternData.screen === 'high-delivery-volume';
             const isBlueSky = currentPatternData.screen === 'blue-sky';
+            const isRsiDiv = currentPatternData.screen === 'rsi-divergence';
             
             container.innerHTML = symbols.map(data => {
                 const sym = typeof data === 'string' ? data : data.symbol;
@@ -1017,6 +1225,14 @@
                     const sign = pct >= 0 ? '+' : '';
                     priceChange = `<span style="color:${color}; font-size:0.85rem; margin-left:8px;">(${sign}${pct.toFixed(2)}%)</span>`;
                 }
+                
+                const bDate = (bucket === 'played_out' ? data.base_start_date : data.breakout_date) || data.breakout_date;
+                const breakoutDateHtml = bucket !== 'forming' && bDate ? `
+                    <div style="display:flex; justify-content:space-between; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px;">
+                        <span style="color:var(--text-muted);">Breakout Date</span>
+                        <span style="font-weight:600; color:var(--accent-primary);">${bDate}</span>
+                    </div>
+                ` : '';
                 
                 let gridHtml = '';
                 if (isHighVol) {
@@ -1090,13 +1306,42 @@
                         </div>
                         ${breakoutDateHtml}
                     `;
-                } else {
-                    const breakoutDateHtml = bucket === 'played_out' && data.base_start_date ? `
-                        <div style="display:flex; justify-content:space-between; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px;">
-                            <span style="color:var(--text-muted);">Breakout Date</span>
-                            <span style="font-weight:600; color:var(--accent-primary);">${data.base_start_date}</span>
+                } else if (isRsiDiv) {
+                    const divDir = data.rsi_divergence_direction || '--';
+                    const divScore = data.rsi_divergence_score ? data.rsi_divergence_score.toFixed(1) : '--';
+                    const triggerDate = data.base_start_date || '--';
+                    
+                    let dirColor = 'var(--text-primary)';
+                    if (divDir.includes('bullish')) dirColor = 'var(--accent-success)';
+                    if (divDir.includes('bearish')) dirColor = 'var(--accent-danger)';
+                    
+                    gridHtml = `
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Direction</span>
+                            <span style="font-weight:600; color:${dirColor};">${divDir}</span>
                         </div>
-                    ` : '';
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Div Score</span>
+                            <span style="font-weight:600; color:var(--accent-primary);">${divScore}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px;">
+                            <span style="color:var(--text-muted);">Trigger Date</span>
+                            <span style="font-weight:600;">${triggerDate}</span>
+                        </div>
+                    `;
+                } else if (isEmaConv) {
+                    const daysActive = data.days_active != null ? data.days_active + (data.days_active === 1 ? ' day' : ' days') : '--';
+                    gridHtml = `
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">RS Rating</span>
+                            <span style="font-weight:600;">${rsRank}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Ribbon Active</span>
+                            <span style="font-weight:600; color:var(--accent-primary);">${daysActive}</span>
+                        </div>
+                    `;
+                } else {
                     const pivotPrice = data.base_high != null ? '₹' + data.base_high.toFixed(2) : '--';
                     gridHtml = `
                         <div style="display:flex; justify-content:space-between;">
@@ -1127,7 +1372,7 @@
                 <div class="card" style="padding:1rem; display:flex; flex-direction:column; gap:0.5rem; position:relative;">
                     <div style="display:flex; justify-content:space-between; align-items:baseline;">
                         <div style="font-size:1.1rem; font-weight:700;">${sym}</div>
-                        <div style="font-size:0.85rem; color:var(--accent-primary); cursor:pointer;" onclick="document.getElementById('symbol').value='${sym}';showSection('stockChart');loadChart();">Open full chart ›</div>
+                        <div style="font-size:0.85rem; color:var(--accent-primary); cursor:pointer;" onclick="openFullChartWithRsi('${sym}')">Open full chart ›</div>
                     </div>
                     <div style="font-size:1.2rem; font-weight:600; text-align:right;">
                         ₹${price} ${priceChange}
@@ -1153,10 +1398,22 @@
             const chartDiv = document.getElementById(`mini-chart-${sym}`);
             if (!chartDiv) return;
             
+            const isRsiDiv = currentPatternData && currentPatternData.screen === 'rsi-divergence';
+            chartDiv.innerHTML = ''; // clear loading/existing
+            
             try {
-                const response = await fetch(`/api/ohlcv/${sym}`);
-                if (!response.ok) throw new Error('Failed to fetch data');
-                const ohlcData = await response.json();
+                let ohlcData, divergences = [];
+                if (isRsiDiv) {
+                    const response = await fetch(`/api/screens/rsi-divergence-points/${sym}`);
+                    if (!response.ok) throw new Error('Failed to fetch points');
+                    const resJson = await response.json();
+                    ohlcData = resJson.ohlcv;
+                    divergences = resJson.divergences;
+                } else {
+                    const response = await fetch(`/api/ohlcv/${sym}`);
+                    if (!response.ok) throw new Error('Failed to fetch data');
+                    ohlcData = await response.json();
+                }
                 
                 const candleData = ohlcData.map(d => ({
                     time: d.time.split('T')[0],
@@ -1167,78 +1424,265 @@
                 }));
                 candleData.sort((a, b) => new Date(a.time) - new Date(b.time));
 
-                const chart = LightweightCharts.createChart(chartDiv, {
-                    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#666' },
-                    grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-                    timeScale: { borderVisible: false, timeVisible: false },
-                    rightPriceScale: { visible: false },
-                    handleScroll: false,
-                    handleScale: false,
-                });
-                
-                // Create a mini-chart legend overlay
-                chartDiv.style.position = 'relative';
-                const legend = document.createElement('div');
-                legend.style.position = 'absolute';
-                legend.style.top = '5px';
-                legend.style.left = '5px';
-                legend.style.zIndex = '50';
-                legend.style.padding = '3px 6px';
-                legend.style.borderRadius = '4px';
-                legend.style.background = 'rgba(17, 24, 39, 0.8)';
-                legend.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-                legend.style.fontFamily = 'monospace';
-                legend.style.fontSize = '9px';
-                legend.style.color = '#fff';
-                legend.style.pointerEvents = 'none';
-                legend.style.display = 'none';
-                chartDiv.appendChild(legend);
-                
-                const series = chart.addCandlestickSeries({
-                    upColor: '#4caf50', downColor: '#ef5350', borderVisible: false, wickUpColor: '#4caf50', wickDownColor: '#ef5350'
-                });
-                series.setData(candleData);
-                
-                chart.subscribeCrosshairMove(param => {
-                    if (!param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
-                        legend.style.display = 'none';
-                        return;
-                    }
-                    const candle = param.seriesData.get(series);
-                    if (candle) {
-                        const dateStr = typeof param.time === 'string' ? param.time : (param.time.year + '-' + String(param.time.month).padStart(2, '0') + '-' + String(param.time.day).padStart(2, '0'));
-                        legend.innerHTML = `D: ${dateStr.substring(5)} | O: ${candle.open.toFixed(1)} | H: ${candle.high.toFixed(1)} | L: ${candle.low.toFixed(1)} | C: ${candle.close.toFixed(1)}`;
-                        legend.style.display = 'block';
-                    }
-                });
-                
-                if (data.base_high) {
-                    series.createPriceLine({
-                        price: data.base_high,
-                        color: '#4caf50',
-                        lineWidth: 2,
-                        lineStyle: LightweightCharts.LineStyle.Dashed,
-                        axisLabelVisible: true,
-                        title: 'pivot ₹' + data.base_high
-                    });
-                }
-                
-                if (data.base_start_date) {
-                    const start = new Date(data.base_start_date);
-                    start.setMonth(start.getMonth() - 1); // Padding before base
-                    const startStr = start.toISOString().split('T')[0];
-                    const startIndex = candleData.findIndex(d => d.time >= startStr);
+                if (isRsiDiv) {
+                    const pDiv = document.createElement('div');
+                    pDiv.style.width = '100%';
+                    pDiv.style.height = '120px';
+                    chartDiv.appendChild(pDiv);
                     
-                    if (startIndex !== -1) {
-                        chart.timeScale().setVisibleLogicalRange({
-                            from: startIndex,
-                            to: candleData.length - 1 + 5
+                    const rDiv = document.createElement('div');
+                    rDiv.style.width = '100%';
+                    rDiv.style.height = '80px';
+                    rDiv.style.marginTop = '4px';
+                    rDiv.style.borderTop = '1px dashed var(--card-border)';
+                    chartDiv.appendChild(rDiv);
+
+                    const priceChart = LightweightCharts.createChart(pDiv, {
+                        layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#666' },
+                        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+                        timeScale: { borderVisible: false, timeVisible: false },
+                        rightPriceScale: { visible: false },
+                        handleScroll: false,
+                        handleScale: false,
+                    });
+                    const rsiChart = LightweightCharts.createChart(rDiv, {
+                        layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#666' },
+                        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+                        timeScale: { borderVisible: false, timeVisible: false },
+                        rightPriceScale: { visible: false },
+                        handleScroll: false,
+                        handleScale: false,
+                    });
+                    
+                    // Sync charts
+                    priceChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+                        rsiChart.timeScale().setVisibleLogicalRange(range);
+                    });
+                    rsiChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+                        priceChart.timeScale().setVisibleLogicalRange(range);
+                    });
+
+                    const priceSeries = priceChart.addCandlestickSeries({
+                        upColor: '#4caf50', downColor: '#ef5350', borderVisible: false, wickUpColor: '#4caf50', wickDownColor: '#ef5350'
+                    });
+                    priceSeries.setData(candleData);
+
+                    const rsiData = ohlcData.map(d => ({
+                        time: d.time.split('T')[0],
+                        value: d.rsi
+                    })).filter(d => d.value !== null && d.value !== undefined);
+                    rsiData.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+                    const rsiSeries = rsiChart.addLineSeries({
+                        color: '#2196f3',
+                        lineWidth: 1.5,
+                    });
+                    rsiSeries.setData(rsiData);
+
+                    // Add markers and lines connecting pivots
+                    const activeDiv = divergences.find(d => d.trigger_date === data.base_start_date) || divergences[divergences.length - 1];
+                    if (activeDiv) {
+                        const pivotDates = activeDiv.pivot_dates;
+                        const isBullish = activeDiv.divergence_direction.includes('bullish');
+                        
+                        // Add markers on price series
+                        const priceMarkers = pivotDates.map((date, idx) => ({
+                            time: date,
+                            position: isBullish ? 'belowBar' : 'aboveBar',
+                            color: isBullish ? '#4caf50' : '#ef5350',
+                            shape: isBullish ? 'arrowUp' : 'arrowDown',
+                            text: `P${idx+1}`
+                        }));
+                        priceSeries.setMarkers(priceMarkers);
+
+                        // Add line connecting price pivots
+                        const pricePivotLine = priceChart.addLineSeries({
+                            color: isBullish ? '#4caf50' : '#ef5350',
+                            lineWidth: 2,
+                            lineStyle: LightweightCharts.LineStyle.Solid
                         });
-                    } else {
-                        chart.timeScale().fitContent();
+                        pricePivotLine.setData(pivotDates.map(date => {
+                            const c = candleData.find(d => d.time === date);
+                            return { time: date, value: c ? (isBullish ? c.low : c.high) : 0 };
+                        }));
+
+                        // Add markers on RSI series
+                        const rsiMarkers = pivotDates.map((date, idx) => ({
+                            time: date,
+                            position: 'inLine',
+                            color: '#ff9800',
+                            shape: 'circle',
+                            text: `R${idx+1}`
+                        }));
+                        rsiSeries.setMarkers(rsiMarkers);
+
+                        // Add line connecting RSI pivots
+                        const rsiPivotLine = rsiChart.addLineSeries({
+                            color: '#ff9800',
+                            lineWidth: 2,
+                            lineStyle: LightweightCharts.LineStyle.Solid
+                        });
+                        rsiPivotLine.setData(pivotDates.map(date => {
+                            const r = rsiData.find(d => d.time === date);
+                            return { time: date, value: r ? r.value : 0 };
+                        }));
+                    }
+
+                    // Focus time scale around the trigger date
+                    const triggerIndex = candleData.findIndex(d => d.time >= data.base_start_date);
+                    if (triggerIndex !== -1) {
+                        priceChart.timeScale().setVisibleLogicalRange({
+                            from: Math.max(0, triggerIndex - 30),
+                            to: Math.min(candleData.length - 1 + 5, triggerIndex + 10)
+                        });
                     }
                 } else {
-                    chart.timeScale().fitContent();
+                    const chart = LightweightCharts.createChart(chartDiv, {
+                        layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#666' },
+                        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+                        timeScale: { borderVisible: false, timeVisible: false },
+                        rightPriceScale: { visible: false },
+                        handleScroll: false,
+                        handleScale: false,
+                    });
+                    
+                    chartDiv.style.position = 'relative';
+                    const legend = document.createElement('div');
+                    legend.style.position = 'absolute';
+                    legend.style.top = '5px';
+                    legend.style.left = '5px';
+                    legend.style.zIndex = '50';
+                    legend.style.padding = '3px 6px';
+                    legend.style.borderRadius = '4px';
+                    legend.style.background = 'rgba(17, 24, 39, 0.8)';
+                    legend.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                    legend.style.fontFamily = 'monospace';
+                    legend.style.fontSize = '9px';
+                    legend.style.color = '#fff';
+                    legend.style.pointerEvents = 'none';
+                    legend.style.display = 'none';
+                    chartDiv.appendChild(legend);
+                    
+                    const series = chart.addCandlestickSeries({
+                        upColor: '#4caf50', downColor: '#ef5350', borderVisible: false, wickUpColor: '#4caf50', wickDownColor: '#ef5350'
+                    });
+                    series.setData(candleData);
+                    
+                    chart.subscribeCrosshairMove(param => {
+                        if (!param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
+                            legend.style.display = 'none';
+                            return;
+                        }
+                        const candle = param.seriesData.get(series);
+                        if (candle) {
+                            const dateStr = typeof param.time === 'string' ? param.time : (param.time.year + '-' + String(param.time.month).padStart(2, '0') + '-' + String(param.time.day).padStart(2, '0'));
+                            legend.innerHTML = `D: ${dateStr.substring(5)} | O: ${candle.open.toFixed(1)} | H: ${candle.high.toFixed(1)} | L: ${candle.low.toFixed(1)} | C: ${candle.close.toFixed(1)}`;
+                            legend.style.display = 'block';
+                        }
+                    });
+
+                    // ── EMA CONVERGENCE: overlay the relevant moving averages ──────────────
+                    if (currentPatternData && currentPatternData.screen === 'ema-convergence') {
+                        // Helper: compute EMA from candleData closes
+                        function calcEMA(data, span) {
+                            const k = 2 / (span + 1);
+                            let ema = null;
+                            return data.map(d => {
+                                if (ema === null) { ema = d.close; }
+                                else { ema = d.close * k + ema * (1 - k); }
+                                return { time: d.time, value: ema };
+                            });
+                        }
+                        // Helper: compute SMA
+                        function calcSMA(data, period) {
+                            return data.map((d, i) => {
+                                if (i < period - 1) return null;
+                                const slice = data.slice(i - period + 1, i + 1);
+                                const avg = slice.reduce((s, x) => s + x.close, 0) / period;
+                                return { time: d.time, value: avg };
+                            }).filter(Boolean);
+                        }
+
+                        const emaConfigs = {
+                            'convergence_3': [
+                                { fn: () => calcEMA(candleData, 4),   color: '#00e5ff', label: 'E4',   lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 9),   color: '#ffeb3b', label: 'E9',   lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 18),  color: '#ff9800', label: 'E18',  lw: 1.5 },
+                                { fn: () => calcSMA(candleData, 100), color: '#7c4dff', label: 'S100', lw: 1, dash: true },
+                                { fn: () => calcSMA(candleData, 150), color: '#e040fb', label: 'S150', lw: 1, dash: true },
+                                { fn: () => calcSMA(candleData, 200), color: '#f44336', label: 'S200', lw: 1, dash: true },
+                            ],
+                            'convergence_4': [
+                                { fn: () => calcEMA(candleData, 5),  color: '#00e5ff', label: 'E5',  lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 9),  color: '#ffeb3b', label: 'E9',  lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 21), color: '#ffffff', label: 'E21', lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 50), color: '#8d6e63', label: 'E50', lw: 1.5 },
+                            ],
+                            'convergence_5': [
+                                { fn: () => calcEMA(candleData, 4),   color: '#00e5ff', label: 'E4',   lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 9),   color: '#ffeb3b', label: 'E9',   lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 18),  color: '#ff9800', label: 'E18',  lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 50),  color: '#8d6e63', label: 'E50',  lw: 1.5 },
+                                { fn: () => calcEMA(candleData, 200), color: '#ab47bc', label: 'E200', lw: 1.5 },
+                            ]
+                        };
+                        const configs = emaConfigs[convergenceFilter] || emaConfigs['convergence_3'];
+
+                        // Top-right color legend
+                        const emaLegend = document.createElement('div');
+                        emaLegend.style.cssText = 'position:absolute;top:5px;right:5px;z-index:50;display:flex;flex-direction:column;gap:2px;padding:4px 6px;border-radius:4px;background:rgba(17,24,39,0.82);border:1px solid rgba(255,255,255,0.1);pointer-events:none;';
+                        configs.forEach(cfg => {
+                            const row = document.createElement('div');
+                            row.style.cssText = `display:flex;align-items:center;gap:4px;font-size:9px;font-family:monospace;color:${cfg.color};`;
+                            row.innerHTML = `<span style="display:inline-block;width:14px;height:2px;background:${cfg.color};opacity:0.9;"></span>${cfg.label}`;
+                            emaLegend.appendChild(row);
+                        });
+                        chartDiv.appendChild(emaLegend);
+
+                        // Add line series for each EMA/SMA
+                        configs.forEach(cfg => {
+                            const lineSeries = chart.addLineSeries({
+                                color: cfg.color,
+                                lineWidth: cfg.lw,
+                                lineStyle: cfg.dash ? LightweightCharts.LineStyle.Dashed : LightweightCharts.LineStyle.Solid,
+                                priceLineVisible: false,
+                                lastValueVisible: false,
+                                crosshairMarkerVisible: false,
+                            });
+                            lineSeries.setData(cfg.fn());
+                        });
+
+                        // Show last ~120 candles so the squeeze is visible
+                        chart.timeScale().setVisibleLogicalRange({
+                            from: Math.max(0, candleData.length - 120),
+                            to: candleData.length - 1 + 3
+                        });
+                    } else {
+                        // Other screens: show pivot line + zoom to base start date
+                        if (data.base_high) {
+                            series.createPriceLine({
+                                price: data.base_high,
+                                color: '#4caf50',
+                                lineWidth: 2,
+                                lineStyle: LightweightCharts.LineStyle.Dashed,
+                                axisLabelVisible: true,
+                                title: 'pivot ₹' + data.base_high
+                            });
+                        }
+                        if (data.base_start_date) {
+                            const start = new Date(data.base_start_date);
+                            start.setMonth(start.getMonth() - 1);
+                            const startStr = start.toISOString().split('T')[0];
+                            const startIndex = candleData.findIndex(d => d.time >= startStr);
+                            if (startIndex !== -1) {
+                                chart.timeScale().setVisibleLogicalRange({ from: startIndex, to: candleData.length - 1 + 5 });
+                            } else {
+                                chart.timeScale().fitContent();
+                            }
+                        } else {
+                            chart.timeScale().fitContent();
+                        }
+                    }
                 }
             } catch (err) {
                 chartDiv.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; margin-top:40px;">Chart unavailable</div>';
@@ -1424,6 +1868,41 @@
             setTimeout(() => {
                 loadChart();
             }, 100);
+        }
+
+        function openFullChartWithRsi(symbol) {
+            // 1. Set the sub-panel dropdown to "rsi" and trigger change
+            const subPanelSelect = document.getElementById('chartSubPanelSelect');
+            if (subPanelSelect) {
+                subPanelSelect.value = 'rsi';
+                changeSubPanel('rsi');
+            }
+            
+            // 2. Select the symbol
+            const selectEl = document.getElementById('chartSymbol');
+            if (selectEl) {
+                let option = Array.from(selectEl.options).find(o => o.value === symbol);
+                if (!option) {
+                    option = document.createElement('option');
+                    option.value = symbol;
+                    option.textContent = symbol;
+                    selectEl.appendChild(option);
+                }
+                selectEl.value = symbol;
+            }
+            
+            // 3. Show the chart section
+            const navEl = document.getElementById('nav-stockChart');
+            showSection('stockChart', navEl);
+            
+            // 4. Trigger fullscreen overlay synchronously to satisfy browser requestFullscreen rules
+            const wrap = document.getElementById('chartCanvasWrap');
+            if (wrap && !wrap.classList.contains('is-fullscreen')) {
+                toggleChartFullscreen();
+            }
+            
+            // 5. Load the chart
+            loadChart();
         }
 
         /* ══════════════════════════════════════════════════════════════
@@ -1806,7 +2285,7 @@
 
             let url = `/api/data?start_date=${start}&end_date=${end}`;
             if (symbol) url += `&symbol=${symbol}`;
-            if (!symbol && signal) url += `&signal=${signal}`;
+            if (signal) url += `&signal=${signal}`;
 
             document.getElementById('spinner').classList.add('active');
             document.getElementById('stockTableContainer').style.display = 'none';
@@ -1841,6 +2320,8 @@
             if (!symbol && signal) {
                 if (signal === 'delivery_momentum_signal' || signal === 'Delivery') {
                     headers = ['Symbol', 'Timestamp', 'Recent_Deliv_Pct', 'Baseline_Deliv_Pct', 'delivery_momentum_signal'];
+                } else if (signal === 'rsi_divergence' || signal === 'rsi_divergence_type') {
+                    headers = ['Symbol', 'Timestamp', 'rsi_divergence_type', 'rsi_divergence_direction', 'rsi_divergence_score'];
                 } else {
                     headers = ['Symbol', 'Timestamp', signal];
                 }
@@ -1949,6 +2430,8 @@
             let headers;
             if (signalName === 'delivery_momentum_signal' || signalName === 'Delivery') {
                 headers = ['Symbol', 'Timestamp', 'Recent_Deliv_Pct', 'Baseline_Deliv_Pct', 'delivery_momentum_signal'];
+            } else if (signalName === 'rsi_divergence' || signalName === 'rsi_divergence_type') {
+                headers = ['Symbol', 'Timestamp', 'rsi_divergence_type', 'rsi_divergence_direction', 'rsi_divergence_score'];
             } else {
                 headers = ['Symbol', 'Timestamp', signalName];
             }
@@ -1993,7 +2476,7 @@
         /* ═══════════════════════════════════════════════════════
            STOCK CHART + INDICATOR PANEL
         ═══════════════════════════════════════════════════════ */
-        let _lwChart = null, _candleSeries = null, _volSeries = null, _sma20Series = null, _sma50Series = null, _sma200Series = null;
+        let _lwChart = null, _candleSeries = null, _volSeries = null, _ema4Series = null, _ema5Series = null, _ema9Series = null, _ema18Series = null, _ema21Series = null, _ema50Series = null, _ema200Series = null;
         let _areaSeries = null, _lineSeries = null, _barSeries = null;
         let _subPanelChart = null, _rsiSeries = null, _rsi70Line = null, _rsi30Line = null;
         let _macdHistogram = null, _macdLineSeries = null, _macdSignalSeries = null;
@@ -2035,9 +2518,13 @@
                     upColor: '#10b981', downColor: '#ef4444',
                     visible: false
                 });
-                _sma20Series = _lwChart.addLineSeries({ color: '#06b6d4', lineWidth: 1.5, title: 'SMA20', priceLineVisible: false });
-                _sma50Series = _lwChart.addLineSeries({ color: '#8b5cf6', lineWidth: 1.5, title: 'SMA50', priceLineVisible: false });
-                _sma200Series = _lwChart.addLineSeries({ color: '#eab308', lineWidth: 1.5, title: 'SMA200', priceLineVisible: false, visible: false });
+                _ema4Series = _lwChart.addLineSeries({ color: '#00e5ff', lineWidth: 1.5, title: 'EMA4', priceLineVisible: false });
+                _ema5Series = _lwChart.addLineSeries({ color: '#22c55e', lineWidth: 1.5, title: 'EMA5', priceLineVisible: false, visible: false });
+                _ema9Series = _lwChart.addLineSeries({ color: '#ffeb3b', lineWidth: 1.5, title: 'EMA9', priceLineVisible: false });
+                _ema18Series = _lwChart.addLineSeries({ color: '#ff9800', lineWidth: 1.5, title: 'EMA18', priceLineVisible: false });
+                _ema21Series = _lwChart.addLineSeries({ color: '#ffffff', lineWidth: 1.5, title: 'EMA21', priceLineVisible: false, visible: false });
+                _ema50Series = _lwChart.addLineSeries({ color: '#8d6e63', lineWidth: 1.5, title: 'EMA50', priceLineVisible: false, visible: false });
+                _ema200Series = _lwChart.addLineSeries({ color: '#ab47bc', lineWidth: 1.5, title: 'EMA200', priceLineVisible: false, visible: false });
 
                 _volChart = LightweightCharts.createChart(document.getElementById('volChart'), {
                     width: document.getElementById('volChart').clientWidth,
@@ -2067,13 +2554,24 @@
                 _macdLineSeries = _subPanelChart.addLineSeries({ color: '#3b82f6', lineWidth: 1.5, title: 'MACD' });
                 _macdSignalSeries = _subPanelChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, title: 'Signal' });
 
-                // Sync crosshairs across all 3 charts
-                _lwChart.timeScale().subscribeVisibleLogicalRangeChange(r => {
-                    if (r) {
-                        _volChart.timeScale().setVisibleLogicalRange(r);
-                        if (_subPanelChart) _subPanelChart.timeScale().setVisibleLogicalRange(r);
-                    }
-                });
+                // Sync timescale visible logical range bidirectionally
+                let isSyncingRange = false;
+                const syncRange = (sourceChart, targetCharts) => {
+                    sourceChart.timeScale().subscribeVisibleLogicalRangeChange(r => {
+                        if (isSyncingRange || !r) return;
+                        isSyncingRange = true;
+                        targetCharts.forEach(t => {
+                            if (t) {
+                                t.timeScale().setVisibleLogicalRange(r);
+                            }
+                        });
+                        isSyncingRange = false;
+                    });
+                };
+                
+                syncRange(_lwChart, [_volChart, _subPanelChart]);
+                syncRange(_volChart, [_lwChart, _subPanelChart]);
+                if (_subPanelChart) syncRange(_subPanelChart, [_lwChart, _volChart]);
                 
                 // Create a legend element overlay for main chart
                 const mainChartDiv = document.getElementById('lwChart');
@@ -2229,7 +2727,7 @@
                 'adx_trigger': 'ADX',
                 'convergence_3': 'C3',
                 'convergence_4': 'C4',
-                'convergence_5a': 'C5A'
+                'convergence_5': 'C5'
             };
 
             let prevSignals = {};
@@ -2271,11 +2769,46 @@
             _candleSeries.setMarkers(markers);
         }
 
-        function toggleSMA() {
-            if (!_sma20Series || !_sma50Series) return;
-            _sma20Series.applyOptions({ visible: document.getElementById('sma20toggle').checked });
-            _sma50Series.applyOptions({ visible: document.getElementById('sma50toggle').checked });
-            if (_sma200Series) _sma200Series.applyOptions({ visible: document.getElementById('sma200toggle').checked });
+        function changeEmaOverlay(mode) {
+            const allEmaSeries = [_ema4Series, _ema5Series, _ema9Series, _ema18Series, _ema21Series, _ema50Series, _ema200Series];
+            allEmaSeries.forEach(s => { if (s) s.applyOptions({ visible: false }); });
+
+            if (mode === 'all') {
+                if (_ema4Series) _ema4Series.applyOptions({ visible: true });
+                if (_ema9Series) _ema9Series.applyOptions({ visible: true });
+                if (_ema18Series) _ema18Series.applyOptions({ visible: true });
+                if (_ema50Series) _ema50Series.applyOptions({ visible: true });
+                if (_ema200Series) _ema200Series.applyOptions({ visible: true });
+            } else if (mode === 'c3') {
+                if (_ema4Series) _ema4Series.applyOptions({ visible: true });
+                if (_ema9Series) _ema9Series.applyOptions({ visible: true });
+                if (_ema18Series) _ema18Series.applyOptions({ visible: true });
+            } else if (mode === 'c4') {
+                if (_ema5Series) _ema5Series.applyOptions({ visible: true });
+                if (_ema9Series) _ema9Series.applyOptions({ visible: true });
+                if (_ema21Series) _ema21Series.applyOptions({ visible: true });
+                if (_ema50Series) _ema50Series.applyOptions({ visible: true });
+            } else if (mode === 'c5') {
+                if (_ema4Series) _ema4Series.applyOptions({ visible: true });
+                if (_ema9Series) _ema9Series.applyOptions({ visible: true });
+                if (_ema18Series) _ema18Series.applyOptions({ visible: true });
+                if (_ema50Series) _ema50Series.applyOptions({ visible: true });
+                if (_ema200Series) _ema200Series.applyOptions({ visible: true });
+            } else if (mode === 'ema4') {
+                if (_ema4Series) _ema4Series.applyOptions({ visible: true });
+            } else if (mode === 'ema5') {
+                if (_ema5Series) _ema5Series.applyOptions({ visible: true });
+            } else if (mode === 'ema9') {
+                if (_ema9Series) _ema9Series.applyOptions({ visible: true });
+            } else if (mode === 'ema18') {
+                if (_ema18Series) _ema18Series.applyOptions({ visible: true });
+            } else if (mode === 'ema21') {
+                if (_ema21Series) _ema21Series.applyOptions({ visible: true });
+            } else if (mode === 'ema50') {
+                if (_ema50Series) _ema50Series.applyOptions({ visible: true });
+            } else if (mode === 'ema200') {
+                if (_ema200Series) _ema200Series.applyOptions({ visible: true });
+            }
         }
 
         function resetChartZoom() {
@@ -2397,19 +2930,37 @@
                     time: r.time, value: r.volume,
                     color: r.close >= r.open ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)'
                 })));
-                // SMA lines
-                const sma = (arr, n) => arr.map((_, i) => {
-                    if (i < n - 1) return null;
-                    const avg = arr.slice(i - n + 1, i + 1).reduce((s, v) => s + v, 0) / n;
-                    return avg;
-                });
+                // EMA lines
+                const ema = (arr, span) => {
+                    const k = 2 / (span + 1);
+                    let res = [];
+                    let prev = null;
+                    for (let i = 0; i < arr.length; i++) {
+                        if (prev === null) {
+                            prev = arr[i];
+                            res.push(prev);
+                        } else {
+                            prev = arr[i] * k + prev * (1 - k);
+                            res.push(prev);
+                        }
+                    }
+                    return res;
+                };
                 const closes = ohlcv.map(r => r.close);
-                const sma20v = sma(closes, 20);
-                const sma50v = sma(closes, 50);
-                const sma200v = sma(closes, 200);
-                _sma20Series.setData(ohlcv.map((r, i) => sma20v[i] !== null ? { time: r.time, value: sma20v[i] } : null).filter(Boolean));
-                _sma50Series.setData(ohlcv.map((r, i) => sma50v[i] !== null ? { time: r.time, value: sma50v[i] } : null).filter(Boolean));
-                if (_sma200Series) _sma200Series.setData(ohlcv.map((r, i) => sma200v[i] !== null ? { time: r.time, value: sma200v[i] } : null).filter(Boolean));
+                const ema4v = ema(closes, 4);
+                const ema5v = ema(closes, 5);
+                const ema9v = ema(closes, 9);
+                const ema18v = ema(closes, 18);
+                const ema21v = ema(closes, 21);
+                const ema50v = ema(closes, 50);
+                const ema200v = ema(closes, 200);
+                if (_ema4Series) _ema4Series.setData(ohlcv.map((r, i) => ({ time: r.time, value: ema4v[i] })));
+                if (_ema5Series) _ema5Series.setData(ohlcv.map((r, i) => ({ time: r.time, value: ema5v[i] })));
+                if (_ema9Series) _ema9Series.setData(ohlcv.map((r, i) => ({ time: r.time, value: ema9v[i] })));
+                if (_ema18Series) _ema18Series.setData(ohlcv.map((r, i) => ({ time: r.time, value: ema18v[i] })));
+                if (_ema21Series) _ema21Series.setData(ohlcv.map((r, i) => ({ time: r.time, value: ema21v[i] })));
+                if (_ema50Series) _ema50Series.setData(ohlcv.map((r, i) => ({ time: r.time, value: ema50v[i] })));
+                if (_ema200Series) _ema200Series.setData(ohlcv.map((r, i) => ({ time: r.time, value: ema200v[i] })));
 
                 // Sub-panel data
                 if (_rsiSeries) _rsiSeries.setData(ohlcv.map(r => r.rsi !== null ? { time: r.time, value: r.rsi } : null).filter(Boolean));
@@ -2467,10 +3018,17 @@
                 _volChart.timeScale().scrollToPosition(0, false);
                 if (_subPanelChart) _subPanelChart.timeScale().scrollToPosition(0, false);
 
-                toggleSMA();
+                changeEmaOverlay(document.getElementById('emaOverlaySelect').value || 'c3');
                 renderChartSignalMarkers();
                 changeSubPanel(document.getElementById('chartSubPanelSelect').value || 'none');
-                renderIndicatorPanel(inds);
+                const latestEmas = {
+                    e4: ema4v.length ? ema4v[ema4v.length - 1] : null,
+                    e9: ema9v.length ? ema9v[ema9v.length - 1] : null,
+                    e18: ema18v.length ? ema18v[ema18v.length - 1] : null,
+                    e50: ema50v.length ? ema50v[ema50v.length - 1] : null,
+                    e200: ema200v.length ? ema200v[ema200v.length - 1] : null
+                };
+                renderIndicatorPanel(inds, latestEmas);
             } catch (e) {
                 const loadMsg = document.getElementById('chartLoadMsg');
                 if (loadMsg) { loadMsg.style.display = 'flex'; loadMsg.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right:0.5rem;color:#ef4444"></i> Failed to load chart data'; }
@@ -2478,7 +3036,7 @@
             }
         }
 
-        function renderIndicatorPanel(d) {
+        function renderIndicatorPanel(d, emas = {}) {
             const panel = document.getElementById('indicatorPanel');
             if (!d || d.detail) { panel.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:2rem;">No indicator data available.</div>'; return; }
 
@@ -2494,9 +3052,10 @@
             const macdClass = macdDiff > 0 ? 'bullish' : macdDiff < 0 ? 'bearish' : 'neutral';
             const macdColor = macdDiff > 0 ? '#10b981' : '#ef4444';
 
-            const sma20 = d.sma20, sma50 = d.sma50, close = d.close;
-            const smaClass = (sma20 && sma50) ? (sma20 > sma50 ? 'bullish' : 'bearish') : 'neutral';
-            const smaIcon = (sma20 && sma50) ? (sma20 > sma50 ? '↑' : '↓') : '—';
+            const { e4, e9, e18, e50, e200 } = emas;
+            const close = d.close;
+            const emaClass = (e9 && e18) ? (e9 > e18 ? 'bullish' : 'bearish') : 'neutral';
+            const emaIcon = (e9 && e18) ? (e9 > e18 ? '↑' : '↓') : '—';
 
             const volSpike = d.vol_spike;
             const rcs30 = d.rcs_30d;
@@ -2537,12 +3096,17 @@
             </div>
         </div>
 
-        <!-- SMA Trend -->
-        <div class="ind-card ${smaClass}">
-            <div class="ind-label">SMA Trend</div>
-            <div class="ind-value" style="font-size:1.8rem;">${smaIcon}</div>
-            <div class="ind-sub">SMA20: ${sma20 !== null ? sma20.toFixed(1) : '—'}</div>
-            <div class="ind-sub">SMA50: ${sma50 !== null ? sma50.toFixed(1) : '—'}</div>
+        <!-- EMA Trend -->
+        <div class="ind-card ${emaClass}">
+            <div class="ind-label">EMA Trend</div>
+            <div class="ind-value" style="font-size:1.6rem;">${emaIcon}</div>
+            <div class="ind-sub" style="display:flex; flex-direction:column; gap:2px; margin-top:2px; font-size:0.75rem;">
+                <span title="EMA4" style="color:#00e5ff;">🔵 E4: ${e4 ? e4.toFixed(1) : '—'}</span>
+                <span title="EMA9" style="color:#ffeb3b;">🟡 E9: ${e9 ? e9.toFixed(1) : '—'}</span>
+                <span title="EMA18" style="color:#ff9800;">🟠 E18: ${e18 ? e18.toFixed(1) : '—'}</span>
+                <span title="EMA50" style="color:#8d6e63;">🟤 E50: ${e50 ? e50.toFixed(1) : '—'}</span>
+                <span title="EMA200" style="color:#ab47bc;">🟣 E200: ${e200 ? e200.toFixed(1) : '—'}</span>
+            </div>
         </div>
 
         <!-- Close Price -->
@@ -2919,6 +3483,20 @@
 
             // Check if redirecting to a specific section
             const params = new URLSearchParams(window.location.search);
+            const symbolParam = params.get('symbol');
+            if (symbolParam) {
+                const selectEl = document.getElementById('chartSymbol');
+                if (selectEl) {
+                    let option = Array.from(selectEl.options).find(o => o.value === symbolParam);
+                    if (!option) {
+                        option = document.createElement('option');
+                        option.value = symbolParam;
+                        option.textContent = symbolParam;
+                        selectEl.appendChild(option);
+                    }
+                    selectEl.value = symbolParam;
+                }
+            }
             const sec = params.get('section');
             if (sec && SECTIONS[sec]) {
                 const el = document.getElementById('nav-' + sec);
@@ -2952,6 +3530,11 @@
                     { v: "rsi_gt_70", l: "RSI > 70" },
                     { v: "oversold", l: "Oversold" },
                     { v: "overbought", l: "Overbought" },
+                ]
+            },
+            {
+                label: "RSI Divergence", fields: [
+                    { v: "rsi_divergence", l: "RSI Divergence" },
                 ]
             },
             {
@@ -2999,15 +3582,16 @@
                 label: "Convergence Scanners", fields: [
                     { v: "convergence_3", l: "Convergence 3" },
                     { v: "convergence_4", l: "Convergence 4" },
-                    { v: "convergence_5a", l: "Convergence 5A" },
+                    { v: "convergence_5", l: "Convergence 5" },
                 ]
             },
         ];
 
         const SB_NR_FIELDS = new Set(["NR"]);
-        const SB_NUMERIC_FIELDS = new Set(["RCS_30D"]);
+        const SB_NUMERIC_FIELDS = new Set(["RCS_30D", "rsi_divergence_score"]);
+        const SB_STRING_FIELDS = new Set(["rsi_divergence_type", "rsi_divergence_direction"]);
         const SB_BINARY_FIELDS = new Set(
-            SB_FIELD_GROUPS.flatMap(g => g.fields.map(f => f.v)).filter(v => !SB_NR_FIELDS.has(v) && !SB_NUMERIC_FIELDS.has(v))
+            SB_FIELD_GROUPS.flatMap(g => g.fields.map(f => f.v)).filter(v => !SB_NR_FIELDS.has(v) && !SB_NUMERIC_FIELDS.has(v) && !SB_STRING_FIELDS.has(v))
         );
         const SB_FIELD_LABEL = {};
         SB_FIELD_GROUPS.forEach(g => g.fields.forEach(f => { SB_FIELD_LABEL[f.v] = f.l; }));
@@ -3100,17 +3684,25 @@
             const opSel = document.getElementById(`sb_op_${id}`);
             const valInp = document.getElementById(`sb_val_${id}`);
             if (SB_NR_FIELDS.has(field)) {
+                valInp.type = 'number';
                 opSel.innerHTML = '<option value=">">&gt;</option>';
                 opSel.disabled = false;
                 valInp.style.display = 'block';
                 valInp.placeholder = '0–8';
                 valInp.step = '1';
             } else if (SB_NUMERIC_FIELDS.has(field)) {
+                valInp.type = 'number';
                 opSel.innerHTML = '<option value=">">&gt;</option><option value="<">&lt;</option><option value=">=">&gt;=</option><option value="<=">&lt;=</option><option value="==">==</option>';
                 opSel.disabled = false;
                 valInp.style.display = 'block';
                 valInp.placeholder = 'e.g. 5.0 (%)';
                 valInp.step = '0.1';
+            } else if (SB_STRING_FIELDS.has(field)) {
+                valInp.type = 'text';
+                opSel.innerHTML = '<option value="==">==</option>';
+                opSel.disabled = true;
+                valInp.style.display = 'block';
+                valInp.placeholder = field === 'rsi_divergence_type' ? 'e.g. double, triple' : 'e.g. bullish, bearish';
             } else {
                 opSel.innerHTML = '<option value="==">==</option>';
                 opSel.disabled = true;
@@ -3144,6 +3736,7 @@
                 const c = { field, operator: op, logic: condLogic };
                 if (SB_NR_FIELDS.has(field)) c.value = parseInt(val, 10) || 0;
                 if (SB_NUMERIC_FIELDS.has(field)) c.value = parseFloat(val) || 0;
+                if (SB_STRING_FIELDS.has(field)) c.value = val || '';
                 return c;
             }).filter(Boolean);
         }
@@ -3152,6 +3745,7 @@
             const label = SB_FIELD_LABEL[c.field] || c.field;
             if (SB_NR_FIELDS.has(c.field)) return `${label} ${c.operator || '>'} ${c.value ?? 0}`;
             if (SB_NUMERIC_FIELDS.has(c.field)) return `${label} ${c.operator || '>'} ${c.value ?? 0}%`;
+            if (SB_STRING_FIELDS.has(c.field)) return `${label} = "${c.value || ''}"`;
             return `${label} = True`;
         }
 
@@ -3260,7 +3854,7 @@
             let html = `<div class="table-container fade-in" style="margin-top:1rem;"><table class="table"><thead><tr><th>Symbol</th><th>Date</th>${signalCols.map(c => `<th>${c.replace(/_/g, ' ')}</th>`).join('')}</tr></thead><tbody>`;
             rows.forEach(row => {
                 const date = (row.Timestamp || '').slice(0, 10);
-                html += `<tr><td><span class="symbol-link" onclick="document.getElementById('symbol').value='${row.Symbol}';showSection('stockChart');loadChart();" style="cursor:pointer;">${row.Symbol}</span></td><td style="color:var(--text-secondary);">${date}</td>${signalCols.map(c => {
+                html += `<tr><td><span class="symbol-link" onclick="viewStockChart('${row.Symbol}')" style="cursor:pointer;">${row.Symbol}</span></td><td style="color:var(--text-secondary);">${date}</td>${signalCols.map(c => {
                     const v = row[c];
                     if (v === 1 || v === '1' || v === true) return `<td><span style="display:inline-block;padding:3px 8px;border-radius:6px;background:rgba(52,199,89,0.12);color:#27a745;font-weight:600;font-size:12px;border:1px solid rgba(52,199,89,0.25);">✓ True</span></td>`;
                     if (v === 0 || v === '0' || v === false || v === null || v === undefined) return `<td><span style="color:var(--text-muted)">—</span></td>`;

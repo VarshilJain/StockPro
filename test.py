@@ -14,6 +14,7 @@ from config import (
     VCP_MAX_PIVOT_DIST_PCT,
     VCP_MIN_CONTRACTIONS,
     BLUE_SKY_ATH_PROXIMITY_PCT,
+    BLUE_SKY_CLOSE_ATH_PROXIMITY_PCT,
     BLUE_SKY_PIVOT_ATH_PROXIMITY,
     MULTI_YEAR_BASE_MIN_DAYS,
     IPO_BASE_MIN_WEEKS,
@@ -36,15 +37,26 @@ logging.basicConfig(
 log = logging.getLogger("test_signals")
 
 
+from services import detect_rsi_divergence
+
 def compute_rsi(close_series: pd.Series, period: int = 14) -> pd.Series:
+    if len(close_series) <= period:
+        return pd.Series(np.nan, index=close_series.index)
     delta = close_series.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
-    avg_gain = gain.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+    seed_gain = gain.rolling(window=period, min_periods=period).mean()
+    seed_loss = loss.rolling(window=period, min_periods=period).mean()
+    w_gain = pd.Series(np.nan, index=close_series.index)
+    w_loss = pd.Series(np.nan, index=close_series.index)
+    w_gain.iloc[period] = seed_gain.iloc[period]
+    w_loss.iloc[period] = seed_loss.iloc[period]
+    w_gain.iloc[period+1:] = gain.iloc[period+1:]
+    w_loss.iloc[period+1:] = loss.iloc[period+1:]
+    avg_gain = w_gain.ewm(alpha=1/period, adjust=False).mean()
+    avg_loss = w_loss.ewm(alpha=1/period, adjust=False).mean()
     rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+    return 100 - (100 / (1 + rs))
 
 
 def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
@@ -202,6 +214,10 @@ def detect_base(group: pd.DataFrame) -> pd.DataFrame:
     cur_days_in_base = 0
     cur_last_breakout_level = np.nan
     
+    # State machine running peak parameters
+    running_peak = 0.0
+    running_peak_idx = 0
+    
     leg_high = 0.0
     leg_low = float('inf')
     last_swing_low = float('inf')
@@ -210,25 +226,39 @@ def detect_base(group: pd.DataFrame) -> pd.DataFrame:
     trend = 0
     
     for i in range(n):
-        start_idx = max(0, i - BASE_SWING_LOOKBACK_DAYS)
-        window_highs = highs[start_idx:i+1]
-        
         c = closes[i]
         h = highs[i]
         l = lows[i]
         d = dates[i]
         
+        if i == 0:
+            running_peak = h
+            running_peak_idx = 0
+            
+        # 1. Breakout Check
+        is_breakout = False
+        if in_base and c > cur_base_high:
+            is_breakout = True
+            breakout_today[i] = 1
+            cur_last_breakout_level = cur_base_high
+            
+        # 2. Base Initiation / Pullback Trigger Check
         if not in_base:
-            max_idx = start_idx + np.argmax(window_highs)
+            # Update running peak
+            if h > running_peak:
+                running_peak = h
+                running_peak_idx = i
+                
+            start_idx = max(0, i - BASE_SWING_LOOKBACK_DAYS)
+            window_highs = highs[start_idx:i+1]
             recent_high = window_highs.max()
-            recent_high_date = dates[max_idx]
             
             if recent_high > 0 and ((recent_high - c) / recent_high * 100) >= BASE_MIN_DROP_PCT:
                 in_base = True
-                cur_base_high = recent_high
-                cur_base_start_date = recent_high_date
-                cur_days_in_base = i - max_idx
-                cur_base_low = np.min(lows[max_idx:i+1])
+                cur_base_high = running_peak
+                cur_base_start_date = dates[running_peak_idx]
+                cur_days_in_base = i - running_peak_idx
+                cur_base_low = np.min(lows[running_peak_idx:i+1])
                 cur_contractions = 0
                 
                 leg_high = h
@@ -237,9 +267,10 @@ def detect_base(group: pd.DataFrame) -> pd.DataFrame:
                 prev_swing_low = float('inf')
                 last_swing_high = cur_base_high
                 trend = -1
-                
+
+        # 3. Base Tracking Logic
         if in_base:
-            cur_days_in_base += 1
+            cur_days_in_base = i - running_peak_idx
             if l < cur_base_low:
                 cur_base_low = l
                 
@@ -255,18 +286,11 @@ def detect_base(group: pd.DataFrame) -> pd.DataFrame:
                     leg_high = h
                 if i > 0 and c < lows[i-1]:
                     trend = -1
-                    # Contraction counts if current high is lower than previous high,
-                    # AND current swing low is higher than previous swing low.
                     if leg_high < last_swing_high and last_swing_low > prev_swing_low:
                         cur_contractions += 1
                     last_swing_high = leg_high
                     prev_swing_low = last_swing_low
                     leg_low = l
-
-            if c > cur_base_high and (i == 0 or closes[i-1] <= cur_base_high):
-                breakout_today[i] = 1
-                cur_last_breakout_level = cur_base_high
-                in_base = False
             
             base_active[i] = 1
             base_start_date[i] = cur_base_start_date
@@ -276,6 +300,24 @@ def detect_base(group: pd.DataFrame) -> pd.DataFrame:
             base_depth_pct[i] = (cur_base_high - cur_base_low) / cur_base_high * 100
             pct_from_pivot[i] = (cur_base_high - c) / cur_base_high * 100
             contraction_count[i] = cur_contractions
+            
+            if is_breakout:
+                in_base = False
+                running_peak = h
+                running_peak_idx = i
+                cur_base_high = 0.0
+                cur_base_low = float('inf')
+                cur_contractions = 0
+                cur_days_in_base = 0
+        else:
+            base_active[i] = 0
+            base_start_date[i] = d
+            base_length_days[i] = 0
+            base_high_arr[i] = 0.0
+            base_low_arr[i] = 0.0
+            base_depth_pct[i] = 0.0
+            pct_from_pivot[i] = 0.0
+            contraction_count[i] = 0
             
         last_breakout_level[i] = cur_last_breakout_level
         
@@ -440,8 +482,8 @@ def main():
         spread_4 = (ema5 - ema50) / ema50 * 100
         group['convergence_4'] = ((ema5 > ema9) & (ema9 > ema21) & (ema21 > ema50) & (spread_4 <= 2.5)).astype(int)
 
-        spread_5a = (ema4 - ema200) / ema200 * 100
-        group['convergence_5a'] = ((ema4 > ema9) & (ema9 > ema18) & (ema18 > ema50) & (ema50 > ema200) & (spread_5a <= 5.0)).astype(int)
+        spread_5 = (ema4 - ema200) / ema200 * 100
+        group['convergence_5'] = ((ema4 > ema9) & (ema9 > ema18) & (ema18 > ema50) & (ema50 > ema200) & (spread_5 <= 5.0)).astype(int)
 
         cross_sma_below = (group['Close'] > group["SMA9"]) & (group['Close'].shift(1) < group["SMA9"].shift(1))
         group["signal1"] = np.where(cross_sma_below, 1, 0)
@@ -486,6 +528,21 @@ def main():
         group["overbought"] = (group["RSI14"] > RSI_OVERBOUGHT_LEVEL).astype(int)
         group["rsi_lt_30"] = (group["RSI14"] < 30).astype(int)
         group["rsi_gt_70"] = (group["RSI14"] > 70).astype(int)
+
+        # RSI Divergence detection
+        group["rsi_divergence_type"] = None
+        group["rsi_divergence_direction"] = None
+        group["rsi_divergence_score"] = None
+        
+        divergences = detect_rsi_divergence(group, rsi_col="RSI14", lookback=80)
+        for div in divergences:
+            last_idx = div["pivot_indices"][-1]
+            label = group.index[last_idx]
+            existing_score = group.at[label, "rsi_divergence_score"]
+            if pd.isna(existing_score) or existing_score is None or div["score"] > existing_score:
+                group.at[label, "rsi_divergence_type"] = div["divergence_type"]
+                group.at[label, "rsi_divergence_direction"] = div["divergence_direction"]
+                group.at[label, "rsi_divergence_score"] = div["score"]
 
         adx = compute_adx(group, 14)
         group["adx_trigger"] = (adx >= ADX_THRESHOLD).astype(int)
@@ -536,15 +593,13 @@ def main():
         (all_results['pct_from_pivot'] <= VCP_MAX_PIVOT_DIST_PCT)
     ).astype(int)
     
-    # screen_blue_sky
-    blue_sky_base = (
-        (all_results['pct_from_pivot'] <= BLUE_SKY_ATH_PROXIMITY_PCT) &
-        (all_results['base_high'] >= all_results['all_time_high'] * BLUE_SKY_PIVOT_ATH_PROXIMITY)
-    )
+    # screen_blue_sky (All-Time Peak Breakout - APB)
     all_results['screen_blue_sky'] = (
-        ((all_results['is_at_ath'] == 1) | blue_sky_base) &
-        (all_results['rs_rank'].between(70, 99)) &
-        (all_results['pct_from_pivot'] <= VCP_MAX_PIVOT_DIST_PCT)
+        (all_results['base_active'] == 1) &
+        (all_results['base_high'] >= all_results['all_time_high'] * (1 - BLUE_SKY_ATH_PROXIMITY_PCT / 100.0)) &
+        (all_results['pct_from_pivot'] <= 5.0) &
+        (all_results['Close'] >= all_results['all_time_high'] * (1 - BLUE_SKY_CLOSE_ATH_PROXIMITY_PCT / 100.0)) &
+        (all_results['rs_rank'].between(70, 99))
     ).astype(int)
     
     # screen_multi_year_breakout
@@ -580,7 +635,8 @@ def main():
         "NR", "High_Relative_Volume_30",
         "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
         "RSI14", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70",
-        "adx_trigger", "convergence_5a", "convergence_3", "convergence_4",
+        "rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score",
+        "adx_trigger", "convergence_5", "convergence_3", "convergence_4",
         "RCS_30D",
         "all_time_high", "is_at_ath", "days_since_ath", "first_listed_date", "weeks_since_listing",
         "rs_rank", "base_active", "base_start_date", "base_length_days", "base_high", "base_low", 

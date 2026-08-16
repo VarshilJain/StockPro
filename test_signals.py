@@ -609,6 +609,120 @@ test("Played Out — Failed breakout drops below base_high", pd.Series(df_bucket
 # Simulated pattern_events test:
 print("\n  [PASS] Simulated pattern_events: VCP failure updates only VCP events, leaves IPO Base unaffected.")
 
+
+# ===========================================================================
+# 11. RSI DOUBLE / TRIPLE DIVERGENCE
+# ===========================================================================
+print("\n=== RSI Double/Triple Divergence ===")
+from services import detect_rsi_divergence, detect_swing_points
+
+# Helper to create a basic OHLC dataframe with matching high/low/close
+def _div_df(close_list, low_list=None, high_list=None, rsi_list=None):
+    if low_list is None: low_list = close_list
+    if high_list is None: high_list = close_list
+    df = pd.DataFrame({
+        "Open": close_list,
+        "High": high_list,
+        "Low": low_list,
+        "Close": close_list
+    })
+    if rsi_list is not None:
+        df["RSI14"] = rsi_list
+    return df
+
+# Test 1: Valid Double Bullish (2 pivots, conditions + thresholds met)
+df = _div_df(
+    close_list=[100, 95, 105, 96, 92, 108, 93],
+    rsi_list=[50, 30, 50, 50, 35, 50, 50]
+)
+# left=1, right=1, min_spacing=2.
+# Pivot lows at index 1 (Price 95, RSI 30) and index 4 (Price 92, RSI 35)
+# P2 < P1 (92 < 95) and RSI2 > RSI1 (35 > 30) -> Valid Double Bullish!
+divs = detect_rsi_divergence(df, rsi_col="RSI14", lookback=len(df), left=1, right=1, min_spacing=2, min_price_change_pct=1.5, min_rsi_change=3.0)
+test("Valid Double Bullish — event type and direction correct", pd.Series([len(divs) == 1, divs[0]["divergence_type"] == "double", divs[0]["divergence_direction"] == "bullish"]), [True, True, True])
+
+# Test 2: Valid Triple Bullish (3 pivots, strictly monotonic, all legs meet thresholds)
+df = _div_df(
+    close_list=[100, 95, 105, 96, 92, 108, 94, 88, 110],
+    rsi_list=[50, 30, 50, 50, 34, 50, 50, 39, 50]
+)
+# Pivot lows at index 1 (95, 30), index 4 (92, 34), index 7 (88, 39)
+# Prices: 88 < 92 < 95 (strictly decreasing)
+# RSIs: 39 > 34 > 30 (strictly increasing)
+# Leg 1: price delta = 3.16% >= 1.5%, rsi delta = 4.0 >= 3.0
+# Leg 2: price delta = 4.35% >= 1.5%, rsi delta = 5.0 >= 3.0
+# Last RSI = 39 < 40 (passes zone filter)
+divs = detect_rsi_divergence(df, rsi_col="RSI14", lookback=len(df), left=1, right=1, min_spacing=2)
+test("Valid Triple Bullish — event type and direction correct", pd.Series([len(divs) == 1, divs[0]["divergence_type"] == "triple", divs[0]["divergence_direction"] == "bullish"]), [True, True, True])
+
+# Test 3: Broken Triple (pivot 2 violates monotonicity in RSI, first leg forms double regular)
+df = _div_df(
+    close_list=[100, 95, 105, 96, 92, 108, 94, 88, 110],
+    rsi_list=[50, 30, 50, 50, 34, 50, 50, 32, 50]
+)
+# Pivot lows at index 1 (95, 30), index 4 (92, 34), index 7 (88, 32)
+# Prices: 88 < 92 < 95 (strictly decreasing)
+# RSIs: 30 -> 34 -> 32 (NOT strictly increasing, 32 < 34)
+# Triple is broken. But first leg (index 1 to 4) has 92 < 95 and 34 > 30 (valid double regular)
+# The second leg (index 4 to 7) is not regular bullish because 32 < 34.
+# So divs should contain exactly 1 regular double divergence representing the first leg.
+divs = detect_rsi_divergence(df, rsi_col="RSI14", lookback=len(df), left=1, right=1, min_spacing=2)
+test("Broken Triple — reports double regular of first leg", pd.Series([len(divs) == 1, divs[0]["divergence_type"] == "double", divs[0]["pivot_indices"] == [1, 4]]), [True, True, True])
+
+# Test 4: Hidden Bullish and Hidden Bearish cases
+# Hidden Bullish: price higher low (P2 > P1) and RSI lower low (RSI2 < RSI1)
+df_hid_bull = _div_df(
+    close_list=[100, 90, 105, 95, 93, 108, 95],
+    rsi_list=[50, 35, 50, 50, 30, 50, 50]
+)
+# Pivot lows: index 1 (90, 35) and index 4 (93, 30)
+# Price: 93 > 90. RSI: 30 < 35. Price delta = 3.33%, RSI delta = 5.0. Last RSI = 30 < 40.
+divs_hb = detect_rsi_divergence(df_hid_bull, rsi_col="RSI14", lookback=len(df_hid_bull), left=1, right=1, min_spacing=2)
+test("Hidden Bullish — detected correct direction", pd.Series([len(divs_hb) == 1, divs_hb[0]["divergence_direction"] == "hidden_bullish"]), [True, True])
+
+# Hidden Bearish: price lower high (P2 < P1) and RSI higher high (RSI2 > RSI1)
+df_hid_bear = _div_df(
+    close_list=[100, 110, 95, 102, 106, 92, 90],
+    rsi_list=[50, 65, 50, 50, 70, 50, 50]
+)
+# Pivot highs: index 1 (110, 65) and index 4 (106, 70)
+# Price: 106 < 110. RSI: 70 > 65. Price delta = 3.63%, RSI delta = 5.0. Last RSI = 70 > 60.
+divs_hbe = detect_rsi_divergence(df_hid_bear, rsi_col="RSI14", lookback=len(df_hid_bear), left=1, right=1, min_spacing=2)
+test("Hidden Bearish — detected correct direction", pd.Series([len(divs_hbe) == 1, divs_hbe[0]["divergence_direction"] == "hidden_bearish"]), [True, True])
+
+# Test 5: Two pivots closer than min_spacing (less extreme discarded)
+df = _div_df(
+    close_list=[100, 95, 92, 108, 94, 88, 110], # index 1: 95, index 2: 92 (closer than min_spacing=2)
+    rsi_list=[50, 30, 32, 50, 50, 38, 50]
+)
+# Candidate lows: index 1 (95), index 2 (92), index 5 (88)
+# Index 1 and 2 are within spacing (2 - 1 = 1 <= 2). Price 92 is more extreme than 95 (is_low=True).
+# So index 1 is discarded. Index 2 and 5 are accepted pivots.
+# Index 2 (92, 32) and Index 5 (88, 38).
+# P2 < P1 (88 < 92) and RSI2 > RSI1 (38 > 32) -> Valid double bullish divergence at index 5!
+divs = detect_rsi_divergence(df, rsi_col="RSI14", lookback=len(df), left=1, right=1, min_spacing=2)
+test("Spacing Dedup — discards less extreme pivot", pd.Series([len(divs) == 1, divs[0]["pivot_indices"] == [2, 5]]), [True, True])
+
+# Test 6: Pivot pair below significance thresholds (excluded entirely)
+# Price change too small
+df_small_p = _div_df(
+    close_list=[100, 95, 105, 96, 94.5, 108, 93],
+    rsi_list=[50, 30, 50, 50, 35, 50, 50]
+)
+# Price delta = abs(94.5 - 95)/95 = 0.52% < 1.5%
+divs_sp = detect_rsi_divergence(df_small_p, rsi_col="RSI14", lookback=len(df_small_p), left=1, right=1, min_spacing=2, min_price_change_pct=1.5)
+test("Threshold Exclusion — price delta below 1.5% excluded", pd.Series([len(divs_sp) == 0]), [True])
+
+# RSI change too small
+df_small_r = _div_df(
+    close_list=[100, 95, 105, 96, 90, 108, 93],
+    rsi_list=[50, 30, 50, 50, 32, 50, 50]
+)
+# RSI delta = 32 - 30 = 2 < 3.0
+divs_sr = detect_rsi_divergence(df_small_r, rsi_col="RSI14", lookback=len(df_small_r), left=1, right=1, min_spacing=2, min_rsi_change=3.0)
+test("Threshold Exclusion — RSI delta below 3.0 points excluded", pd.Series([len(divs_sr) == 0]), [True])
+
+
 # ===========================================================================
 # Summary
 # ===========================================================================

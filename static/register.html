@@ -7,9 +7,11 @@
 <meta name="description" content="Create your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="apple-theme.css">
+<link rel="stylesheet" href="apple-theme.css?v=2">
 </head>
 <body class="auth-body">
+<div class="bg-blur-circle bg-blur-1"></div>
+<div class="bg-blur-circle bg-blur-2"></div>
 
 <div class="auth-wrapper">
     <!-- Brand -->
@@ -24,11 +26,11 @@
         <h1 class="card-heading">Create account</h1>
         <p class="card-subheading">Join StockPro Analytics — it's free</p>
 
-        <div class="alert alert-error" id="errorAlert" role="alert">
+        <div class="alert alert-error" id="errorAlert" style="display: none;" role="alert">
             <i class="fas fa-exclamation-circle"></i>
             <span id="errorMsg"></span>
         </div>
-        <div class="alert alert-success" id="successAlert" role="status">
+        <div class="alert alert-success" id="successAlert" style="display: none;" role="status">
             <i class="fas fa-check-circle"></i>
             <span id="successMsg"></span>
         </div>
@@ -93,18 +95,18 @@ const strengthFill = document.getElementById('strengthFill');
 const strengthLabel = document.getElementById('strengthLabel');
 
 function showError(msg) {
-    successAlert.classList.remove('show');
+    successAlert.style.display = 'none';
     errorMsg.textContent = msg;
-    errorAlert.classList.add('show');
+    errorAlert.style.display = 'flex';
 }
 function showSuccess(msg) {
-    errorAlert.classList.remove('show');
+    errorAlert.style.display = 'none';
     successMsg.textContent = msg;
-    successAlert.classList.add('show');
+    successAlert.style.display = 'flex';
 }
 function hideAlerts() {
-    errorAlert.classList.remove('show');
-    successAlert.classList.remove('show');
+    errorAlert.style.display = 'none';
+    successAlert.style.display = 'none';
 }
 
 // Password strength meter

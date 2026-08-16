@@ -60,7 +60,9 @@ def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), e
     allowed_signals = [
         "Hammer", "Shooting_Star", "Doji", "Engulfing", "Dark_Cloud_Cover", "Morning_Star", "Evening_Star", "Piercing_Line",
         "signal1", "signal2", "signal3", "signal4", "signal5", "top_decile", "new_52w_high", "new_52w_low", "near_52w_high", "NR", "High_Relative_Volume_30",
-        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70", "adx_trigger"
+        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70", "adx_trigger",
+        "rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score", "rsi_divergence",
+        "convergence_3", "convergence_4", "convergence_5", "delivery_momentum_signal"
     ]
     if signal and signal not in allowed_signals:
         return JSONResponse(content=[])
@@ -70,6 +72,9 @@ def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), e
         if signal == "NR":
             # For NR, we want values > 0 (5, 6, 7, or 8)
             query = f"SELECT * FROM historical_data WHERE Symbol = %s AND DATE(Timestamp) BETWEEN %s AND %s AND {signal} > 0 ORDER BY Timestamp ASC"
+        elif signal in ("rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score", "rsi_divergence"):
+            # For divergence, query if type is not null
+            query = f"SELECT * FROM historical_data WHERE Symbol = %s AND DATE(Timestamp) BETWEEN %s AND %s AND `rsi_divergence_type` IS NOT NULL ORDER BY Timestamp ASC"
         else:
             # For other signals, we want value = 1
             query = f"SELECT * FROM historical_data WHERE Symbol = %s AND DATE(Timestamp) BETWEEN %s AND %s AND {signal} = 1 ORDER BY Timestamp ASC"
@@ -83,6 +88,8 @@ def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), e
         if signal == "NR":
             # For NR, we want values > 0 (5, 6, 7, or 8)
             query = f"SELECT Symbol, Timestamp, {signal} FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND {signal} > 0 ORDER BY Timestamp ASC"
+        elif signal in ("rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score", "rsi_divergence"):
+            query = f"SELECT Symbol, Timestamp, `rsi_divergence_type`, `rsi_divergence_direction`, `rsi_divergence_score` FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND `rsi_divergence_type` IS NOT NULL ORDER BY Timestamp ASC"
         else:
             # For other signals, we want value = 1
             query = f"SELECT Symbol, Timestamp, {signal} FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND {signal} = 1 ORDER BY Timestamp ASC"
@@ -108,6 +115,13 @@ def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), e
             seen.add(key)
             if not isinstance(row["Timestamp"], str):
                 row["Timestamp"] = row["Timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+            from decimal import Decimal
+            import datetime
+            for k, v in row.items():
+                if isinstance(v, Decimal):
+                    row[k] = float(v)
+                elif isinstance(v, (datetime.date, datetime.datetime)) and k != "Timestamp":
+                    row[k] = str(v)
             unique_rows.append(row)
 
     # Failsafe: If both symbol and signal, filter out rows where signal doesn't match criteria
@@ -115,6 +129,8 @@ def get_stock_data(symbol: Optional[str] = None, start_date: str = Query(...), e
         if signal == "NR":
             # For NR, we want values > 0 (5, 6, 7, or 8)
             unique_rows = [row for row in unique_rows if int(row.get(signal, 0)) > 0]
+        elif signal in ("rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score", "rsi_divergence"):
+            unique_rows = [row for row in unique_rows if row.get("rsi_divergence_type") is not None]
         else:
             # For other signals, we want value = 1
             unique_rows = [row for row in unique_rows if str(row.get(signal, 0)) == '1']
@@ -191,6 +207,12 @@ def get_signal_scanner_data(
         condition = {"field": "NR", "operator": ">", "value": 0}
     elif signal == "RCS_30D":
         condition = {"field": "RCS_30D", "operator": ">", "value": -999.0}
+    elif signal == "rsi_divergence_score":
+        condition = {"field": "rsi_divergence_score", "operator": ">", "value": 0.0}
+    elif signal in ("rsi_divergence_type", "rsi_divergence_direction"):
+        condition = {"field": signal, "operator": "IS NOT NULL"}
+    elif signal == "rsi_divergence":
+        condition = {"field": "rsi_divergence", "operator": "=="}
 
     try:
         rows = run_scan(
@@ -280,7 +302,7 @@ def get_ohlcv(symbol: str, days: int = Query(0, description="Number of recent da
             "Hammer, Shooting_Star, Doji, Engulfing, Dark_Cloud_Cover, Morning_Star, Evening_Star, Piercing_Line, "
             "signal1, signal2, signal3, signal4, signal5, top_decile, new_52w_high, new_52w_low, near_52w_high, NR, High_Relative_Volume_30, "
             "hit_2y_high_14d, hit_5y_high_14d, hit_10y_high_14d, oversold, overbought, rsi_lt_30, rsi_gt_70, adx_trigger, "
-            "convergence_3, convergence_4, convergence_5a"
+            "convergence_3, convergence_4, convergence_5"
         )
         if days > 0:
             cursor.execute(
@@ -337,7 +359,7 @@ def get_ohlcv(symbol: str, days: int = Query(0, description="Number of recent da
                     "adx_trigger": bool(r.get("adx_trigger") == 1),
                     "convergence_3": bool(r.get("convergence_3") == 1),
                     "convergence_4": bool(r.get("convergence_4") == 1),
-                    "convergence_5a": bool(r.get("convergence_5a") == 1),
+                    "convergence_5": bool(r.get("convergence_5") == 1),
                 }
             })
         return result

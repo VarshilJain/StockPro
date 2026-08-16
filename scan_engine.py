@@ -43,11 +43,13 @@ _BINARY_FIELDS: frozenset[str] = frozenset([
     # ADX
     "adx_trigger",
     # Convergence Scanners
-    "convergence_5a", "convergence_3", "convergence_4",
+    "convergence_5", "convergence_3", "convergence_4",
     # Delivery Momentum Signal
     "delivery_momentum_signal",
     # Pattern Screens
     "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base", "screen_high_relative_volume", "screen_high_delivery_volume",
+    # RSI Divergence logical binary field
+    "rsi_divergence",
 ])
 
 # Fields that use  WHERE col > value
@@ -56,10 +58,17 @@ _NR_FIELDS: frozenset[str] = frozenset(["NR"])
 # Numeric comparison fields (RCS vs benchmark)
 _NUMERIC_FIELDS: frozenset[str] = frozenset([
     "RCS_30D",
+    "rsi_divergence_score",
+])
+
+# Fields that use WHERE col = 'value' (string categorical fields)
+_STRING_FIELDS: frozenset[str] = frozenset([
+    "rsi_divergence_type",
+    "rsi_divergence_direction",
 ])
 
 # Combined set for quick membership checks
-ALLOWED_FIELDS: frozenset[str] = _BINARY_FIELDS | _NR_FIELDS | _NUMERIC_FIELDS
+ALLOWED_FIELDS: frozenset[str] = _BINARY_FIELDS | _NR_FIELDS | _NUMERIC_FIELDS | _STRING_FIELDS
 
 # Fields whose scan window is always forced to the latest date window
 _AUTO_WINDOW_FIELDS: frozenset[str] = frozenset([
@@ -71,11 +80,13 @@ _AUTO_WINDOW_FIELDS: frozenset[str] = frozenset([
 _BINARY_OPS: frozenset[str] = frozenset(["=="])
 _NR_OPS: frozenset[str] = frozenset([">"])
 _NUMERIC_OPS: frozenset[str] = frozenset([">", "<", ">=", "<=", "=="])
+_STRING_OPS: frozenset[str] = frozenset(["==", "IS NOT NULL"])
 
 FIELD_META: dict[str, dict] = {
     **{f: {"operators": _BINARY_OPS, "type": "binary"} for f in _BINARY_FIELDS},
     **{f: {"operators": _NR_OPS, "type": "nr"} for f in _NR_FIELDS},
     **{f: {"operators": _NUMERIC_OPS, "type": "numeric"} for f in _NUMERIC_FIELDS},
+    **{f: {"operators": _STRING_OPS, "type": "string"} for f in _STRING_FIELDS},
 }
 
 # Human-readable labels for the frontend (exported for reference)
@@ -107,7 +118,7 @@ FIELD_LABELS: dict[str, str] = {
     "High_Relative_Volume_30": "High Relative Volume (30d)",
     "adx_trigger": "ADX Trigger",
     "NR": "Narrow Range (NR)",
-    "convergence_5a": "Convergence 5A (EMA 4,9,18,50,200)",
+    "convergence_5": "Convergence 5 (EMA 4,9,18,50,200)",
     "convergence_3": "Convergence 3 (EMA 4,9,18 + >100,150,200)",
     "convergence_4": "Convergence 4 (EMA 5,9,21,50)",
     "delivery_momentum_signal": "Delivery",
@@ -118,6 +129,10 @@ FIELD_LABELS: dict[str, str] = {
     "screen_ipo_base": "IPO Base",
     "screen_high_relative_volume": "High Relative Volume (5x)",
     "screen_high_delivery_volume": "High Delivery Volume (80%+)",
+    "rsi_divergence_type": "RSI Divergence Type",
+    "rsi_divergence_direction": "RSI Divergence Direction",
+    "rsi_divergence_score": "RSI Divergence Score",
+    "rsi_divergence": "RSI Divergence",
 }
 
 # Grouped field list for the frontend dropdown
@@ -138,6 +153,10 @@ FIELD_GROUPS: list[dict] = [
         "fields": ["rsi_lt_30", "rsi_gt_70", "oversold", "overbought"],
     },
     {
+        "label": "RSI Divergence",
+        "fields": ["rsi_divergence"],
+    },
+    {
         "label": "Price Extremes",
         "fields": [
             "new_52w_high", "new_52w_low", "near_52w_high",
@@ -151,7 +170,7 @@ FIELD_GROUPS: list[dict] = [
     {
         "label": "Composite Signals",
         "fields": ["signal1", "signal2", "signal3", "signal4", "signal5", "top_decile",
-                   "convergence_5a", "convergence_3", "convergence_4", "delivery_momentum_signal"],
+                   "convergence_5", "convergence_3", "convergence_4", "delivery_momentum_signal"],
     },
     {
         "label": "Narrow Range",
@@ -258,7 +277,9 @@ def _condition_to_clause(cond: dict) -> tuple[str, list]:
     field = cond["field"]
     operator = cond.get("operator", "==")
 
-    if field in _BINARY_FIELDS:
+    if field == "rsi_divergence":
+        return ("rsi_divergence_type IS NOT NULL", [])
+    elif field in _BINARY_FIELDS:
         # WHERE col = 1
         return (f"`{field}` = %s", [1])
     elif field in _NR_FIELDS:
@@ -269,6 +290,11 @@ def _condition_to_clause(cond: dict) -> tuple[str, list]:
         value = float(cond.get("value", 0))
         op = "=" if operator == "==" else operator
         return (f"`{field}` {op} %s", [value])
+    elif field in _STRING_FIELDS:
+        if operator == "IS NOT NULL":
+            return (f"`{field}` IS NOT NULL", [])
+        value = str(cond.get("value"))
+        return (f"`{field}` = %s", [value])
     else:
         raise ValueError(f"Unhandled field: {field}")
 
@@ -368,6 +394,14 @@ def run_scan(
                 fields_in_query.append("Recent_Deliv_Pct")
             if "Baseline_Deliv_Pct" not in fields_in_query:
                 fields_in_query.append("Baseline_Deliv_Pct")
+        
+        # If rsi_divergence is in fields_in_query, replace it with the three real columns
+        if "rsi_divergence" in fields_in_query:
+            fields_in_query.remove("rsi_divergence")
+            for f in ("rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score"):
+                if f not in fields_in_query:
+                    fields_in_query.append(f)
+                    
         select_cols = ", ".join(["Symbol", "Timestamp"] + [f"`{f}`" for f in fields_in_query])
 
         # Build WHERE clauses
@@ -413,6 +447,11 @@ def run_scan(
             key=lambda r: (float(r["RCS_30D"]) if r.get("RCS_30D") is not None else -999999.0),
             reverse=True,
         )
+    elif "rsi_divergence_score" in fields_in_query:
+        rows.sort(
+            key=lambda r: (float(r["rsi_divergence_score"]) if r.get("rsi_divergence_score") is not None else -999999.0),
+            reverse=True,
+        )
 
     # Deduplicate by (Symbol, Timestamp) and serialise datetime objects
     seen: set = set()
@@ -424,6 +463,14 @@ def run_scan(
         seen.add(key)
         if not isinstance(row["Timestamp"], str):
             row["Timestamp"] = row["Timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+        
+        from decimal import Decimal
+        import datetime
+        for k, v in row.items():
+            if isinstance(v, Decimal):
+                row[k] = float(v)
+            elif isinstance(v, (datetime.date, datetime.datetime)) and k != "Timestamp":
+                row[k] = str(v)
         result.append(row)
 
     return result

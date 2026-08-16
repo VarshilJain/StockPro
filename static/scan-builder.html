@@ -282,6 +282,9 @@ const FIELD_GROUPS = [
     {v:"oversold",  l:"Oversold"},
     {v:"overbought",l:"Overbought"},
   ]},
+  { label: "RSI Divergence", fields: [
+    {v:"rsi_divergence",      l:"RSI Divergence"},
+  ]},
   { label: "Price Extremes", fields: [
     {v:"new_52w_high",   l:"New 52-Week High"},
     {v:"new_52w_low",    l:"New 52-Week Low"},
@@ -307,7 +310,7 @@ const FIELD_GROUPS = [
   { label: "Convergence Scanners", fields: [
     {v:"convergence_3", l:"Convergence 3"},
     {v:"convergence_4", l:"Convergence 4"},
-    {v:"convergence_5a", l:"Convergence 5A"},
+    {v:"convergence_5", l:"Convergence 5"},
   ]},
   { label: "Relative Strength", fields: [
     {v:"RCS_30D", l:"RCS 30D (vs NIFTY 500)"},
@@ -318,9 +321,10 @@ const FIELD_GROUPS = [
 ];
 
 const NR_FIELDS      = new Set(["NR"]);
-const NUMERIC_FIELDS = new Set(["RCS_30D"]);
+const NUMERIC_FIELDS = new Set(["RCS_30D", "rsi_divergence_score"]);
+const STRING_FIELDS  = new Set(["rsi_divergence_type", "rsi_divergence_direction"]);
 const BINARY_FIELDS  = new Set(
-  FIELD_GROUPS.flatMap(g => g.fields.map(f => f.v)).filter(v => !NR_FIELDS.has(v) && !NUMERIC_FIELDS.has(v))
+  FIELD_GROUPS.flatMap(g => g.fields.map(f => f.v)).filter(v => !NR_FIELDS.has(v) && !NUMERIC_FIELDS.has(v) && !STRING_FIELDS.has(v))
 );
 
 const FIELD_LABEL = {};
@@ -425,17 +429,25 @@ function onFieldChange(id, silent = false) {
   const valInp  = document.getElementById(`val_${id}`);
 
   if (NR_FIELDS.has(field)) {
+    valInp.type = "number";
     opSel.innerHTML = '<option value=">">></option>';
     opSel.disabled = false;
     valInp.style.display = "block";
     valInp.placeholder = "0–8";
     valInp.step = "1";
   } else if (NUMERIC_FIELDS.has(field)) {
+    valInp.type = "number";
     opSel.innerHTML = '<option value=">">&gt;</option><option value="<">&lt;</option><option value=">=">&gt;=</option><option value="<=">&lt;=</option><option value="==">==</option>';
     opSel.disabled = false;
     valInp.style.display = "block";
     valInp.placeholder = "e.g. 5.0 (%)";
     valInp.step = "0.1";
+  } else if (STRING_FIELDS.has(field)) {
+    valInp.type = "text";
+    opSel.innerHTML = '<option value="==">==</option>';
+    opSel.disabled = true;
+    valInp.style.display = "block";
+    valInp.placeholder = field === "rsi_divergence_type" ? "e.g. double, triple" : "e.g. bullish, bearish";
   } else {
     opSel.innerHTML = '<option value="==">==</option>';
     opSel.disabled = true;
@@ -460,6 +472,8 @@ function getAllConditions() {
     if (!field) return null;
     const c = { field, operator: op };
     if (NR_FIELDS.has(field)) c.value = parseInt(val, 10) || 0;
+    if (NUMERIC_FIELDS.has(field)) c.value = parseFloat(val) || 0;
+    if (STRING_FIELDS.has(field)) c.value = val || "";
     return c;
   }).filter(Boolean);
 }
@@ -469,7 +483,9 @@ function getAllConditions() {
 // ════════════════════════════════════════════════
 function conditionToHuman(c) {
   const label = FIELD_LABEL[c.field] || c.field;
-  if (NR_FIELDS.has(c.field)) return `${label} > ${c.value ?? 0}`;
+  if (NR_FIELDS.has(c.field)) return `${label} ${c.operator || '>' } ${c.value ?? 0}`;
+  if (NUMERIC_FIELDS.has(c.field)) return `${label} ${c.operator || '>' } ${c.value ?? 0}%`;
+  if (STRING_FIELDS.has(c.field)) return `${label} = "${c.value || ''}"`;
   return `${label} = True`;
 }
 
