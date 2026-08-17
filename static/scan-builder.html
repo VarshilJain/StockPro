@@ -4,10 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scan Builder — StockPro Analytics</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="description" content="Build, save and run no-code stock scans using technical signals and candlestick patterns.">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="apple-theme.css">
+<link rel="stylesheet" href="apple-theme.css?v=10">
+<script>
+    (function () {
+        const savedTheme = localStorage.getItem('stockpro_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+</script>
 <style>
 .table-container {
   width: 100%;
@@ -346,6 +353,17 @@ function initDates() {
   document.getElementById("startDate").value = from.toISOString().slice(0,10);
 }
 
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return '';
+}
+
+function getCsrfToken() {
+  return getCookie('csrf_token') || '';
+}
+
 // ════════════════════════════════════════════════
 // Auth / user info
 // ════════════════════════════════════════════════
@@ -362,9 +380,14 @@ async function loadUserInfo() {
 }
 
 async function handleLogout() {
-  await fetch("/api/auth/logout", {method:"POST", credentials:"same-origin"});
+  await fetch("/api/auth/logout", {
+    method:"POST",
+    headers: {"x-csrf-token": getCsrfToken()},
+    credentials:"same-origin"
+  });
   window.location.href = "/login.html";
 }
+
 
 // ════════════════════════════════════════════════
 // Logic toggle
@@ -532,7 +555,10 @@ async function runScan(url, body) {
   try {
     const r = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": getCsrfToken()
+      },
       credentials: "same-origin",
       body: JSON.stringify(body),
     });
@@ -560,7 +586,11 @@ async function runSavedScan(id) {
   clearAlert();
   setLoading(true);
   try {
-    const r = await fetch(`/api/scans/${id}/run`, {method:"POST", credentials:"same-origin"});
+    const r = await fetch(`/api/scans/${id}/run`, {
+      method: "POST",
+      headers: {"x-csrf-token": getCsrfToken()},
+      credentials: "same-origin"
+    });
     const data = await r.json();
     if (!r.ok) { showAlert(data.detail || "Run failed."); renderResults([],[]);return; }
     renderResults(data.results || [], Object.keys((data.results||[])[0]||{}).filter(k=>k!=="Timestamp"&&k!=="Symbol"));
@@ -666,8 +696,13 @@ async function confirmSave() {
     const url    = editScanId ? `/api/scans/${editScanId}` : "/api/scans";
     const method = editScanId ? "PUT" : "POST";
     const r      = await fetch(url, {
-      method, headers:{"Content-Type":"application/json"},
-      credentials:"same-origin", body: JSON.stringify(body),
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": getCsrfToken()
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(body),
     });
     const data = await r.json();
     if (!r.ok) { showAlert(data.detail || "Save failed."); closeSaveModal(); return; }
@@ -768,7 +803,11 @@ function closeDeleteModal() {
 async function confirmDelete() {
   if (!deleteScanId) return;
   try {
-    const r = await fetch(`/api/scans/${deleteScanId}`, {method:"DELETE", credentials:"same-origin"});
+    const r = await fetch(`/api/scans/${deleteScanId}`, {
+      method: "DELETE",
+      headers: {"x-csrf-token": getCsrfToken()},
+      credentials: "same-origin"
+    });
     if (!r.ok && r.status !== 204) { const d=await r.json(); showAlert(d.detail||"Delete failed."); }
     else await loadSavedScans();
   } catch { showAlert("Network error."); }

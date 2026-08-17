@@ -1,25 +1,115 @@
 import os
+import logging
+import secrets
+from typing import Optional
 from dotenv import load_dotenv
 
+
 # Load .env file if present (won't fail if missing)
-load_dotenv()
+load_dotenv(override=True)
+
+logger = logging.getLogger(__name__)
+
+# Environment: 'development', 'staging', 'production'
+STOCKPRO_ENV = os.getenv('STOCKPRO_ENV', 'development').strip().lower()
+IS_PRODUCTION = STOCKPRO_ENV in ('production', 'prod')
+
+# ---------------------------------------------------------------------------
+# Database Configuration & Validation
+# ---------------------------------------------------------------------------
+_db_host = os.getenv('DB_HOST', 'localhost' if not IS_PRODUCTION else '')
+_db_user = os.getenv('DB_USER', 'root' if not IS_PRODUCTION else '')
+_db_pass = os.getenv('DB_PASSWORD', 'root' if not IS_PRODUCTION else '')
+_db_name = os.getenv('DB_NAME', 'stock_data' if not IS_PRODUCTION else '')
 
 DB_CONFIG = {
-    'host':     os.getenv('DB_HOST',     'localhost'),
-    'user':     os.getenv('DB_USER',     'root'),
-    'password': os.getenv('DB_PASSWORD', 'root'),
-    'database': os.getenv('DB_NAME',     'stock_data'),
+    'host':     _db_host,
+    'user':     _db_user,
+    'password': _db_pass,
+    'database': _db_name,
 }
+
+# ---------------------------------------------------------------------------
+# JWT / Auth Settings & Validation
+# ---------------------------------------------------------------------------
+_raw_jwt_secret = os.getenv('JWT_SECRET_KEY')
+_insecure_defaults = {
+    '',
+    'CHANGE_ME_IN_PRODUCTION_USE_A_LONG_RANDOM_SECRET',
+    'secret',
+    'default',
+    'password',
+}
+
+def validate_security_config(
+    is_prod: bool = IS_PRODUCTION,
+    jwt_secret: Optional[str] = _raw_jwt_secret,
+    db_config: dict = None,
+) -> None:
+    """Validate critical security configurations and fail startup on unsafe settings in production."""
+    db = db_config or DB_CONFIG
+    if is_prod:
+        if not db.get('host') or not db.get('user') or not db.get('password') or not db.get('database'):
+            raise RuntimeError(
+                "CRITICAL SECURITY ERROR: Database credentials (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME) "
+                "must be explicitly configured via environment variables in production."
+            )
+        if str(db.get('user', '')).lower() == 'root' and str(db.get('password', '')).lower() == 'root':
+            raise RuntimeError(
+                "CRITICAL SECURITY ERROR: Default credentials (root/root) are strictly forbidden in production. "
+                "Please configure a dedicated least-privilege database user."
+            )
+        if not jwt_secret or jwt_secret in _insecure_defaults or len(jwt_secret) < 32:
+            raise RuntimeError(
+                "CRITICAL SECURITY ERROR: JWT_SECRET_KEY must be set in production via environment variable "
+                "and must be at least 32 characters long."
+            )
+
+# Run validation on module load if in production
+if IS_PRODUCTION:
+    validate_security_config()
+    JWT_SECRET_KEY = _raw_jwt_secret
+else:
+    if not _raw_jwt_secret or _raw_jwt_secret in _insecure_defaults:
+        logger.warning(
+            "WARNING: Insecure or missing JWT_SECRET_KEY in development. "
+            "Generating an ephemeral session secret. Tokens will invalidate on restart."
+        )
+        JWT_SECRET_KEY = secrets.token_urlsafe(32)
+    else:
+        JWT_SECRET_KEY = _raw_jwt_secret
+
+JWT_ALGORITHM = 'HS256'
+ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv('ACCESS_TOKEN_EXPIRE_HOURS', '8'))
+
+
+# Cookie & CSRF flags
+COOKIE_SECURE = os.getenv('COOKIE_SECURE', 'true' if IS_PRODUCTION else 'false').lower() == 'true'
+
+# CORS Origins
+_origins_raw = os.getenv('STOCKPRO_FRONTEND_ORIGINS', '')
+STOCKPRO_FRONTEND_ORIGINS = [o.strip() for o in _origins_raw.split(',') if o.strip()]
+if not STOCKPRO_FRONTEND_ORIGINS and not IS_PRODUCTION:
+    STOCKPRO_FRONTEND_ORIGINS = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+# Google OAuth
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '').strip()
+
+# Proxy & Rate Limiting Settings
+
+BEHIND_TRUSTED_PROXY = os.getenv('BEHIND_TRUSTED_PROXY', 'false').lower() == 'true'
+REDIS_URL = os.getenv('REDIS_URL')
 
 # OpenRouter API settings
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'openai/gpt-oss-120b:free')
 FUNDAMENTALS_CACHE_TTL_HOURS = int(os.getenv('FUNDAMENTALS_CACHE_TTL_HOURS', '24'))
 
-# JWT / Auth settings
-JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'CHANGE_ME_IN_PRODUCTION_USE_A_LONG_RANDOM_SECRET')
-JWT_ALGORITHM = 'HS256'
-ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv('ACCESS_TOKEN_EXPIRE_HOURS', '24'))
 
 # ---------------------------------------------------------------------------
 # Signal computation constants

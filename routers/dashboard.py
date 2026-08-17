@@ -41,7 +41,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from auth import get_current_user
+from auth import get_current_user, verify_csrf
 from database import get_connection
 from scan_engine import run_scan
 
@@ -189,7 +189,7 @@ def get_user_widgets(current_user: dict = Depends(get_current_user)):
         cursor.close()
         conn.close()
     except Exception as exc:
-        logger.exception("get_user_widgets DB error")
+        logger.exception("get_user_widgets DB error for user_id=%s", current_user["id"])
         raise HTTPException(status_code=500, detail="Failed to load widgets.")
 
     return [_serialize_widget(r) for r in rows]
@@ -203,6 +203,7 @@ def get_user_widgets(current_user: dict = Depends(get_current_user)):
 def add_widget(
     body: AddWidgetBody,
     current_user: dict = Depends(get_current_user),
+    _: None = Depends(verify_csrf),
 ):
     """
     Add a signal widget to the current user's dashboard.
@@ -287,7 +288,7 @@ def add_widget(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("add_widget DB error")
+        logger.exception("add_widget DB error for user_id=%s", user_id)
         raise HTTPException(status_code=500, detail="Failed to add widget.")
 
     return _serialize_widget(created)
@@ -302,6 +303,7 @@ def add_widget(
 def delete_widget(
     widget_id: int,
     current_user: dict = Depends(get_current_user),
+    _: None = Depends(verify_csrf),
 ):
     """
     Remove a widget. Only the owning user may delete.
@@ -346,8 +348,9 @@ def delete_widget(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("delete_widget DB error")
+        logger.exception("delete_widget DB error for user_id=%s widget_id=%s", user_id, widget_id)
         raise HTTPException(status_code=500, detail="Failed to delete widget.")
+
 
 
 # ──────────────────────────────────────────────────────────────

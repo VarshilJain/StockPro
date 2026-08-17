@@ -193,8 +193,9 @@ def fetch_fundamentals(
         logger.error("yfinance error for ticker=%s attr=%s: %s", ticker, attr, exc)
         raise HTTPException(
             status_code=502,
-            detail=f"Failed to fetch data from yfinance: {exc}",
+            detail="Failed to fetch data from financial data provider. Please try again later.",
         )
+
 
     # ── news returns a list of articles ──
     if is_news:

@@ -5,12 +5,330 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StockPro Analytics Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="lightweight-charts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="apple-theme.css">
+    <link rel="stylesheet" href="apple-theme.css?v=10">
+    <style id="darkThemeCore">
+        /* ══════════════════════════════════════════════════════════════
+           HIGH-SPECIFICITY DARK THEME OVERRIDES
+           ══════════════════════════════════════════════════════════════ */
+        html[data-theme="dark"],
+        body[data-theme="dark"],
+        body.dark-mode {
+            --primary-bg: #0b0f19;
+            --secondary-bg: #131b2e;
+            --tertiary-bg: #1e293b;
+            --card-bg: rgba(19, 27, 46, 0.92);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #8492a6;
+            --text-very-muted: #64748b;
+            --gradient-primary: #3b82f6;
+            --gradient-card: rgba(19, 27, 46, 0.92);
+            --gradient-sidebar: rgba(15, 22, 38, 0.96);
+            background-color: #0b0f19 !important;
+            color: #f8fafc !important;
+        }
+
+        html[data-theme="dark"] .main-content,
+        body.dark-mode .main-content {
+            background-color: #0b0f19 !important;
+        }
+
+        html[data-theme="dark"] .sidebar,
+        body.dark-mode .sidebar {
+            background: rgba(15, 22, 38, 0.96) !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+        }
+
+        html[data-theme="dark"] .topbar,
+        body.dark-mode .topbar {
+            background: rgba(11, 15, 25, 0.88) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+        }
+
+        html[data-theme="dark"] .card,
+        html[data-theme="dark"] .stat-card,
+        html[data-theme="dark"] .idea-card,
+        html[data-theme="dark"] .table-container,
+        body.dark-mode .card,
+        body.dark-mode .stat-card,
+        body.dark-mode .idea-card,
+        body.dark-mode .table-container {
+            background: rgba(19, 27, 46, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            color: #f8fafc !important;
+        }
+
+        html[data-theme="dark"] .nav-item,
+        body.dark-mode .nav-item {
+            color: #cbd5e1 !important;
+        }
+
+        html[data-theme="dark"] .nav-item:hover,
+        body.dark-mode .nav-item:hover {
+            background: rgba(255, 255, 255, 0.06) !important;
+            color: #ffffff !important;
+        }
+
+        html[data-theme="dark"] .nav-item.active,
+        body.dark-mode .nav-item.active {
+            background: rgba(59, 130, 246, 0.16) !important;
+            color: #60a5fa !important;
+        }
+
+        html[data-theme="dark"] .table th,
+        body.dark-mode .table th {
+            background: #1a243a !important;
+            color: #94a3b8 !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme="dark"] .table td,
+        body.dark-mode .table td {
+            background: #131b2e !important;
+            color: #f8fafc !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
+
+        html[data-theme="dark"] .table tbody tr:hover td,
+        body.dark-mode .table tbody tr:hover td {
+            background: rgba(59, 130, 246, 0.1) !important;
+        }
+
+        html[data-theme="dark"] .form-input,
+        html[data-theme="dark"] .form-select,
+        body.dark-mode .form-input,
+        body.dark-mode .form-select {
+            background: #1e293b !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            color: #f8fafc !important;
+        }
+
+        html[data-theme="dark"] .form-select option,
+        body.dark-mode .form-select option {
+            background: #1e293b !important;
+            color: #f8fafc !important;
+        }
+
+        html[data-theme="dark"] .btn-secondary,
+        html[data-theme="dark"] .btn-logout,
+        body.dark-mode .btn-secondary,
+        body.dark-mode .btn-logout {
+            background: #1e293b !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            color: #cbd5e1 !important;
+        }
+
+        html[data-theme="dark"] .btn-secondary:hover,
+        html[data-theme="dark"] .btn-logout:hover,
+        body.dark-mode .btn-secondary:hover,
+        body.dark-mode .btn-logout:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #ffffff !important;
+        }
+
+        html[data-theme="dark"] .user-avatar,
+        body.dark-mode .user-avatar {
+            background: #1e293b !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            color: #f8fafc !important;
+        }
+
+        html[data-theme="dark"] .theme-toggle-btn,
+        body.dark-mode .theme-toggle-btn {
+            background: #1e293b !important;
+            border-color: rgba(255, 255, 255, 0.12) !important;
+            color: #f8fafc !important;
+        }
+
+        html[data-theme="dark"] #lwChart,
+        html[data-theme="dark"] #volChart,
+        html[data-theme="dark"] #subPanelChart {
+            background: #0b0f19 !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme="dark"] #convergenceLegendBanner,
+        body.dark-mode #convergenceLegendBanner {
+            background: #131b2e !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme="dark"] #convergenceToggleContainer,
+        body.dark-mode #convergenceToggleContainer,
+        html[data-theme="dark"] #divergenceToggleContainer,
+        body.dark-mode #divergenceToggleContainer {
+            background: #1e293b !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+
+        html[data-theme="dark"] .sb-toggle-pills,
+        body.dark-mode .sb-toggle-pills {
+            background: #1e293b !important;
+        }
+
+        html[data-theme="dark"] .sb-toggle-pill,
+        body.dark-mode .sb-toggle-pill {
+            color: #94a3b8 !important;
+        }
+
+        html[data-theme="dark"] .sb-toggle-pill.active,
+        body.dark-mode .sb-toggle-pill.active {
+            background: #3b82f6 !important;
+            color: #ffffff !important;
+        }
+
+        html[data-theme="dark"] h1,
+        html[data-theme="dark"] h2,
+        html[data-theme="dark"] h3,
+        html[data-theme="dark"] .card-title,
+        html[data-theme="dark"] .page-title,
+        html[data-theme="dark"] .stat-value,
+        body.dark-mode h1,
+        body.dark-mode h2,
+        body.dark-mode h3,
+        body.dark-mode .card-title,
+        body.dark-mode .page-title,
+        body.dark-mode .stat-value {
+            color: #f8fafc !important;
+            -webkit-text-fill-color: #f8fafc !important;
+        }
+
+        html[data-theme="dark"] .form-label,
+        body.dark-mode .form-label {
+            color: #cbd5e1 !important;
+        }
+
+        html[data-theme="dark"] .card-subtitle,
+        html[data-theme="dark"] .stat-trend,
+        body.dark-mode .card-subtitle,
+        body.dark-mode .stat-trend {
+            color: #8492a6 !important;
+        }
+
+        /* ── Indicator Cards on Stock Chart (Live Indicators Panel) ── */
+        html[data-theme="dark"] .ind-card,
+        html[data-theme="dark"] .rsi-wrap,
+        body.dark-mode .ind-card,
+        body.dark-mode .rsi-wrap {
+            background: #141c2e !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+        }
+
+        html[data-theme="dark"] .ind-label,
+        body.dark-mode .ind-label {
+            color: #94a3b8 !important;
+            font-weight: 700 !important;
+            font-size: 11px !important;
+            letter-spacing: 0.05em !important;
+        }
+
+        html[data-theme="dark"] .ind-value,
+        body.dark-mode .ind-value {
+            color: #f8fafc !important;
+            font-weight: 800 !important;
+        }
+
+        html[data-theme="dark"] .ind-sub,
+        body.dark-mode .ind-sub {
+            color: #cbd5e1 !important;
+            font-weight: 500 !important;
+        }
+
+        html[data-theme="dark"] .rsi-arc-bg,
+        body.dark-mode .rsi-arc-bg {
+            border-color: rgba(255, 255, 255, 0.15) !important;
+            border-bottom-color: transparent !important;
+            border-right-color: transparent !important;
+        }
+
+        html[data-theme="dark"] .rsi-needle,
+        body.dark-mode .rsi-needle {
+            background: #ffffff !important;
+        }
+
+        html[data-theme="dark"] .conf-bar-wrap,
+        body.dark-mode .conf-bar-wrap {
+            background: rgba(255, 255, 255, 0.12) !important;
+        }
+
+        /* ── Saved Scans Cards in Scan Builder ── */
+        html[data-theme="dark"] .sb-scan-item,
+        body.dark-mode .sb-scan-item {
+            background: #1e293b !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        html[data-theme="dark"] .sb-scan-item:hover,
+        body.dark-mode .sb-scan-item:hover {
+            border-color: #3b82f6 !important;
+        }
+
+        html[data-theme="dark"] .sb-scan-item-name,
+        body.dark-mode .sb-scan-item-name {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            font-size: 14px !important;
+        }
+
+        html[data-theme="dark"] .sb-scan-item-meta,
+        body.dark-mode .sb-scan-item-meta {
+            color: #94a3b8 !important;
+            font-size: 11px !important;
+        }
+
+        html[data-theme="dark"] .sb-saved-empty,
+        body.dark-mode .sb-saved-empty {
+            color: #94a3b8 !important;
+        }
+
+        /* ── Scan Builder Condition Rows & Summary ── */
+        html[data-theme="dark"] .sb-condition-row,
+        body.dark-mode .sb-condition-row {
+            background: #1e293b !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        html[data-theme="dark"] .sb-condition-row .form-select,
+        html[data-theme="dark"] .sb-condition-row .form-input,
+        body.dark-mode .sb-condition-row .form-select,
+        body.dark-mode .sb-condition-row .form-input {
+            background: #0f172a !important;
+            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            color: #f8fafc !important;
+        }
+
+        html[data-theme="dark"] .sb-summary-banner,
+        body.dark-mode .sb-summary-banner {
+            background: rgba(59, 130, 246, 0.12) !important;
+            border: 1px solid rgba(59, 130, 246, 0.3) !important;
+            color: #93c5fd !important;
+        }
+
+        html[data-theme="dark"] .sb-summary-text,
+        body.dark-mode .sb-summary-text {
+            color: #60a5fa !important;
+            font-weight: 600 !important;
+        }
+    </style>
+    <script>
+        // Instant theme application before render
+        (function () {
+            const savedTheme = localStorage.getItem('stockpro_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
 </head>
 
 <body>
@@ -32,7 +350,7 @@
                 <i class="fas fa-tachometer-alt nav-icon"></i>Dashboard
             </a>
             <a class="nav-item" onclick="showSection('stockChart', this)" id="nav-stockChart">
-                <i class="fas fa-candlestick-chart nav-icon"></i>Stock Chart
+                <i class="fas fa-chart-line nav-icon"></i>Stock Chart
             </a>
             <a class="nav-item" onclick="showSection('scanner', this)" id="nav-scanner">
                 <i class="fas fa-search nav-icon"></i>Stock Scanner
@@ -47,7 +365,7 @@
                 <i class="fas fa-filter nav-icon"></i>Scan Builder
             </a>
             
-            <div class="sidebar-header" style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); padding-left: 1.5rem; font-weight: 600;">Pattern Screens</div>
+            <div style="margin-top: 20px; margin-bottom: 6px; font-size: 12px; text-transform: uppercase; color: var(--text-muted); padding: 4px 14px; font-weight: 700; letter-spacing: 0.08em;">Pattern Screens</div>
             <a class="nav-item" onclick="showSection('patternScreen', this); loadPatternScreen('vcp');" id="nav-pattern-vcp">
                 <i class="fas fa-compress-alt nav-icon"></i>Price Compression Setup (PCS)
             </a>
@@ -71,7 +389,13 @@
             </a>
         </nav>
         <div class="sidebar-footer">
-            <div class="footer-text">© 2024 StockPro Analytics</div>
+            <div style="margin-bottom: 0.75rem;">
+                <button class="btn btn-secondary" onclick="toggleTheme()" style="width: 100%; font-size: 0.88rem; padding: 9px 14px; display: flex; align-items: center; justify-content: center; gap: 9px; border-radius: 9px;">
+                    <i class="fas fa-moon" id="sidebarThemeIcon"></i>
+                    <span id="sidebarThemeText">Dark Mode</span>
+                </button>
+            </div>
+            <div class="footer-text" style="margin-top: 8px; font-size: 11.5px;">© 2024 StockPro Analytics</div>
         </div>
     </div>
 
@@ -80,6 +404,9 @@
         <div class="topbar">
             <h1 class="page-title"><i class="fas fa-chart-line"></i> Stock Analytics Dashboard</h1>
             <div class="user-profile">
+                <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Dark / Light Mode">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
                 <button class="btn-logout" id="logoutBtn" onclick="handleLogout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
@@ -735,6 +1062,14 @@
                     </div>
                 </div>
 
+                <!-- Reference Legend Banner for EMA Convergence (Placed cleanly outside the charts) -->
+                <div id="convergenceLegendBanner" style="display:none; margin-bottom:1.25rem; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--border-radius); padding:0.65rem 1rem; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; box-shadow:var(--shadow-sm);">
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; font-weight:600; color:var(--text-primary);">
+                        <i class="fas fa-layer-group" style="color:var(--accent-primary);"></i> Moving Average Reference:
+                    </div>
+                    <div id="convergenceLegendChips" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;"></div>
+                </div>
+
                 <!-- 3 TILES -->
                 <div id="ps-tiles-container" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:1rem;margin-bottom:1.5rem;">
                     <!-- Forming / New Today -->
@@ -842,6 +1177,20 @@
 
     <script>
         /* ═══════════════════════════════════════════════════════
+           CSRF & AUTH HELPERS
+        ═══════════════════════════════════════════════════════ */
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+
+        function getCsrfToken() {
+            return getCookie('csrf_token') || '';
+        }
+
+        /* ═══════════════════════════════════════════════════════
            GLOBALS
         ═══════════════════════════════════════════════════════ */
         let allSymbols = [];       // master list used by all symbol selects
@@ -917,21 +1266,21 @@
         let currentPatternData = null;
         let divergenceFilter = 'all';
         let convergenceFilter = 'convergence_3';
+        let patternRenderEpoch = 0;
 
         // Smart tile click dispatcher: maps card ID to the correct bucket key
         // for the current screen type, then calls showPatternSymbols.
         function showPatternBucket(cardId) {
-            if (currentPatternData && currentPatternData.screen === 'ema-convergence') {
+            if (!currentPatternData || !currentPatternData.screen) return;
+            const screen = currentPatternData.screen;
+            if (screen === 'ema-convergence') {
                 const map = { forming: 'fresh', fresh: 'recent', climbing: 'sustained' };
                 showPatternSymbols(map[cardId] || cardId);
-            } else if (currentPatternData && currentPatternData.screen !== 'high-relative-volume'
-                       && currentPatternData.screen !== 'high-delivery-volume'
-                       && currentPatternData.screen !== 'rsi-divergence') {
-                const map = { forming: 'forming', fresh: 'fresh_breakout', climbing: 'climbing' };
+            } else if (screen === 'high-relative-volume' || screen === 'high-delivery-volume' || screen === 'rsi-divergence') {
+                const map = { fresh: 'fresh_breakout', climbing: 'climbing' };
                 showPatternSymbols(map[cardId] || cardId);
             } else {
-                // High-vol / high-deliv / rsi-div use fresh_breakout & climbing
-                const map = { fresh: 'fresh_breakout', climbing: 'climbing' };
+                const map = { forming: 'forming', fresh: 'fresh_breakout', climbing: 'climbing' };
                 showPatternSymbols(map[cardId] || cardId);
             }
         }
@@ -939,6 +1288,50 @@
         function setConvergenceFilter(filterType) {
             convergenceFilter = filterType;
             loadPatternScreen('ema-convergence');
+            updateConvergenceLegend(filterType);
+        }
+
+        function updateConvergenceLegend(filterType) {
+            const banner = document.getElementById('convergenceLegendBanner');
+            const chips = document.getElementById('convergenceLegendChips');
+            if (!banner || !chips) return;
+            if (currentPatternData && currentPatternData.screen === 'ema-convergence') {
+                banner.style.display = 'flex';
+                let items = [];
+                if (filterType === 'convergence_3') {
+                    items = [
+                        { label: 'E4', color: '#00e5ff' },
+                        { label: 'E9', color: '#ffeb3b' },
+                        { label: 'E18', color: '#ff9800' },
+                        { label: 'S100', color: '#7c4dff', dash: true },
+                        { label: 'S150', color: '#e040fb', dash: true },
+                        { label: 'S200', color: '#f44336', dash: true }
+                    ];
+                } else if (filterType === 'convergence_4') {
+                    items = [
+                        { label: 'E5', color: '#00e5ff' },
+                        { label: 'E9', color: '#ffeb3b' },
+                        { label: 'E21', color: '#ffffff' },
+                        { label: 'E50', color: '#8d6e63' }
+                    ];
+                } else {
+                    items = [
+                        { label: 'E4', color: '#00e5ff' },
+                        { label: 'E9', color: '#ffeb3b' },
+                        { label: 'E18', color: '#ff9800' },
+                        { label: 'E50', color: '#8d6e63' },
+                        { label: 'E200', color: '#ab47bc' }
+                    ];
+                }
+                chips.innerHTML = items.map(it => `
+                    <span style="display:inline-flex; align-items:center; gap:5px; font-size:0.75rem; font-weight:700; font-family:monospace; padding:3px 8px; border-radius:12px; background:rgba(0,0,0,0.15); border:1px ${it.dash ? 'dashed' : 'solid'} ${it.color}; color:${it.color};">
+                        <span style="display:inline-block; width:12px; height:2px; background:${it.color};"></span>
+                        ${it.label}
+                    </span>
+                `).join('');
+            } else {
+                banner.style.display = 'none';
+            }
         }
 
         function setDivergenceFilter(filterType) {
@@ -1002,6 +1395,7 @@
         }
 
         async function loadPatternScreen(screenName) {
+            currentPatternData = null;
             const titleMap = {
                 'vcp': 'Price Compression Setup (PCS)',
                 'blue-sky': 'All-Time Peak Breakout (APB)',
@@ -1045,13 +1439,13 @@
                     }
                 });
             }
+            updateConvergenceLegend(convergenceFilter);
             
             // Adjust card labels based on screenName
-            const isTwoCards = (screenName === 'high-relative-volume' || screenName === 'high-delivery-volume' || screenName === 'rsi-divergence' || screenName === 'multi-year-breakout');
+            const isTwoCards = (screenName === 'high-relative-volume' || screenName === 'high-delivery-volume' || screenName === 'rsi-divergence');
             const isHighVol = screenName === 'high-relative-volume';
             const isHighDeliv = screenName === 'high-delivery-volume';
             const isRsiDiv = screenName === 'rsi-divergence';
-            const isMultiYear = screenName === 'multi-year-breakout';
             const isEmaConv = screenName === 'ema-convergence';
             
             const cardForming = document.getElementById('ps-card-forming');
@@ -1085,11 +1479,6 @@
                     if (cardFreshDesc) cardFreshDesc.innerText = 'pivots showing divergence';
                     if (cardClimbingTitle) cardClimbingTitle.innerHTML = '📊 Triple Divergence';
                     if (cardClimbingDesc) cardClimbingDesc.innerText = '3-point monotonic divergence';
-                } else if (isMultiYear) {
-                    if (cardFreshTitle) cardFreshTitle.innerHTML = '💥 Fresh Breakout';
-                    if (cardFreshDesc) cardFreshDesc.innerText = 'broke multi-year high in last 5 days';
-                    if (cardClimbingTitle) cardClimbingTitle.innerHTML = '🚀 Climbing';
-                    if (cardClimbingDesc) cardClimbingDesc.innerText = 'sustained run above multi-year high';
                 }
             } else if (isEmaConv) {
                 // EMA Convergence: 3 buckets based on consecutive days signal is ON
@@ -1128,12 +1517,11 @@
             if (cardsContainer) cardsContainer.innerHTML = '<div style="color:var(--text-muted); font-style:italic;">Select a bucket above to view symbols.</div>';
             
             try {
-                const token = localStorage.getItem('token');
                 let url = `/api/screens/${screenName}/stages`;
                 if (screenName === 'ema-convergence') {
                     url += `?type=${convergenceFilter}`;
                 }
-                const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch(url, { credentials: 'same-origin' });
                 if (!res.ok) throw new Error("Failed to load pattern stages");
                 const data = await res.json();
                 currentPatternData = data;
@@ -1145,10 +1533,16 @@
                     document.getElementById('ps-forming-count').innerText = data.stages?.fresh?.count || 0;
                     document.getElementById('ps-fresh-count').innerText = data.stages?.recent?.count || 0;
                     document.getElementById('ps-climbing-count').innerText = data.stages?.sustained?.count || 0;
+                    showPatternSymbols('fresh');
                 } else {
                     document.getElementById('ps-forming-count').innerText = data.stages?.forming?.count || 0;
                     document.getElementById('ps-fresh-count').innerText = data.stages?.fresh_breakout?.count || 0;
                     document.getElementById('ps-climbing-count').innerText = data.stages?.climbing?.count || 0;
+                    if (isTwoCards) {
+                        showPatternSymbols('fresh_breakout');
+                    } else {
+                        showPatternSymbols('forming');
+                    }
                 }
                 
                 if (screenName === 'rsi-divergence') {
@@ -1164,7 +1558,9 @@
         async function showPatternSymbols(bucket) {
             if (!currentPatternData || !currentPatternData.stages) return;
             
-            const isEmaConv = currentPatternData.screen === 'ema-convergence';
+            const currentEpoch = ++patternRenderEpoch;
+            const currentScreen = currentPatternData.screen;
+            const isEmaConv = currentScreen === 'ema-convergence';
 
             // For EMA convergence the card IDs map to different bucket keys
             // forming card -> 'fresh' bucket, fresh card -> 'recent', climbing card -> 'sustained'
@@ -1189,7 +1585,7 @@
             const container = document.getElementById('patternCardsContainer');
             let symbols = currentPatternData.stages[bucket]?.symbols || [];
             
-            if (currentPatternData.screen === 'rsi-divergence') {
+            if (currentScreen === 'rsi-divergence') {
                 if (divergenceFilter === 'regular') {
                     symbols = symbols.filter(s => s.rsi_divergence_direction && !s.rsi_divergence_direction.includes('hidden'));
                 } else if (divergenceFilter === 'hidden') {
@@ -1202,13 +1598,14 @@
                 return;
             }
             
-            const isHighVol = currentPatternData.screen === 'high-relative-volume';
-            const isHighDeliv = currentPatternData.screen === 'high-delivery-volume';
-            const isBlueSky = currentPatternData.screen === 'blue-sky';
-            const isRsiDiv = currentPatternData.screen === 'rsi-divergence';
+            const isHighVol = currentScreen === 'high-relative-volume';
+            const isHighDeliv = currentScreen === 'high-delivery-volume';
+            const isBlueSky = currentScreen === 'blue-sky';
+            const isRsiDiv = currentScreen === 'rsi-divergence';
             
             container.innerHTML = symbols.map(data => {
                 const sym = typeof data === 'string' ? data : data.symbol;
+                const safeSymId = sym.replace(/[^a-zA-Z0-9_-]/g, '_');
                 const rsRank = data.rs_rank || '--';
                 const baseAge = data.base_length_days ? (data.base_length_days / 7).toFixed(1) + ' wks' : '--';
                 const contraction = data.contraction_count || '--';
@@ -1331,6 +1728,12 @@
                     `;
                 } else if (isEmaConv) {
                     const daysActive = data.days_active != null ? data.days_active + (data.days_active === 1 ? ' day' : ' days') : '--';
+                    const cfgList = (convergenceFilter === 'convergence_3') ?
+                        [{ l: 'E4', c: '#00e5ff' }, { l: 'E9', c: '#ffeb3b' }, { l: 'E18', c: '#ff9800' }, { l: 'S100', c: '#7c4dff', d: true }, { l: 'S150', c: '#e040fb', d: true }, { l: 'S200', c: '#f44336', d: true }] :
+                        (convergenceFilter === 'convergence_4') ?
+                        [{ l: 'E5', c: '#00e5ff' }, { l: 'E9', c: '#ffeb3b' }, { l: 'E21', c: '#ffffff' }, { l: 'E50', c: '#8d6e63' }] :
+                        [{ l: 'E4', c: '#00e5ff' }, { l: 'E9', c: '#ffeb3b' }, { l: 'E18', c: '#ff9800' }, { l: 'E50', c: '#8d6e63' }, { l: 'E200', c: '#ab47bc' }];
+
                     gridHtml = `
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:var(--text-muted);">RS Rating</span>
@@ -1339,6 +1742,12 @@
                         <div style="display:flex; justify-content:space-between;">
                             <span style="color:var(--text-muted);">Ribbon Active</span>
                             <span style="font-weight:600; color:var(--accent-primary);">${daysActive}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px; flex-wrap:wrap; gap:4px;">
+                            <span style="color:var(--text-muted); font-size:0.72rem; font-weight:600;">Moving Averages:</span>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                ${cfgList.map(c => `<span style="color:${c.c}; font-weight:700; font-family:monospace; font-size:0.75rem;">${c.d ? '┄' : '—'} ${c.l}</span>`).join('')}
+                            </div>
                         </div>
                     `;
                 } else {
@@ -1377,7 +1786,7 @@
                     <div style="font-size:1.2rem; font-weight:600; text-align:right;">
                         ₹${price} ${priceChange}
                     </div>
-                    <div id="mini-chart-${sym}" style="width:100%; height:200px; margin: 10px 0;"></div>
+                    <div id="mini-chart-${safeSymId}" style="width:100%; height:200px; margin: 10px 0;"></div>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.85rem;">
                         ${gridHtml}
                     </div>
@@ -1387,33 +1796,39 @@
 
             // Instantiate charts sequentially to avoid blocking UI
             for (const data of symbols) {
+                if (currentEpoch !== patternRenderEpoch) break;
                 if (typeof data !== 'string') {
-                    await renderMiniChart(data);
+                    await renderMiniChart(data, currentScreen, currentEpoch);
                 }
             }
         }
 
-        async function renderMiniChart(data) {
+        async function renderMiniChart(data, targetScreen, epoch) {
+            if (epoch !== patternRenderEpoch) return;
             const sym = data.symbol;
-            const chartDiv = document.getElementById(`mini-chart-${sym}`);
+            const safeSymId = sym.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const chartDiv = document.getElementById(`mini-chart-${safeSymId}`);
             if (!chartDiv) return;
             
-            const isRsiDiv = currentPatternData && currentPatternData.screen === 'rsi-divergence';
+            const isRsiDiv = targetScreen === 'rsi-divergence';
             chartDiv.innerHTML = ''; // clear loading/existing
             
             try {
                 let ohlcData, divergences = [];
                 if (isRsiDiv) {
-                    const response = await fetch(`/api/screens/rsi-divergence-points/${sym}`);
+                    const response = await fetch(`/api/screens/rsi-divergence-points/${sym}`, { credentials: 'same-origin' });
                     if (!response.ok) throw new Error('Failed to fetch points');
+                    if (epoch !== patternRenderEpoch) return;
                     const resJson = await response.json();
                     ohlcData = resJson.ohlcv;
                     divergences = resJson.divergences;
                 } else {
-                    const response = await fetch(`/api/ohlcv/${sym}`);
+                    const response = await fetch(`/api/ohlcv/${sym}`, { credentials: 'same-origin' });
                     if (!response.ok) throw new Error('Failed to fetch data');
+                    if (epoch !== patternRenderEpoch) return;
                     ohlcData = await response.json();
                 }
+                if (epoch !== patternRenderEpoch) return;
                 
                 const candleData = ohlcData.map(d => ({
                     time: d.time.split('T')[0],
@@ -1582,7 +1997,7 @@
                     });
 
                     // ── EMA CONVERGENCE: overlay the relevant moving averages ──────────────
-                    if (currentPatternData && currentPatternData.screen === 'ema-convergence') {
+                    if (targetScreen === 'ema-convergence') {
                         // Helper: compute EMA from candleData closes
                         function calcEMA(data, span) {
                             const k = 2 / (span + 1);
@@ -1628,18 +2043,7 @@
                         };
                         const configs = emaConfigs[convergenceFilter] || emaConfigs['convergence_3'];
 
-                        // Top-right color legend
-                        const emaLegend = document.createElement('div');
-                        emaLegend.style.cssText = 'position:absolute;top:5px;right:5px;z-index:50;display:flex;flex-direction:column;gap:2px;padding:4px 6px;border-radius:4px;background:rgba(17,24,39,0.82);border:1px solid rgba(255,255,255,0.1);pointer-events:none;';
-                        configs.forEach(cfg => {
-                            const row = document.createElement('div');
-                            row.style.cssText = `display:flex;align-items:center;gap:4px;font-size:9px;font-family:monospace;color:${cfg.color};`;
-                            row.innerHTML = `<span style="display:inline-block;width:14px;height:2px;background:${cfg.color};opacity:0.9;"></span>${cfg.label}`;
-                            emaLegend.appendChild(row);
-                        });
-                        chartDiv.appendChild(emaLegend);
-
-                        // Add line series for each EMA/SMA
+                        // Add line series for each EMA/SMA (floating overlay removed)
                         configs.forEach(cfg => {
                             const lineSeries = chart.addLineSeries({
                                 color: cfg.color,
@@ -2102,6 +2506,7 @@
             try {
                 const r = await fetch(`/api/dashboard/widgets/${widgetId}`, {
                     method: 'DELETE',
+                    headers: { 'x-csrf-token': getCsrfToken() },
                     credentials: 'same-origin',
                 });
                 if (r.ok || r.status === 204) {
@@ -2204,7 +2609,10 @@
                 const r = await fetch('/api/dashboard/widgets', {
                     method: 'POST',
                     credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-csrf-token': getCsrfToken(),
+                    },
                     body: JSON.stringify({ signal_id: signalId }),
                 });
                 const data = await r.json();
@@ -2488,14 +2896,20 @@
         function initChartSection() {
             // Build charts only once
             if (!_lwChart) {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                const bg = isDark ? '#0b0f19' : '#1f2937';
+                const text = isDark ? '#f8fafc' : '#d1d5db';
+                const grid = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(75,85,99,0.2)';
+                const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(75,85,99,0.3)';
+
                 _lwChart = LightweightCharts.createChart(document.getElementById('lwChart'), {
                     width: document.getElementById('lwChart').clientWidth,
                     height: 380,
-                    layout: { background: { color: '#1f2937' }, textColor: '#d1d5db' },
-                    grid: { vertLines: { color: 'rgba(75,85,99,0.2)' }, horzLines: { color: 'rgba(75,85,99,0.2)' } },
+                    layout: { background: { color: bg }, textColor: text },
+                    grid: { vertLines: { color: grid }, horzLines: { color: grid } },
                     crosshair: { mode: 1 },
-                    rightPriceScale: { borderColor: 'rgba(75,85,99,0.3)' },
-                    timeScale: { borderColor: 'rgba(75,85,99,0.3)', timeVisible: true },
+                    rightPriceScale: { borderColor: border },
+                    timeScale: { borderColor: border, timeVisible: true },
                 });
                 _candleSeries = _lwChart.addCandlestickSeries({
                     upColor: '#10b981', downColor: '#ef4444',
@@ -3469,7 +3883,11 @@
 
         async function handleLogout() {
             try {
-                await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { 'x-csrf-token': getCsrfToken() },
+                    credentials: 'same-origin',
+                });
             } finally {
                 window.location.href = '/login.html';
             }
@@ -3808,7 +4226,10 @@
             try {
                 const r = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-csrf-token': getCsrfToken(),
+                    },
                     credentials: 'same-origin',
                     body: JSON.stringify(body),
                 });
@@ -3832,7 +4253,11 @@
             sbClearAlert();
             sbSetLoading(true);
             try {
-                const r = await fetch(`/api/scans/${id}/run`, { method: 'POST', credentials: 'same-origin' });
+                const r = await fetch(`/api/scans/${id}/run`, {
+                    method: 'POST',
+                    headers: { 'x-csrf-token': getCsrfToken() },
+                    credentials: 'same-origin',
+                });
                 const data = await r.json();
                 if (!r.ok) { sbShowAlert(data.detail || 'Run failed.'); sbRenderResults([], []); return; }
                 sbRenderResults(data.results || [], Object.keys((data.results || [])[0] || {}).filter(k => k !== 'Timestamp' && k !== 'Symbol'));
@@ -3901,7 +4326,15 @@
             try {
                 const url = sbEditScanId ? `/api/scans/${sbEditScanId}` : '/api/scans';
                 const method = sbEditScanId ? 'PUT' : 'POST';
-                const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body) });
+                const r = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-csrf-token': getCsrfToken(),
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(body)
+                });
                 const data = await r.json();
                 if (!r.ok) { sbShowAlert(data.detail || 'Save failed.'); sbCloseSaveModal(); return; }
                 sbCloseSaveModal();
@@ -3972,16 +4405,95 @@
         async function sbConfirmDelete() {
             if (!sbDeleteScanId) return;
             try {
-                const r = await fetch(`/api/scans/${sbDeleteScanId}`, { method: 'DELETE', credentials: 'same-origin' });
+                const r = await fetch(`/api/scans/${sbDeleteScanId}`, {
+                    method: 'DELETE',
+                    headers: { 'x-csrf-token': getCsrfToken() },
+                    credentials: 'same-origin'
+                });
                 if (!r.ok && r.status !== 204) { const d = await r.json(); sbShowAlert(d.detail || 'Delete failed.'); }
                 else await sbLoadSavedScans();
             } catch { sbShowAlert('Network error.'); }
             sbCloseDeleteModal();
         }
 
+
         function sbEscHtml(s) {
             return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
+
+        /* ═══════════════════════════════════════════════════════
+           THEME ENGINE (Dark / Light Mode)
+        ═══════════════════════════════════════════════════════ */
+        function initTheme() {
+            const savedTheme = localStorage.getItem('stockpro_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            setTheme(savedTheme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+        }
+
+        function setTheme(theme) {
+            const isDark = (theme === 'dark');
+            document.documentElement.setAttribute('data-theme', theme);
+            if (document.body) {
+                document.body.setAttribute('data-theme', theme);
+                document.body.classList.toggle('dark-mode', isDark);
+            }
+            document.documentElement.classList.toggle('dark', isDark);
+            localStorage.setItem('stockpro_theme', theme);
+
+            const icon = document.getElementById('themeIcon');
+            if (icon) {
+                icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+                icon.style.color = isDark ? '#fbbf24' : 'var(--text-secondary)';
+            }
+            const sideIcon = document.getElementById('sidebarThemeIcon');
+            const sideText = document.getElementById('sidebarThemeText');
+            if (sideIcon) {
+                sideIcon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+                sideIcon.style.color = isDark ? '#fbbf24' : 'inherit';
+            }
+            if (sideText) {
+                sideText.innerText = isDark ? 'Light Mode' : 'Dark Mode';
+            }
+
+            if (_lwChart) {
+                const bg = isDark ? '#0b0f19' : '#1f2937';
+                const text = isDark ? '#f8fafc' : '#d1d5db';
+                const grid = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(75,85,99,0.2)';
+                const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(75,85,99,0.3)';
+
+                _lwChart.applyOptions({
+                    layout: { background: { color: bg }, textColor: text },
+                    grid: { vertLines: { color: grid }, horzLines: { color: grid } },
+                    rightPriceScale: { borderColor: border },
+                    timeScale: { borderColor: border }
+                });
+                if (_volChart) {
+                    _volChart.applyOptions({
+                        layout: { background: { color: bg }, textColor: text },
+                        grid: { vertLines: { color: grid }, horzLines: { color: grid } },
+                        rightPriceScale: { borderColor: border },
+                        timeScale: { borderColor: border }
+                    });
+                }
+                if (_subPanelChart) {
+                    _subPanelChart.applyOptions({
+                        layout: { background: { color: bg }, textColor: text },
+                        grid: { vertLines: { color: grid }, horzLines: { color: grid } },
+                        rightPriceScale: { borderColor: border },
+                        timeScale: { borderColor: border }
+                    });
+                }
+            }
+        }
+
+        // Run theme setup on DOMContentLoaded and now
+        initTheme();
+        document.addEventListener('DOMContentLoaded', initTheme);
     </script>
 </body>
 

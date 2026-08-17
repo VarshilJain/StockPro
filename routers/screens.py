@@ -24,8 +24,9 @@ def _run_single_flag_scan(flag: str) -> list[dict]:
         )
         return rows
     except Exception as exc:
-        logger.exception(f"Error running scan for {flag}")
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception("Error running scan for %s", flag)
+        raise HTTPException(status_code=500, detail="Failed to execute pattern screen.")
+
 
 @router.get("/screens/vcp")
 def get_vcp_screen(current_user: dict = Depends(get_current_user)):
@@ -99,7 +100,8 @@ def get_stage_summary(current_user: dict = Depends(get_current_user)):
         return JSONResponse(content=summary)
     except Exception as exc:
         logger.exception("Error in stage-summary")
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail="Failed to retrieve stage summary.")
+
 
 @router.get("/screens/{screen_name}/stages")
 def get_screen_stages(screen_name: str, type: str = "convergence_3", current_user: dict = Depends(get_current_user)):
@@ -183,7 +185,7 @@ def get_screen_stages(screen_name: str, type: str = "convergence_3", current_use
             })
         except Exception as exc:
             logger.exception("Error dynamically computing rsi-divergence screen stages")
-            raise HTTPException(status_code=500, detail=str(exc))
+            raise HTTPException(status_code=500, detail="Failed to compute RSI divergence screen stages.")
 
     elif screen_name in ("high-relative-volume", "high-delivery-volume"):
         try:
@@ -199,18 +201,18 @@ def get_screen_stages(screen_name: str, type: str = "convergence_3", current_use
                 return JSONResponse(content={"screen": screen_name, "as_of_date": None, "stages": {}})
             max_date = row["max_date"]
             
-            # Fetch last 40 trading days of OHLCV & delivery data per symbol from ohlc_data
+            # Fetch last 40+ trading days of OHLCV & delivery data per symbol from ohlc_data
             query = """
-                SELECT ticker as Symbol, date as Timestamp, open as Open, high as High, low as Low, close as Close, volume as Volume, delivery_quantity as delivery_quantity
-                FROM (
-                    SELECT ticker, date, open, high, low, close, volume, delivery_quantity,
-                           ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY date DESC) as rn
-                    FROM ohlc_data
-                ) t
-                WHERE rn <= 40
+                SELECT ticker as Symbol, date as Timestamp, open as Open, high as High, low as Low, close as Close, volume as Volume, delivery_quantity
+                FROM ohlc_data
+                WHERE date >= %s - INTERVAL 70 DAY
                 ORDER BY ticker, date ASC
             """
-            df = pd.read_sql(query, conn, parse_dates=["Timestamp"])
+            cursor.execute(query, (max_date,))
+            rows = cursor.fetchall()
+            df = pd.DataFrame(rows)
+            if not df.empty and "Timestamp" in df.columns:
+                df["Timestamp"] = pd.to_datetime(df["Timestamp"])
             
             # Fetch latest RS ranks
             cursor.execute("""
@@ -321,8 +323,8 @@ def get_screen_stages(screen_name: str, type: str = "convergence_3", current_use
                 "stages": stages
             })
         except Exception as exc:
-            logger.exception(f"Error dynamically computing {screen_name} screen stages")
-            raise HTTPException(status_code=500, detail=str(exc))
+            logger.exception("Error dynamically computing %s screen stages", screen_name)
+            raise HTTPException(status_code=500, detail="Failed to compute volume screen stages.")
 
     # ── EMA CONVERGENCE SCREEN (days-based buckets, no stage dependency) ──────
     if screen_name == "ema-convergence":
@@ -426,8 +428,8 @@ def get_screen_stages(screen_name: str, type: str = "convergence_3", current_use
                 "stages": stages
             })
         except Exception as exc:
-            logger.exception(f"Error fetching ema-convergence stages")
-            raise HTTPException(status_code=500, detail=str(exc))
+            logger.exception("Error fetching ema-convergence stages")
+            raise HTTPException(status_code=500, detail="Failed to compute EMA convergence stages.")
 
     # ── GENERIC STAGE-BUCKET SCREENS ─────────────────────────────────────────
     # Map API param to DB column name
@@ -530,8 +532,9 @@ def get_screen_stages(screen_name: str, type: str = "convergence_3", current_use
         })
 
     except Exception as exc:
-        logger.exception(f"Error fetching stages for {screen_name}")
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception("Error fetching stages for %s", screen_name)
+        raise HTTPException(status_code=500, detail="Failed to fetch pattern screen stages.")
+
 
 
 @router.get("/screens/rsi-divergence-points/{symbol}")

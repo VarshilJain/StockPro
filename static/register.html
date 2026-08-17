@@ -1,195 +1,617 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Create Account — StockPro Analytics</title>
-<meta name="description" content="Create your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="apple-theme.css?v=2">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — StockPro Analytics</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta name="description" content="Create your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
+  
+  <!-- Modern Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- Premium Fintech Auth Theme -->
+  <link rel="stylesheet" href="auth-theme.css?v=6">
+  
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body class="auth-body">
-<div class="bg-blur-circle bg-blur-1"></div>
-<div class="bg-blur-circle bg-blur-2"></div>
+<body class="auth-page theme-green">
 
-<div class="auth-wrapper">
-    <!-- Brand -->
-    <div class="brand">
-        <div class="brand-icon"><i class="fas fa-chart-line"></i></div>
+  <!-- Background Ambient Glow -->
+  <div class="auth-bg-glow">
+    <div class="glow-circle-1" style="background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(248, 250, 252, 0) 70%);"></div>
+    <div class="glow-circle-2" style="background: radial-gradient(circle, rgba(0, 102, 255, 0.08) 0%, rgba(248, 250, 252, 0) 70%);"></div>
+    <div class="glow-circle-3" style="background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, rgba(248, 250, 252, 0) 70%);"></div>
+  </div>
+
+
+  <!-- Header -->
+  <header class="auth-header">
+    <a href="/" class="brand-link" aria-label="StockPro Home">
+      <div class="brand-badge">
+        <i class="fas fa-chart-line"></i>
+      </div>
+      <div class="brand-titles">
         <span class="brand-name">StockPro</span>
-        <div class="brand-sub">Analytics Dashboard</div>
-    </div>
+        <span class="brand-sub">Analytics Dashboard</span>
+      </div>
+    </a>
+  </header>
 
-    <!-- Card -->
-    <div class="auth-card">
-        <h1 class="card-heading">Create account</h1>
-        <p class="card-subheading">Join StockPro Analytics — it's free</p>
+  <!-- Main Split Layout -->
+  <main class="auth-main">
+    
+    <!-- Left Hero Section -->
+    <section class="hero-content">
+      <h1 class="hero-heading">Create your <span class="brand-highlight" style="color:#0066FF;">StockPro</span> account</h1>
+      <p class="hero-subheading">Join thousands of traders and investors making smarter decisions every day.</p>
 
-        <div class="alert alert-error" id="errorAlert" style="display: none;" role="alert">
-            <i class="fas fa-exclamation-circle"></i>
-            <span id="errorMsg"></span>
+      <div class="features-list">
+        <div class="feature-item">
+          <div class="feature-icon-box">
+            <i class="fas fa-bolt"></i>
+          </div>
+          <div class="feature-text">
+            <h4>Fast & Free</h4>
+            <p>Create your account in seconds. No hidden fees.</p>
+          </div>
         </div>
-        <div class="alert alert-success" id="successAlert" style="display: none;" role="status">
-            <i class="fas fa-check-circle"></i>
-            <span id="successMsg"></span>
+
+        <div class="feature-item">
+          <div class="feature-icon-box">
+            <i class="fas fa-chart-column"></i>
+          </div>
+          <div class="feature-text">
+            <h4>Powerful Tools</h4>
+            <p>Access advanced analytics, scanners, and trackers.</p>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-box">
+            <i class="fas fa-lock"></i>
+          </div>
+          <div class="feature-text">
+            <h4>Secure & Private</h4>
+            <p>Your data is encrypted and always protected.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subtle Fintech Stock Chart Vector Illustration (Emerald/Mint Accent) -->
+      <div class="chart-visual-bg" aria-hidden="true">
+        <svg viewBox="0 0 500 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="chartGreenGlow" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#10B981" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="lineGreenGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#6EE7B7"/>
+              <stop offset="50%" stop-color="#34D399"/>
+              <stop offset="100%" stop-color="#10B981"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Translucent Background Candlesticks -->
+          <g opacity="0.45">
+            <!-- Candle 1 -->
+            <line x1="300" y1="130" x2="300" y2="240" stroke="#6EE7B7" stroke-width="1.5"/>
+            <rect x="294" y="150" width="12" height="60" rx="2" fill="#A7F3D0" fill-opacity="0.6"/>
+            <!-- Candle 2 -->
+            <line x1="330" y1="110" x2="330" y2="210" stroke="#34D399" stroke-width="1.5"/>
+            <rect x="324" y="130" width="12" height="55" rx="2" fill="#6EE7B7" fill-opacity="0.7"/>
+            <!-- Candle 3 -->
+            <line x1="360" y1="80" x2="360" y2="190" stroke="#10B981" stroke-width="1.5"/>
+            <rect x="354" y="100" width="12" height="65" rx="2" fill="#34D399" fill-opacity="0.75"/>
+            <!-- Candle 4 -->
+            <line x1="390" y1="40" x2="390" y2="160" stroke="#059669" stroke-width="1.5"/>
+            <rect x="384" y="60" width="12" height="80" rx="2" fill="#10B981" fill-opacity="0.8"/>
+          </g>
+
+          <!-- Area Fill -->
+          <path d="M 10 270 C 120 250, 190 230, 250 160 C 310 90, 370 120, 480 30 L 480 320 L 10 320 Z" fill="url(#chartGreenGlow)"/>
+          
+          <!-- Upward Line Trend -->
+          <path d="M 10 270 C 120 250, 190 230, 250 160 C 310 90, 370 120, 480 30" stroke="url(#lineGreenGrad)" stroke-width="3.5" stroke-linecap="round"/>
+          
+          <!-- Key Node Points -->
+          <circle cx="250" cy="160" r="5" fill="#FFFFFF" stroke="#10B981" stroke-width="3"/>
+          <circle cx="480" cy="30" r="6" fill="#10B981" stroke="#FFFFFF" stroke-width="3"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Right Register Card -->
+    <section class="card-wrapper">
+      <div class="auth-card">
+        
+        <!-- Center Top Icon Badge -->
+        <div class="card-top-icon">
+          <i class="fas fa-user-plus"></i>
+        </div>
+
+        <h2 class="card-title">Create account</h2>
+        <p class="card-subtitle">Enter your details to get started</p>
+
+        <!-- Alert Banners -->
+        <div class="auth-alert error" id="errorAlert" role="alert">
+          <i class="fas fa-circle-exclamation"></i>
+          <span id="errorMsg"></span>
+        </div>
+        <div class="auth-alert success" id="successAlert" role="status">
+          <i class="fas fa-circle-check"></i>
+          <span id="successMsg"></span>
         </div>
 
         <form id="registerForm" novalidate>
-            <div class="form-group">
-                <label class="form-label" for="name">Full name</label>
-                <div class="input-wrapper">
-                    <i class="fas fa-user input-icon"></i>
-                    <input class="form-input" type="text" id="name" name="name"
-                           placeholder="Varshil Jain" autocomplete="name" required>
-                </div>
+          
+          <!-- Full Name Input -->
+          <div class="form-group">
+            <label class="form-label" for="name">Full name</label>
+            <div class="input-container">
+              <i class="fas fa-user input-icon-left"></i>
+              <input 
+                class="sp-input" 
+                type="text" 
+                id="name" 
+                name="name" 
+                placeholder="Your full name" 
+                autocomplete="name" 
+                required
+              >
             </div>
+          </div>
 
-            <div class="form-group">
-                <label class="form-label" for="email">Email address</label>
-                <div class="input-wrapper">
-                    <i class="fas fa-envelope input-icon"></i>
-                    <input class="form-input" type="email" id="email" name="email"
-                           placeholder="you@example.com" autocomplete="email" required>
-                </div>
+          <!-- Email Address Input -->
+          <div class="form-group">
+            <label class="form-label" for="email">Email address</label>
+            <div class="input-container">
+              <i class="fas fa-envelope input-icon-left"></i>
+              <input 
+                class="sp-input" 
+                type="email" 
+                id="email" 
+                name="email" 
+                placeholder="you@example.com" 
+                autocomplete="email" 
+                required
+              >
             </div>
+          </div>
 
-            <div class="form-group">
-                <label class="form-label" for="password">Password</label>
-                <div class="input-wrapper">
-                    <i class="fas fa-lock input-icon"></i>
-                    <input class="form-input" type="password" id="password" name="password"
-                           placeholder="Min. 8 chars, include a digit" autocomplete="new-password" required>
-                </div>
-                <!-- Password strength indicator -->
-                <div class="strength-wrap">
-                    <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
-                    <div class="strength-label" id="strengthLabel"></div>
-                </div>
-                <span class="field-hint">At least 8 characters, including a letter and a digit.</span>
+          <!-- Password Input -->
+          <div class="form-group" style="margin-bottom: 0.6rem;">
+            <label class="form-label" for="password">Password</label>
+            <div class="input-container">
+              <i class="fas fa-lock input-icon-left"></i>
+              <input 
+                class="sp-input" 
+                type="password" 
+                id="password" 
+                name="password" 
+                placeholder="Create a password" 
+                autocomplete="new-password" 
+                required
+              >
+              <button 
+                type="button" 
+                class="toggle-password" 
+                id="togglePwdBtn" 
+                aria-label="Toggle password visibility"
+              >
+                <i class="far fa-eye" id="pwdEyeIcon"></i>
+              </button>
             </div>
+          </div>
 
-            <button class="btn-submit" type="submit" id="submitBtn">
-                <div class="btn-spinner"></div>
-                <span class="btn-label"><i class="fas fa-user-plus"></i> Create Account</span>
+          <!-- Password Strength Segmented Indicator -->
+          <div class="strength-container">
+            <div class="strength-header">
+              <span>Password strength</span>
+              <span id="strengthLabel" style="font-weight:600;">Weak</span>
+            </div>
+            <div class="strength-bars">
+              <div class="strength-segment" id="seg1"></div>
+              <div class="strength-segment" id="seg2"></div>
+              <div class="strength-segment" id="seg3"></div>
+              <div class="strength-segment" id="seg4"></div>
+            </div>
+          </div>
+
+          <!-- Confirm Password Input -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label class="form-label" for="confirmPassword">Confirm password</label>
+            <div class="input-container">
+              <i class="fas fa-lock input-icon-left"></i>
+              <input 
+                class="sp-input" 
+                type="password" 
+                id="confirmPassword" 
+                name="confirmPassword" 
+                placeholder="Confirm your password" 
+                autocomplete="new-password" 
+                required
+              >
+              <button 
+                type="button" 
+                class="toggle-password" 
+                id="toggleConfirmPwdBtn" 
+                aria-label="Toggle confirm password visibility"
+              >
+                <i class="far fa-eye" id="confirmEyeIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Terms Checkbox -->
+          <div class="form-group" style="margin-top: 1.15rem; margin-bottom: 1.35rem;">
+            <label class="checkbox-label" style="font-size: 0.82rem; line-height: 1.45;">
+              <input type="checkbox" id="termsCheck" required>
+              <span>I agree to the <a href="#" class="link-btn" onclick="openModal('termsModal');return false;">Terms of Service</a> and <a href="#" class="link-btn" onclick="openModal('privacyModal');return false;">Privacy Policy</a></span>
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn-primary-auth" id="submitBtn">
+            <div class="spinner"></div>
+            <span class="btn-text"><i class="fas fa-user-plus"></i> Create account</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="auth-divider">
+            <div class="line"></div>
+            <span>or continue with</span>
+            <div class="line"></div>
+          </div>
+
+          <!-- Social Buttons -->
+          <div class="social-buttons-grid">
+            
+            <!-- Google Social Button -->
+            <button type="button" class="btn-social" id="googleCustomBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>Google</span>
             </button>
+
+            <!-- GitHub Social Button -->
+            <button type="button" class="btn-social" id="githubCustomBtn">
+              <i class="fab fa-github"></i>
+              <span>GitHub</span>
+            </button>
+          </div>
+
+          <!-- In-Box Switch to Login -->
+          <div style="text-align: center; margin-top: 1.15rem; font-size: 0.85rem; color: var(--sp-text-muted);">
+            Already have an account? <a href="/login.html" class="link-btn" style="font-weight: 700;">Sign in</a>
+          </div>
+
+          <!-- Hidden GIS element for Google Token callback handling -->
+          <div id="g_id_onload"
+               data-client_id=""
+               data-callback="handleGoogleCallback"
+               data-auto_prompt="false"
+               style="display: none;">
+          </div>
+
         </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="auth-footer">
+    <div>&copy; 2026 StockPro. All rights reserved.</div>
+    <div class="footer-links">
+      <button type="button" onclick="openModal('termsModal')">Terms of Service</button>
+      <button type="button" onclick="openModal('privacyModal')">Privacy Policy</button>
     </div>
+  </footer>
 
-    <!-- Footer -->
-    <div class="auth-footer">
-        Already have an account?
-        <a href="/login.html" class="auth-link">Sign in</a>
+  <!-- Modal: Terms of Service -->
+  <div class="modal-backdrop" id="termsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Terms of Service</h3>
+        <button type="button" class="modal-close" onclick="closeModal('termsModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>1. Acceptance of Terms:</strong> By accessing and using StockPro Analytics, you agree to comply with and be bound by these Terms of Service.</p>
+        <p><strong>2. Market Information Disclaimer:</strong> All data, scanner results, charts, and technical signals provided on StockPro are for informational and educational purposes only and do not constitute financial advice.</p>
+        <p><strong>3. Account Security:</strong> You are responsible for safeguarding your login credentials and maintaining active control over your account.</p>
+      </div>
     </div>
-</div>
+  </div>
 
-<script>
-const form         = document.getElementById('registerForm');
-const btn          = document.getElementById('submitBtn');
-const errorAlert   = document.getElementById('errorAlert');
-const errorMsg     = document.getElementById('errorMsg');
-const successAlert = document.getElementById('successAlert');
-const successMsg   = document.getElementById('successMsg');
-const pwdInput     = document.getElementById('password');
-const strengthFill = document.getElementById('strengthFill');
-const strengthLabel = document.getElementById('strengthLabel');
+  <!-- Modal: Privacy Policy -->
+  <div class="modal-backdrop" id="privacyModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Privacy Policy</h3>
+        <button type="button" class="modal-close" onclick="closeModal('privacyModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>1. Data Protection:</strong> StockPro securely encrypts passwords and sensitive user preferences using industry standard cryptographic hashes.</p>
+        <p><strong>2. Information Usage:</strong> We do not sell or monetize personal investor information or custom scan strategies to third parties.</p>
+        <p><strong>3. Security Cookies:</strong> StockPro uses strict HttpOnly cookies exclusively for authenticating sessions and preventing cross-site request forgery.</p>
+      </div>
+    </div>
+  </div>
 
-function showError(msg) {
-    successAlert.style.display = 'none';
-    errorMsg.textContent = msg;
-    errorAlert.style.display = 'flex';
-}
-function showSuccess(msg) {
-    errorAlert.style.display = 'none';
-    successMsg.textContent = msg;
-    successAlert.style.display = 'flex';
-}
-function hideAlerts() {
-    errorAlert.style.display = 'none';
-    successAlert.style.display = 'none';
-}
+  <!-- Client-side Logic -->
+  <script>
+    const form          = document.getElementById('registerForm');
+    const btn           = document.getElementById('submitBtn');
+    const errorAlert    = document.getElementById('errorAlert');
+    const errorMsg      = document.getElementById('errorMsg');
+    const successAlert  = document.getElementById('successAlert');
+    const successMsg    = document.getElementById('successMsg');
+    const nameInput     = document.getElementById('name');
+    const emailInput    = document.getElementById('email');
+    const pwdInput      = document.getElementById('password');
+    const confirmPwd    = document.getElementById('confirmPassword');
+    const termsCheck    = document.getElementById('termsCheck');
+    const strengthLabel = document.getElementById('strengthLabel');
+    const seg1          = document.getElementById('seg1');
+    const seg2          = document.getElementById('seg2');
+    const seg3          = document.getElementById('seg3');
+    const seg4          = document.getElementById('seg4');
 
-// Password strength meter
-pwdInput.addEventListener('input', () => {
-    const val = pwdInput.value;
-    let score = 0;
-    if (val.length >= 8)  score++;
-    if (/[A-Za-z]/.test(val)) score++;
-    if (/\d/.test(val))   score++;
-    if (/[^A-Za-z0-9]/.test(val)) score++;
+    function showError(msg) {
+      successAlert.style.display = 'none';
+      errorMsg.textContent = msg;
+      errorAlert.style.display = 'flex';
+    }
 
-    const colors = ['', '#ef4444', '#f59e0b', '#06b6d4', '#10b981'];
-    const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
-    strengthFill.style.width  = score ? (score * 25) + '%' : '0%';
-    strengthFill.style.background = colors[score] || '';
-    strengthLabel.textContent = labels[score] || '';
-    strengthLabel.style.color = colors[score] || '';
-});
+    function showSuccess(msg) {
+      errorAlert.style.display = 'none';
+      successMsg.textContent = msg;
+      successAlert.style.display = 'flex';
+    }
 
-// Client-side validation helper
-function validateEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+    function hideAlerts() {
+      errorAlert.style.display = 'none';
+      successAlert.style.display = 'none';
+    }
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideAlerts();
+    // Password Visibility Toggles
+    const togglePwdBtn        = document.getElementById('togglePwdBtn');
+    const pwdEyeIcon          = document.getElementById('pwdEyeIcon');
+    const toggleConfirmPwdBtn = document.getElementById('toggleConfirmPwdBtn');
+    const confirmEyeIcon      = document.getElementById('confirmEyeIcon');
 
-    const name     = document.getElementById('name').value.trim();
-    const email    = document.getElementById('email').value.trim();
-    const password = pwdInput.value;
+    togglePwdBtn.addEventListener('click', () => {
+      const isPwd = pwdInput.type === 'password';
+      pwdInput.type = isPwd ? 'text' : 'password';
+      pwdEyeIcon.className = isPwd ? 'far fa-eye-slash' : 'far fa-eye';
+    });
 
-    // Client-side checks
-    if (!name) { showError('Please enter your full name.'); return; }
-    if (!validateEmail(email)) { showError('Please enter a valid email address.'); return; }
-    if (password.length < 8) { showError('Password must be at least 8 characters.'); return; }
-    if (!/[A-Za-z]/.test(password)) { showError('Password must contain at least one letter.'); return; }
-    if (!/\d/.test(password)) { showError('Password must contain at least one digit.'); return; }
+    toggleConfirmPwdBtn.addEventListener('click', () => {
+      const isPwd = confirmPwd.type === 'password';
+      confirmPwd.type = isPwd ? 'text' : 'password';
+      confirmEyeIcon.className = isPwd ? 'far fa-eye-slash' : 'far fa-eye';
+    });
 
-    btn.classList.add('loading');
-    btn.disabled = true;
+    // Password Strength Meter
+    pwdInput.addEventListener('input', () => {
+      const val = pwdInput.value;
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (val.length >= 12) score++;
+      if (/[A-Za-z]/.test(val) && /\d/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val) || (val.length >= 14)) score++;
 
-    try {
+      const segments = [seg1, seg2, seg3, seg4];
+      segments.forEach(s => s.style.backgroundColor = '#E2E8F0');
+
+      if (!val) {
+        strengthLabel.textContent = 'Weak';
+        strengthLabel.style.color = 'var(--sp-text-muted)';
+        return;
+      }
+
+      if (score === 1) {
+        seg1.style.backgroundColor = '#EF4444';
+        strengthLabel.textContent = 'Weak';
+        strengthLabel.style.color = '#EF4444';
+      } else if (score === 2) {
+        seg1.style.backgroundColor = '#F59E0B';
+        seg2.style.backgroundColor = '#F59E0B';
+        strengthLabel.textContent = 'Fair';
+        strengthLabel.style.color = '#F59E0B';
+      } else if (score === 3) {
+        seg1.style.backgroundColor = '#3B82F6';
+        seg2.style.backgroundColor = '#3B82F6';
+        seg3.style.backgroundColor = '#3B82F6';
+        strengthLabel.textContent = 'Good';
+        strengthLabel.style.color = '#3B82F6';
+      } else if (score >= 4) {
+        segments.forEach(s => s.style.backgroundColor = '#10B981');
+        strengthLabel.textContent = 'Strong';
+        strengthLabel.style.color = '#10B981';
+      }
+    });
+
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    // Form Submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideAlerts();
+
+      const name     = nameInput.value.trim();
+      const email    = emailInput.value.trim();
+      const password = pwdInput.value;
+      const confirm  = confirmPwd.value;
+
+      // Validation Checks
+      if (!name) {
+        showError('Please enter your full name.');
+        return;
+      }
+      if (!validateEmail(email)) {
+        showError('Please enter a valid email address.');
+        return;
+      }
+      if (password.length < 12) {
+        showError('Password must be at least 12 characters long.');
+        return;
+      }
+      if (!/[A-Za-z]/.test(password)) {
+        showError('Password must contain at least one letter.');
+        return;
+      }
+      if (!/\d/.test(password)) {
+        showError('Password must contain at least one digit.');
+        return;
+      }
+      if (password !== confirm) {
+        showError('Passwords do not match. Please check and try again.');
+        return;
+      }
+      if (!termsCheck.checked) {
+        showError('Please agree to the Terms of Service and Privacy Policy.');
+        return;
+      }
+
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      try {
         const res = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ name, email, password }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ name, email, password }),
         });
 
         const data = await res.json().catch(() => ({}));
 
         if (res.ok) {
-            showSuccess('Account created! Redirecting to login…');
-            form.reset();
-            strengthFill.style.width = '0%';
-            strengthLabel.textContent = '';
-            setTimeout(() => { window.location.href = '/login.html'; }, 1500);
-            return;
+          showSuccess('Account created successfully! Redirecting to sign in…');
+          form.reset();
+          setTimeout(() => { window.location.href = '/login.html'; }, 1400);
+          return;
         }
 
         if (res.status === 409) {
-            showError('An account with this email already exists. Try logging in instead.');
+          showError('An account with this email already exists. Try signing in instead.');
         } else if (res.status === 422) {
-            // Pydantic validation error — extract first message
-            const detail = data.detail;
-            if (Array.isArray(detail) && detail.length > 0) {
-                showError(detail[0].msg || 'Validation error. Please check your input.');
-            } else {
-                showError(typeof detail === 'string' ? detail : 'Validation error. Please check your input.');
-            }
+          const detail = data.detail;
+          if (Array.isArray(detail) && detail.length > 0) {
+            showError(detail[0].msg || 'Validation error. Please check your inputs.');
+          } else {
+            showError(typeof detail === 'string' ? detail : 'Validation error. Please check your inputs.');
+          }
         } else {
-            showError(data.detail || 'Registration failed. Please try again.');
+          showError(data.detail || 'Registration failed. Please try again.');
         }
-    } catch (err) {
-        showError('Network error. Please check your connection and try again.');
-    } finally {
+      } catch (err) {
+        showError('Network error. Please check your internet connection.');
+      } finally {
         btn.classList.remove('loading');
         btn.disabled = false;
+      }
+    });
+
+    // Google Identity Services Integration
+    let googleClientId = '';
+    async function initGoogleAuth() {
+      try {
+        const res = await fetch('/api/auth/config');
+        const cfg = await res.json();
+        if (cfg.google_client_id) {
+          googleClientId = cfg.google_client_id;
+          setupGis();
+        }
+      } catch (e) {}
     }
-});
-</script>
+
+    function setupGis() {
+      if (googleClientId && window.google && google.accounts && google.accounts.id) {
+        google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCallback,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+      }
+    }
+
+    initGoogleAuth();
+
+    async function handleGoogleCallback(response) {
+      hideAlerts();
+      if (!response || !response.credential) {
+        showError('Google registration was cancelled or failed.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ credential: response.credential }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          window.location.href = '/';
+        } else {
+          showError(data.detail || 'Google registration failed.');
+        }
+      } catch (err) {
+        showError('Network error during Google registration.');
+      }
+    }
+
+    document.getElementById('googleCustomBtn').addEventListener('click', async () => {
+      if (!googleClientId) {
+        await initGoogleAuth();
+      }
+      if (!googleClientId) {
+        showError('Google Sign-In is not configured. Please ensure GOOGLE_CLIENT_ID is set in .env.');
+        return;
+      }
+      if (window.google && google.accounts && google.accounts.id) {
+        setupGis();
+        google.accounts.id.prompt();
+      } else {
+        showError('Google Identity Services is initializing. Please try again in a second.');
+      }
+    });
+
+    document.getElementById('githubCustomBtn').addEventListener('click', () => {
+      showError('GitHub registration is currently in private preview.');
+    });
+
+    // Modal Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.add('show');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    document.querySelectorAll('.modal-backdrop').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('show');
+        }
+      });
+    });
+  </script>
 </body>
 </html>
-
-

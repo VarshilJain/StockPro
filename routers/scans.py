@@ -2,6 +2,7 @@
 routers/scans.py — CRUD endpoints for saved scans + ad-hoc and saved-scan execution.
 
 All endpoints are auth-guarded via Depends(get_current_user).
+State-changing endpoints are protected via Depends(verify_csrf).
 
 Route order matters — /run must come before /{id} so FastAPI doesn't try
 to cast the literal string "run" as an integer id.
@@ -15,9 +16,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
-from auth import get_current_user
+from auth import get_current_user, verify_csrf
 from database import get_connection
 from scan_engine import run_scan, validate_conditions
 
@@ -33,13 +34,13 @@ router = APIRouter(prefix="/api/scans", tags=["Scans"])
 class ConditionItem(BaseModel):
     field: str
     operator: str
-    value: Optional[int] = None
+    value: Optional[int | float | str] = None
 
 
 class ScanBody(BaseModel):
     """Body for ad-hoc /run and for saving a scan."""
     logic: str = "AND"
-    conditions: list[ConditionItem]
+    conditions: list[ConditionItem] = Field(..., min_length=1, max_length=20)
     start_date: Optional[str] = None
     end_date: Optional[str] = None
 
@@ -52,9 +53,9 @@ class ScanBody(BaseModel):
 
 
 class SaveScanBody(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=128)
     logic: str = "AND"
-    conditions: list[ConditionItem]
+    conditions: list[ConditionItem] = Field(..., min_length=1, max_length=20)
     start_date: Optional[str] = None
     end_date: Optional[str] = None
 
@@ -64,8 +65,6 @@ class SaveScanBody(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("Scan name must not be empty.")
-        if len(v) > 128:
-            raise ValueError("Scan name must be 128 characters or fewer.")
         return v
 
 
@@ -101,6 +100,7 @@ def _serialize_scan_row(row: dict) -> dict:
 def run_scan_adhoc(
     body: ScanBody,
     current_user: dict = Depends(get_current_user),
+    _: None = Depends(verify_csrf),
 ):
     """
     Execute a scan from a conditions JSON body without saving it.
@@ -119,8 +119,8 @@ def run_scan_adhoc(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("run_scan_adhoc error")
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception("run_scan_adhoc error for user_id=%s", current_user["id"])
+        raise HTTPException(status_code=500, detail="Failed to execute scan.")
 
     return JSONResponse(content={"count": len(rows), "results": rows})
 
@@ -133,6 +133,7 @@ def run_scan_adhoc(
 def create_scan(
     body: SaveScanBody,
     current_user: dict = Depends(get_current_user),
+    _: None = Depends(verify_csrf),
 ):
     """Save a new scan definition for the current user."""
     raw = _body_to_conditions_dict(body)
@@ -152,7 +153,7 @@ def create_scan(
         cursor.close()
         conn.close()
     except Exception as exc:
-        logger.exception("create_scan DB error")
+        logger.exception("create_scan DB error for user_id=%s", current_user["id"])
         raise HTTPException(status_code=500, detail="Failed to save scan.")
 
     return {"id": new_id, "message": "Scan saved successfully."}
@@ -173,7 +174,7 @@ def list_scans(current_user: dict = Depends(get_current_user)):
         cursor.close()
         conn.close()
     except Exception as exc:
-        logger.exception("list_scans DB error")
+        logger.exception("list_scans DB error for user_id=%s", current_user["id"])
         raise HTTPException(status_code=500, detail="Failed to list scans.")
 
     return [_serialize_scan_row(r) for r in rows]
@@ -196,7 +197,7 @@ def get_scan(
         cursor.close()
         conn.close()
     except Exception as exc:
-        logger.exception("get_scan DB error")
+        logger.exception("get_scan DB error for user_id=%s scan_id=%s", current_user["id"], scan_id)
         raise HTTPException(status_code=500, detail="Failed to fetch scan.")
 
     if row is None:
@@ -209,6 +210,7 @@ def update_scan(
     scan_id: int,
     body: SaveScanBody,
     current_user: dict = Depends(get_current_user),
+    _: None = Depends(verify_csrf),
 ):
     """Update a saved scan's name and/or conditions. 403 if not the owner."""
     raw = _body_to_conditions_dict(body)
@@ -239,7 +241,7 @@ def update_scan(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("update_scan DB error")
+        logger.exception("update_scan DB error for user_id=%s scan_id=%s", current_user["id"], scan_id)
         raise HTTPException(status_code=500, detail="Failed to update scan.")
 
     return {"message": "Scan updated successfully."}
@@ -249,6 +251,7 @@ def update_scan(
 def delete_scan(
     scan_id: int,
     current_user: dict = Depends(get_current_user),
+    _: None = Depends(verify_csrf),
 ):
     """Delete a saved scan. 403 if not the owner."""
     try:
@@ -272,7 +275,7 @@ def delete_scan(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("delete_scan DB error")
+        logger.exception("delete_scan DB error for user_id=%s scan_id=%s", current_user["id"], scan_id)
         raise HTTPException(status_code=500, detail="Failed to delete scan.")
 
 
@@ -284,6 +287,7 @@ def delete_scan(
 def run_saved_scan(
     scan_id: int,
     current_user: dict = Depends(get_current_user),
+    _: None = Depends(verify_csrf),
 ):
     """Load a saved scan's conditions and execute them."""
     try:
@@ -297,7 +301,7 @@ def run_saved_scan(
         cursor.close()
         conn.close()
     except Exception as exc:
-        logger.exception("run_saved_scan DB fetch error")
+        logger.exception("run_saved_scan DB fetch error for user_id=%s scan_id=%s", current_user["id"], scan_id)
         raise HTTPException(status_code=500, detail="Failed to load scan.")
 
     if row is None:
@@ -319,7 +323,8 @@ def run_saved_scan(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("run_saved_scan execution error")
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception("run_saved_scan execution error for user_id=%s scan_id=%s", current_user["id"], scan_id)
+        raise HTTPException(status_code=500, detail="Failed to execute scan.")
 
     return JSONResponse(content={"count": len(rows), "results": rows})
+

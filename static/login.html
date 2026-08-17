@@ -1,135 +1,727 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login — StockPro Analytics</title>
-<meta name="description" content="Sign in to your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="apple-theme.css?v=2">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — StockPro Analytics</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta name="description" content="Sign in to your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
+  
+  <!-- Modern Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- Premium Fintech Auth Theme -->
+  <link rel="stylesheet" href="auth-theme.css?v=6">
+  
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body class="auth-body">
-<div class="bg-blur-circle bg-blur-1"></div>
-<div class="bg-blur-circle bg-blur-2"></div>
+<body class="auth-page theme-blue">
 
-<div class="auth-wrapper">
-    <!-- Brand -->
-    <div class="brand">
-        <div class="brand-icon"><i class="fas fa-chart-line"></i></div>
+  <!-- Background Ambient Glow -->
+  <div class="auth-bg-glow">
+    <div class="glow-circle-1"></div>
+    <div class="glow-circle-2"></div>
+    <div class="glow-circle-3"></div>
+  </div>
+
+
+  <!-- Header -->
+  <header class="auth-header">
+    <a href="/" class="brand-link" aria-label="StockPro Home">
+      <div class="brand-badge">
+        <i class="fas fa-chart-line"></i>
+      </div>
+      <div class="brand-titles">
         <span class="brand-name">StockPro</span>
-        <div class="brand-sub">Analytics Dashboard</div>
-    </div>
+        <span class="brand-sub">Analytics Dashboard</span>
+      </div>
+    </a>
+  </header>
 
-    <!-- Card -->
-    <div class="auth-card">
-        <h1 class="card-heading">Welcome back</h1>
-        <p class="card-subheading">Sign in to your account to continue</p>
+  <!-- Main Split Layout -->
+  <main class="auth-main">
+    
+    <!-- Left Hero Section -->
+    <section class="hero-content">
+      <h1 class="hero-heading">Welcome back 👋</h1>
+      <p class="hero-subheading">Sign in to continue your market journey.</p>
 
-        <!-- Error alert -->
-        <div class="alert alert-error" id="errorAlert" style="display: none;" role="alert">
-            <i class="fas fa-exclamation-circle"></i>
-            <span id="errorMsg"></span>
+      <div class="features-list">
+        <div class="feature-item">
+          <div class="feature-icon-box">
+            <i class="fas fa-chart-pie"></i>
+          </div>
+          <div class="feature-text">
+            <h4>Real-time Insights</h4>
+            <p>Live market data and smart analytics at your fingertips.</p>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-box">
+            <i class="fas fa-search"></i>
+          </div>
+          <div class="feature-text">
+            <h4>Advanced Scans</h4>
+            <p>Powerful scanners to find high-potential opportunities.</p>
+          </div>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon-box">
+            <i class="fas fa-shield-halved"></i>
+          </div>
+          <div class="feature-text">
+            <h4>Track with Confidence</h4>
+            <p>Build your watchlist and track performance seamlessly.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subtle Fintech Stock Chart Vector Illustration -->
+      <div class="chart-visual-bg" aria-hidden="true">
+        <svg viewBox="0 0 500 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="chartGlow" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0066FF" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#0066FF" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#60A5FA"/>
+              <stop offset="50%" stop-color="#3B82F6"/>
+              <stop offset="100%" stop-color="#0066FF"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Translucent Background Candlesticks -->
+          <g opacity="0.45">
+            <!-- Candle 1 -->
+            <line x1="310" y1="120" x2="310" y2="240" stroke="#93C5FD" stroke-width="1.5"/>
+            <rect x="304" y="140" width="12" height="70" rx="2" fill="#93C5FD" fill-opacity="0.6"/>
+            <!-- Candle 2 -->
+            <line x1="335" y1="100" x2="335" y2="210" stroke="#93C5FD" stroke-width="1.5"/>
+            <rect x="329" y="120" width="12" height="60" rx="2" fill="#60A5FA" fill-opacity="0.7"/>
+            <!-- Candle 3 -->
+            <line x1="360" y1="80" x2="360" y2="190" stroke="#60A5FA" stroke-width="1.5"/>
+            <rect x="354" y="95" width="12" height="65" rx="2" fill="#3B82F6" fill-opacity="0.7"/>
+            <!-- Candle 4 -->
+            <line x1="385" y1="50" x2="385" y2="170" stroke="#3B82F6" stroke-width="1.5"/>
+            <rect x="379" y="70" width="12" height="75" rx="2" fill="#0066FF" fill-opacity="0.75"/>
+          </g>
+
+          <!-- Area Fill -->
+          <path d="M 10 260 C 100 240, 180 250, 240 180 C 300 120, 360 140, 480 50 L 480 320 L 10 320 Z" fill="url(#chartGlow)"/>
+          
+          <!-- Upward Line Trend -->
+          <path d="M 10 260 C 100 240, 180 250, 240 180 C 300 120, 360 140, 480 50" stroke="url(#lineGrad)" stroke-width="3.5" stroke-linecap="round"/>
+          
+          <!-- Key Node Points -->
+          <circle cx="240" cy="180" r="5" fill="#FFFFFF" stroke="#0066FF" stroke-width="3"/>
+          <circle cx="480" cy="50" r="6" fill="#0066FF" stroke="#FFFFFF" stroke-width="3"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Right Login Card -->
+    <section class="card-wrapper">
+      <div class="auth-card">
+        
+        <!-- Center Top Icon Badge -->
+        <div class="card-top-icon">
+          <i class="fas fa-lock"></i>
+        </div>
+
+        <h2 class="card-title">Sign in</h2>
+        <p class="card-subtitle">Enter your credentials to access your account</p>
+
+        <!-- Alert Banner -->
+        <div class="auth-alert error" id="errorAlert" role="alert">
+          <i class="fas fa-circle-exclamation"></i>
+          <span id="errorMsg"></span>
         </div>
 
         <form id="loginForm" novalidate>
-            <div class="form-group">
-                <label class="form-label" for="email">Email address</label>
-                <div class="input-wrapper">
-                    <i class="fas fa-envelope input-icon"></i>
-                    <input class="form-input" type="email" id="email" name="email"
-                           placeholder="you@example.com" autocomplete="email" required>
-                </div>
+          
+          <!-- Email Input -->
+          <div class="form-group">
+            <label class="form-label" for="email">Email address</label>
+            <div class="input-container">
+              <i class="fas fa-envelope input-icon-left"></i>
+              <input 
+                class="sp-input" 
+                type="email" 
+                id="email" 
+                name="email" 
+                placeholder="you@example.com" 
+                autocomplete="email" 
+                required
+              >
             </div>
+          </div>
 
-            <div class="form-group">
-                <label class="form-label" for="password">Password</label>
-                <div class="input-wrapper">
-                    <i class="fas fa-lock input-icon"></i>
-                    <input class="form-input" type="password" id="password" name="password"
-                           placeholder="••••••••" autocomplete="current-password" required>
-                </div>
+          <!-- Password Input -->
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <div class="input-container">
+              <i class="fas fa-lock input-icon-left"></i>
+              <input 
+                class="sp-input" 
+                type="password" 
+                id="password" 
+                name="password" 
+                placeholder="Enter your password" 
+                autocomplete="current-password" 
+                required
+              >
+              <button 
+                type="button" 
+                class="toggle-password" 
+                id="togglePwdBtn" 
+                aria-label="Toggle password visibility"
+              >
+                <i class="far fa-eye" id="pwdEyeIcon"></i>
+              </button>
             </div>
+          </div>
 
-            <button class="btn-submit" type="submit" id="submitBtn">
-                <div class="btn-spinner"></div>
-                <span class="btn-label"><i class="fas fa-sign-in-alt"></i> Sign In</span>
+          <!-- Options Row -->
+          <div class="options-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="rememberMe">
+              <span>Remember me</span>
+            </label>
+            <button type="button" class="link-btn" id="forgotPwdBtn">Forgot password?</button>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn-primary-auth" id="submitBtn">
+            <div class="spinner"></div>
+            <span class="btn-text"><i class="fas fa-arrow-right-to-bracket"></i> Sign In</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="auth-divider">
+            <div class="line"></div>
+            <span>or continue with</span>
+            <div class="line"></div>
+          </div>
+
+          <!-- Social Buttons -->
+          <div class="social-buttons-grid">
+            
+            <!-- Google Social Button -->
+            <button type="button" class="btn-social" id="googleCustomBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>Google</span>
             </button>
+
+            <!-- GitHub Social Button -->
+            <button type="button" class="btn-social" id="githubCustomBtn">
+              <i class="fab fa-github"></i>
+              <span>GitHub</span>
+            </button>
+          </div>
+
+          <!-- In-Box Switch to Register -->
+          <div style="text-align: center; margin-top: 1.15rem; font-size: 0.85rem; color: var(--sp-text-muted);">
+            Don't have an account? <a href="/register.html" class="link-btn" style="font-weight: 700;">Create one</a>
+          </div>
+
+          <!-- Hidden GIS element for Google Token callback handling -->
+          <div id="g_id_onload"
+               data-client_id=""
+               data-callback="handleGoogleCallback"
+               data-auto_prompt="false"
+               style="display: none;">
+          </div>
+
         </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="auth-footer">
+    <div>&copy; 2026 StockPro. All rights reserved.</div>
+    <div class="footer-links">
+      <button type="button" onclick="openModal('termsModal')">Terms of Service</button>
+      <button type="button" onclick="openModal('privacyModal')">Privacy Policy</button>
     </div>
+  </footer>
 
-    <!-- Footer -->
-    <div class="auth-footer">
-        Don't have an account?
-        <a href="/register.html" class="auth-link">Create one</a>
+  <!-- Modal: Reset Password (Direct In-App) -->
+  <div class="modal-backdrop" id="forgotModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Reset Password</h3>
+        <button type="button" class="modal-close" onclick="closeModal('forgotModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.86rem; margin-bottom: 1.25rem;">Verify your current credentials and choose a new secure password.</p>
+
+        <!-- Reset Alerts -->
+        <div class="auth-alert error" id="resetErrorAlert" style="display:none;" role="alert">
+          <i class="fas fa-circle-exclamation"></i>
+          <span id="resetErrorMsg"></span>
+        </div>
+        <div class="auth-alert success" id="resetSuccessAlert" style="display:none;" role="status">
+          <i class="fas fa-circle-check"></i>
+          <span id="resetSuccessMsg"></span>
+        </div>
+
+        <form id="resetPasswordForm" novalidate>
+          
+          <!-- Email Input -->
+          <div class="form-group">
+            <label class="form-label" for="resetEmail">Email address</label>
+            <div class="input-container">
+              <i class="fas fa-envelope input-icon-left"></i>
+              <input class="sp-input" type="email" id="resetEmail" placeholder="you@example.com" required>
+            </div>
+          </div>
+
+          <!-- Current Password Input -->
+          <div class="form-group">
+            <label class="form-label" for="resetCurrentPwd">Current password</label>
+            <div class="input-container">
+              <i class="fas fa-lock input-icon-left"></i>
+              <input class="sp-input" type="password" id="resetCurrentPwd" placeholder="Enter current password" required>
+              <button type="button" class="toggle-password" id="toggleCurrentPwdBtn" aria-label="Toggle visibility">
+                <i class="far fa-eye" id="currentEyeIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- New Password Input -->
+          <div class="form-group" style="margin-bottom: 0.5rem;">
+            <label class="form-label" for="resetNewPwd">New password</label>
+            <div class="input-container">
+              <i class="fas fa-lock input-icon-left"></i>
+              <input class="sp-input" type="password" id="resetNewPwd" placeholder="Min. 12 chars, letter & digit" required>
+              <button type="button" class="toggle-password" id="toggleNewPwdBtn" aria-label="Toggle visibility">
+                <i class="far fa-eye" id="newEyeIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Password Strength Indicator -->
+          <div class="strength-container" style="margin-bottom: 1rem;">
+            <div class="strength-header">
+              <span>Password strength</span>
+              <span id="resetStrengthLabel" style="font-weight:600;">Weak</span>
+            </div>
+            <div class="strength-bars">
+              <div class="strength-segment" id="rseg1"></div>
+              <div class="strength-segment" id="rseg2"></div>
+              <div class="strength-segment" id="rseg3"></div>
+              <div class="strength-segment" id="rseg4"></div>
+            </div>
+          </div>
+
+          <!-- Confirm New Password Input -->
+          <div class="form-group">
+            <label class="form-label" for="resetConfirmPwd">Confirm new password</label>
+            <div class="input-container">
+              <i class="fas fa-lock input-icon-left"></i>
+              <input class="sp-input" type="password" id="resetConfirmPwd" placeholder="Confirm new password" required>
+              <button type="button" class="toggle-password" id="toggleConfirmPwdBtn" aria-label="Toggle visibility">
+                <i class="far fa-eye" id="confirmEyeIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn-primary-auth" id="resetSubmitBtn" style="margin-top: 1.25rem;">
+            <div class="spinner"></div>
+            <span class="btn-text"><i class="fas fa-key"></i> Update Password</span>
+          </button>
+        </form>
+      </div>
     </div>
-</div>
+  </div>
 
-<script>
-const form = document.getElementById('loginForm');
-const btn  = document.getElementById('submitBtn');
-const errorAlert = document.getElementById('errorAlert');
-const errorMsg   = document.getElementById('errorMsg');
+  <!-- Modal: Terms of Service -->
+  <div class="modal-backdrop" id="termsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Terms of Service</h3>
+        <button type="button" class="modal-close" onclick="closeModal('termsModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>1. Acceptance of Terms:</strong> By accessing and using StockPro Analytics, you agree to comply with and be bound by these Terms of Service.</p>
+        <p><strong>2. Market Information Disclaimer:</strong> All data, scanner results, charts, and technical signals provided on StockPro are for informational and educational purposes only and do not constitute financial advice.</p>
+        <p><strong>3. Account Security:</strong> You are responsible for safeguarding your login credentials and maintaining active control over your account.</p>
+      </div>
+    </div>
+  </div>
 
-function showError(msg) {
-    errorMsg.textContent = msg;
-    errorAlert.style.display = 'flex';
-}
-function hideError() { errorAlert.style.display = 'none'; }
+  <!-- Modal: Privacy Policy -->
+  <div class="modal-backdrop" id="privacyModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Privacy Policy</h3>
+        <button type="button" class="modal-close" onclick="closeModal('privacyModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>1. Data Protection:</strong> StockPro securely encrypts passwords and sensitive user preferences using industry standard cryptographic hashes.</p>
+        <p><strong>2. Information Usage:</strong> We do not sell or monetize personal investor information or custom scan strategies to third parties.</p>
+        <p><strong>3. Security Cookies:</strong> StockPro uses strict HttpOnly cookies exclusively for authenticating sessions and preventing cross-site request forgery.</p>
+      </div>
+    </div>
+  </div>
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    hideError();
+  <!-- Client-side Logic -->
+  <script>
+    const form       = document.getElementById('loginForm');
+    const btn        = document.getElementById('submitBtn');
+    const errorAlert = document.getElementById('errorAlert');
+    const errorMsg   = document.getElementById('errorMsg');
+    const emailInput = document.getElementById('email');
+    const pwdInput   = document.getElementById('password');
+    const rememberMe = document.getElementById('rememberMe');
 
-    const email    = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-
-    if (!email || !password) {
-        showError('Please enter your email and password.');
-        return;
+    // Restore remembered email
+    if (localStorage.getItem('stockpro_remember_email')) {
+      emailInput.value = localStorage.getItem('stockpro_remember_email');
+      rememberMe.checked = true;
     }
 
-    btn.classList.add('loading');
-    btn.disabled = true;
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorAlert.style.display = 'flex';
+    }
 
-    try {
+    function hideError() {
+      errorAlert.style.display = 'none';
+    }
+
+    // Password Visibility Toggle
+    const togglePwdBtn = document.getElementById('togglePwdBtn');
+    const pwdEyeIcon   = document.getElementById('pwdEyeIcon');
+    togglePwdBtn.addEventListener('click', () => {
+      const isPwd = pwdInput.type === 'password';
+      pwdInput.type = isPwd ? 'text' : 'password';
+      pwdEyeIcon.className = isPwd ? 'far fa-eye-slash' : 'far fa-eye';
+    });
+
+    // Form Submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+
+      const email    = emailInput.value.trim();
+      const password = pwdInput.value;
+
+      if (!email || !password) {
+        showError('Please enter both your email address and password.');
+        return;
+      }
+
+      // Remember email if checked
+      if (rememberMe.checked) {
+        localStorage.setItem('stockpro_remember_email', email);
+      } else {
+        localStorage.removeItem('stockpro_remember_email');
+      }
+
+      btn.classList.add('loading');
+      btn.disabled = true;
+
+      try {
         const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ email, password }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ email, password }),
         });
 
         if (res.ok) {
-            window.location.href = '/';
-            return;
+          window.location.href = '/';
+          return;
         }
 
         const data = await res.json().catch(() => ({}));
         if (res.status === 429) {
-            showError('Too many login attempts. Please wait a minute and try again.');
+          showError('Too many login attempts. Please wait a moment and try again.');
         } else if (res.status === 401) {
-            showError('Incorrect email or password. Please try again.');
+          showError('Incorrect email or password. Please verify and try again.');
         } else {
-            showError(data.detail || 'Login failed. Please try again.');
+          showError(data.detail || 'Sign in failed. Please try again.');
         }
-    } catch (err) {
-        showError('Network error. Please check your connection and try again.');
-    } finally {
+      } catch (err) {
+        showError('Network connection error. Please check your connection.');
+      } finally {
         btn.classList.remove('loading');
         btn.disabled = false;
-    }
-});
+      }
+    });
 
-// If already logged in, go straight to dashboard
-(async () => {
-    try {
+    // Google Identity Services Integration
+    let googleClientId = '';
+    async function initGoogleAuth() {
+      try {
+        const res = await fetch('/api/auth/config');
+        const cfg = await res.json();
+        if (cfg.google_client_id) {
+          googleClientId = cfg.google_client_id;
+          setupGis();
+        }
+      } catch (e) {}
+    }
+
+    function setupGis() {
+      if (googleClientId && window.google && google.accounts && google.accounts.id) {
+        google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCallback,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+      }
+    }
+
+    initGoogleAuth();
+
+    async function handleGoogleCallback(response) {
+      hideError();
+      if (!response || !response.credential) {
+        showError('Google authentication was cancelled or failed.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ credential: response.credential }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          window.location.href = '/';
+        } else {
+          showError(data.detail || 'Google sign-in failed.');
+        }
+      } catch (err) {
+        showError('Network error during Google sign-in.');
+      }
+    }
+
+    document.getElementById('googleCustomBtn').addEventListener('click', async () => {
+      if (!googleClientId) {
+        await initGoogleAuth();
+      }
+      if (!googleClientId) {
+        showError('Google Sign-In is not configured. Please ensure GOOGLE_CLIENT_ID is set in .env.');
+        return;
+      }
+      if (window.google && google.accounts && google.accounts.id) {
+        setupGis();
+        google.accounts.id.prompt();
+      } else {
+        showError('Google Identity Services is initializing. Please try again in a second.');
+      }
+    });
+
+    document.getElementById('githubCustomBtn').addEventListener('click', () => {
+      showError('GitHub authentication is currently in private preview.');
+    });
+
+    // Modal Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.add('show');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    // Direct Reset Password Setup
+    const resetForm         = document.getElementById('resetPasswordForm');
+    const resetEmail        = document.getElementById('resetEmail');
+    const resetCurrentPwd   = document.getElementById('resetCurrentPwd');
+    const resetNewPwd       = document.getElementById('resetNewPwd');
+    const resetConfirmPwd   = document.getElementById('resetConfirmPwd');
+    const resetSubmitBtn    = document.getElementById('resetSubmitBtn');
+    const resetErrorAlert   = document.getElementById('resetErrorAlert');
+    const resetErrorMsg     = document.getElementById('resetErrorMsg');
+    const resetSuccessAlert = document.getElementById('resetSuccessAlert');
+    const resetSuccessMsg   = document.getElementById('resetSuccessMsg');
+    const resetStrengthLbl  = document.getElementById('resetStrengthLabel');
+    const rseg1 = document.getElementById('rseg1');
+    const rseg2 = document.getElementById('rseg2');
+    const rseg3 = document.getElementById('rseg3');
+    const rseg4 = document.getElementById('rseg4');
+
+    document.getElementById('forgotPwdBtn').addEventListener('click', () => {
+      const currentEmail = emailInput.value.trim();
+      if (currentEmail) {
+        resetEmail.value = currentEmail;
+      }
+      resetErrorAlert.style.display = 'none';
+      resetSuccessAlert.style.display = 'none';
+      openModal('forgotModal');
+    });
+
+    // Toggle Visibility in Reset Modal
+    function setupToggle(btnId, inputId, iconId) {
+      document.getElementById(btnId).addEventListener('click', () => {
+        const inp = document.getElementById(inputId);
+        const icn = document.getElementById(iconId);
+        const isPwd = inp.type === 'password';
+        inp.type = isPwd ? 'text' : 'password';
+        icn.className = isPwd ? 'far fa-eye-slash' : 'far fa-eye';
+      });
+    }
+    setupToggle('toggleCurrentPwdBtn', 'resetCurrentPwd', 'currentEyeIcon');
+    setupToggle('toggleNewPwdBtn', 'resetNewPwd', 'newEyeIcon');
+    setupToggle('toggleConfirmPwdBtn', 'resetConfirmPwd', 'confirmEyeIcon');
+
+    // Reset Password Strength Meter
+    resetNewPwd.addEventListener('input', () => {
+      const val = resetNewPwd.value;
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (val.length >= 12) score++;
+      if (/[A-Za-z]/.test(val) && /\d/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val) || (val.length >= 14)) score++;
+
+      const segments = [rseg1, rseg2, rseg3, rseg4];
+      segments.forEach(s => s.style.backgroundColor = '#E2E8F0');
+
+      if (!val) {
+        resetStrengthLbl.textContent = 'Weak';
+        resetStrengthLbl.style.color = 'var(--sp-text-muted)';
+        return;
+      }
+
+      if (score === 1) {
+        rseg1.style.backgroundColor = '#EF4444';
+        resetStrengthLbl.textContent = 'Weak';
+        resetStrengthLbl.style.color = '#EF4444';
+      } else if (score === 2) {
+        rseg1.style.backgroundColor = '#F59E0B';
+        rseg2.style.backgroundColor = '#F59E0B';
+        resetStrengthLbl.textContent = 'Fair';
+        resetStrengthLbl.style.color = '#F59E0B';
+      } else if (score === 3) {
+        rseg1.style.backgroundColor = '#3B82F6';
+        rseg2.style.backgroundColor = '#3B82F6';
+        rseg3.style.backgroundColor = '#3B82F6';
+        resetStrengthLbl.textContent = 'Good';
+        resetStrengthLbl.style.color = '#3B82F6';
+      } else if (score >= 4) {
+        segments.forEach(s => s.style.backgroundColor = '#10B981');
+        resetStrengthLbl.textContent = 'Strong';
+        resetStrengthLbl.style.color = '#10B981';
+      }
+    });
+
+    // Submit Direct Reset Form
+    resetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      resetErrorAlert.style.display = 'none';
+      resetSuccessAlert.style.display = 'none';
+
+      const email       = resetEmail.value.trim();
+      const currentPwd  = resetCurrentPwd.value;
+      const newPwd      = resetNewPwd.value;
+      const confirmPwd  = resetConfirmPwd.value;
+
+      if (!email || !currentPwd || !newPwd || !confirmPwd) {
+        resetErrorMsg.textContent = 'Please fill in all required fields.';
+        resetErrorAlert.style.display = 'flex';
+        return;
+      }
+      if (newPwd.length < 12) {
+        resetErrorMsg.textContent = 'New password must be at least 12 characters long.';
+        resetErrorAlert.style.display = 'flex';
+        return;
+      }
+      if (!/[A-Za-z]/.test(newPwd) || !/\d/.test(newPwd)) {
+        resetErrorMsg.textContent = 'New password must contain both letters and digits.';
+        resetErrorAlert.style.display = 'flex';
+        return;
+      }
+      if (newPwd !== confirmPwd) {
+        resetErrorMsg.textContent = 'New passwords do not match. Please verify.';
+        resetErrorAlert.style.display = 'flex';
+        return;
+      }
+
+      resetSubmitBtn.classList.add('loading');
+      resetSubmitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            email: email,
+            current_password: currentPwd,
+            new_password: newPwd,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          resetSuccessMsg.textContent = data.message || 'Password updated successfully! You can now sign in.';
+          resetSuccessAlert.style.display = 'flex';
+          resetForm.reset();
+          setTimeout(() => {
+            closeModal('forgotModal');
+            emailInput.value = email;
+            pwdInput.value = '';
+            pwdInput.focus();
+          }, 1800);
+          return;
+        }
+
+        if (res.status === 401) {
+          resetErrorMsg.textContent = data.detail || 'Current password or email is incorrect.';
+        } else if (res.status === 429) {
+          resetErrorMsg.textContent = 'Too many attempts. Please wait a moment and try again.';
+        } else {
+          resetErrorMsg.textContent = data.detail || 'Password update failed. Please try again.';
+        }
+        resetErrorAlert.style.display = 'flex';
+      } catch (err) {
+        resetErrorMsg.textContent = 'Network error. Please check your connection.';
+        resetErrorAlert.style.display = 'flex';
+      } finally {
+        resetSubmitBtn.classList.remove('loading');
+        resetSubmitBtn.disabled = false;
+      }
+    });
+
+    // Close modal on backdrop click
+    document.querySelectorAll('.modal-backdrop').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('show');
+        }
+      });
+    });
+
+
+    // Auth Guard: If already authenticated, redirect straight to dashboard
+    (async () => {
+      try {
         const r = await fetch('/api/auth/me', { credentials: 'same-origin' });
         if (r.ok) window.location.href = '/';
-    } catch (_) {}
-})();
-</script>
+      } catch (_) {}
+    })();
+  </script>
 </body>
 </html>
-
-
