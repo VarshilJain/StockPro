@@ -1,4 +1,5 @@
 import logging
+import threading
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional
@@ -60,12 +61,321 @@ def get_symbols(_: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to fetch symbols.")
 
 
+@router.get("/sectors")
+def get_sectors():
+    """Return all unique sectors and industries."""
+    try:
+        import stock_sectors
+        return {
+            "sectors": stock_sectors.get_all_sectors(),
+            "industries": stock_sectors.get_all_industries(),
+        }
+    except Exception as exc:
+        logger.exception("Error fetching sectors")
+        raise HTTPException(status_code=500, detail="Failed to fetch sectors.")
+
+
+@router.get("/stock-metadata/{symbol}")
+def get_stock_metadata(symbol: str):
+    """Return company name, sector, and industry for a given stock symbol."""
+    try:
+        import stock_sectors
+        return stock_sectors.get_stock_info(symbol)
+    except Exception as exc:
+        logger.exception("Error fetching stock metadata for %s", symbol)
+        raise HTTPException(status_code=500, detail="Failed to fetch stock metadata.")
+
+
+_heatmap_cache = {
+    "sector": {"version": None, "data": None},
+    "industry": {"version": None, "data": None}
+}
+_heatmap_lock = threading.Lock()
+
+
+def _build_heatmap_data(group_by: str = "sector"):
+    """Generate heatmap data grouped by either 'sector' or 'industry'."""
+    group_by = "industry" if str(group_by).lower() == "industry" else "sector"
+    global _heatmap_cache
+    try:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        # Check data version
+        cur.execute("SELECT MAX(Timestamp) as max_ts FROM historical_data")
+        ver_row = cur.fetchone()
+        version = str(ver_row["max_ts"]) if ver_row and ver_row["max_ts"] else None
+        
+        with _heatmap_lock:
+            cache_entry = _heatmap_cache.get(group_by, {})
+            if cache_entry.get("version") == version and cache_entry.get("data") is not None:
+                cur.close()
+                conn.close()
+                return cache_entry["data"]
+                
+        # 1. Get latest 2 valid trading dates with real market volume (excludes holiday/dummy settlements)
+        date_query = """
+            SELECT Timestamp
+            FROM historical_data
+            WHERE Timestamp >= DATE_SUB((SELECT MAX(Timestamp) FROM historical_data), INTERVAL 30 DAY)
+            GROUP BY Timestamp
+            HAVING COUNT(*) >= 500 AND SUM(Volume) > 0
+            ORDER BY Timestamp DESC
+            LIMIT 2
+        """
+        cur.execute(date_query)
+        date_rows = cur.fetchall()
+        if not date_rows:
+            cur.execute("SELECT DISTINCT Timestamp FROM historical_data ORDER BY Timestamp DESC LIMIT 2")
+            date_rows = cur.fetchall()
+
+        if not date_rows:
+            cur.close()
+            conn.close()
+            return {"summary": {}, "sectors": [], "industries": []}
+            
+        latest_ts = date_rows[0]["Timestamp"]
+        prev_ts = date_rows[1]["Timestamp"] if len(date_rows) > 1 else None
+        
+        # 2. Query today and yesterday bars joined with stock_metadata
+        query = """
+            SELECT h.Symbol, h.Timestamp, h.Open, h.High, h.Low, h.Close, h.Volume,
+                   COALESCE(NULLIF(TRIM(m.sector), ''), 'Other') as sector,
+                   COALESCE(NULLIF(TRIM(m.industry), ''), 'Other') as industry,
+                   COALESCE(NULLIF(TRIM(m.company_name), ''), h.Symbol) as company_name
+            FROM historical_data h
+            LEFT JOIN stock_metadata m ON h.Symbol = m.symbol
+            WHERE h.Timestamp IN (%s, %s)
+        """
+        cur.execute(query, (latest_ts, prev_ts if prev_ts else latest_ts))
+        all_rows = cur.fetchall()
+        
+        # 3. Query sparklines for last 7 dates for each group (sector or industry)
+        group_col = "m.industry" if group_by == "industry" else "m.sector"
+        spark_query = f"""
+            SELECT COALESCE(NULLIF(TRIM({group_col}), ''), 'Other') as grp, h.Timestamp, AVG(h.Close) as avg_close
+            FROM historical_data h
+            INNER JOIN (
+                SELECT Timestamp
+                FROM historical_data
+                WHERE Timestamp >= DATE_SUB((SELECT MAX(Timestamp) FROM historical_data), INTERVAL 45 DAY)
+                GROUP BY Timestamp
+                HAVING COUNT(*) >= 500 AND SUM(Volume) > 0
+                ORDER BY Timestamp DESC
+                LIMIT 7
+            ) d ON h.Timestamp = d.Timestamp
+            LEFT JOIN stock_metadata m ON h.Symbol = m.symbol
+            GROUP BY COALESCE(NULLIF(TRIM({group_col}), ''), 'Other'), h.Timestamp
+            ORDER BY h.Timestamp ASC
+        """
+        cur.execute(spark_query)
+        spark_rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Build sparkline lookup
+        group_sparks = {}
+        for r in spark_rows:
+            g = r["grp"]
+            if g not in group_sparks:
+                group_sparks[g] = []
+            group_sparks[g].append(round(float(r["avg_close"]), 2))
+            
+        # Group rows by symbol
+        sym_map = {}
+        for r in all_rows:
+            sym = r["Symbol"]
+            ts = r["Timestamp"]
+            if sym not in sym_map:
+                sym_map[sym] = {"today": None, "prev": None, "sector": r["sector"], "industry": r["industry"], "name": r["company_name"]}
+            if ts == latest_ts:
+                sym_map[sym]["today"] = r
+            elif ts == prev_ts:
+                sym_map[sym]["prev"] = r
+                
+        groups = {}
+        mkt_adv = 0
+        mkt_dec = 0
+        mkt_unc = 0
+        mkt_turnover = 0.0
+        total_stocks = 0
+        
+        for sym, d in sym_map.items():
+            today_bar = d["today"]
+            if not today_bar:
+                continue
+            total_stocks += 1
+            close = float(today_bar["Close"])
+            open_p = float(today_bar["Open"])
+            high = float(today_bar["High"])
+            low = float(today_bar["Low"])
+            volume = int(today_bar["Volume"])
+            turnover = close * volume
+            mkt_turnover += turnover
+            
+            prev_bar = d["prev"]
+            if prev_bar and prev_bar["Close"] and float(prev_bar["Close"]) > 0:
+                prev_close = float(prev_bar["Close"])
+                change_pct = ((close - prev_close) / prev_close) * 100.0
+            elif open_p > 0:
+                change_pct = ((close - open_p) / open_p) * 100.0
+            else:
+                change_pct = 0.0
+                
+            change_pct = round(change_pct, 2)
+            
+            if change_pct > 0:
+                mkt_adv += 1
+            elif change_pct < 0:
+                mkt_dec += 1
+            else:
+                mkt_unc += 1
+                
+            raw_grp = d["industry"] if group_by == "industry" else d["sector"]
+            grp = (raw_grp or "").strip() or "Other"
+            if grp not in groups:
+                groups[grp] = {
+                    "name": grp,
+                    "sector": grp,
+                    "industry": grp,
+                    "stocks": [],
+                    "advancing": 0,
+                    "declining": 0,
+                    "unchanged": 0,
+                    "total_turnover": 0.0,
+                    "close_sum": 0.0,
+                    "weighted_change_sum": 0.0
+                }
+                
+            grp_dict = groups[grp]
+            if change_pct > 0:
+                grp_dict["advancing"] += 1
+            elif change_pct < 0:
+                grp_dict["declining"] += 1
+            else:
+                grp_dict["unchanged"] += 1
+                
+            grp_dict["total_turnover"] += turnover
+            grp_dict["close_sum"] += close
+            grp_dict["weighted_change_sum"] += (change_pct * (turnover if turnover > 0 else 1.0))
+            
+            clean_sym = sym.replace(".NS", "")
+            grp_dict["stocks"].append({
+                "symbol": clean_sym,
+                "full_symbol": sym,
+                "name": d["name"],
+                "cmp": round(close, 2),
+                "change_pct": change_pct,
+                "volume": volume,
+                "turnover": round(turnover, 2),
+                "high": round(high, 2),
+                "low": round(low, 2),
+                "open": round(open_p, 2),
+                "sector": d["sector"],
+                "industry": d["industry"]
+            })
+            
+        import nse_sector_indices
+        group_list = []
+        for grp, data in groups.items():
+            st_count = len(data["stocks"])
+            if st_count == 0:
+                continue
+            
+            if group_by == "sector":
+                official_idx = nse_sector_indices.get_sector_index(grp)
+                if official_idx:
+                    grp_cmp = official_idx["cmp"]
+                    grp_change = official_idx["change_pct"]
+                    grp_spark = official_idx["sparkline"]
+                    idx_name = official_idx["index_name"]
+                else:
+                    idx_name = grp
+                    grp_cmp = round(data["close_sum"] / st_count, 2)
+                    if data["total_turnover"] > 0:
+                        grp_change = round(data["weighted_change_sum"] / data["total_turnover"], 2)
+                    else:
+                        grp_change = round(sum(s["change_pct"] for s in data["stocks"]) / st_count, 2)
+                    grp_spark = group_sparks.get(grp, [])
+            else:
+                idx_name = grp
+                grp_cmp = round(data["close_sum"] / st_count, 2)
+                if data["total_turnover"] > 0:
+                    grp_change = round(data["weighted_change_sum"] / data["total_turnover"], 2)
+                else:
+                    grp_change = round(sum(s["change_pct"] for s in data["stocks"]) / st_count, 2)
+                grp_spark = group_sparks.get(grp, [])
+                
+            data["stocks"].sort(key=lambda s: s["turnover"], reverse=True)
+            
+            group_list.append({
+                "sector": grp,
+                "industry": grp,
+                "name": grp,
+                "index_name": idx_name,
+                "stock_count": st_count,
+                "cmp": grp_cmp,
+                "change_pct": grp_change,
+                "advancing": data["advancing"],
+                "declining": data["declining"],
+                "unchanged": data["unchanged"],
+                "total_turnover": round(data["total_turnover"], 2),
+                "sparkline": grp_spark,
+                "stocks": data["stocks"]
+            })
+            
+        group_list.sort(key=lambda s: s["stock_count"], reverse=True)
+        
+        as_of_date_str = latest_ts.strftime("%d %b %Y") if hasattr(latest_ts, "strftime") else str(latest_ts)
+        
+        res_data = {
+            "summary": {
+                "total_stocks": total_stocks,
+                "total_groups": len(group_list),
+                "group_type": group_by,
+                "advancing": mkt_adv,
+                "declining": mkt_dec,
+                "unchanged": mkt_unc,
+                "advancing_pct": round((mkt_adv / total_stocks * 100), 1) if total_stocks else 0,
+                "declining_pct": round((mkt_dec / total_stocks * 100), 1) if total_stocks else 0,
+                "unchanged_pct": round((mkt_unc / total_stocks * 100), 1) if total_stocks else 0,
+                "total_turnover": round(mkt_turnover, 2),
+                "as_of_date": as_of_date_str
+            },
+            "sectors": group_list,
+            "industries": group_list
+        }
+        
+        with _heatmap_lock:
+            _heatmap_cache[group_by] = {"version": version, "data": res_data}
+            
+        return res_data
+    except Exception as exc:
+        logger.exception("Error generating %s heatmap data", group_by)
+        raise HTTPException(status_code=500, detail=f"Failed to generate {group_by} heatmap data.")
+
+
+@router.get("/sector-heatmap")
+def get_sector_heatmap(mode: str = Query("sector", description="Group by 'sector' or 'industry'")):
+    """Return today's sector and stock performance metrics for the Sector Heatmap."""
+    return _build_heatmap_data(mode)
+
+
+@router.get("/industry-heatmap")
+def get_industry_heatmap():
+    """Return today's industry and stock performance metrics for the Industry Heatmap."""
+    return _build_heatmap_data("industry")
+
+
+
+
 @router.get("/data")
 def get_stock_data(
     symbol: Optional[str] = Query(None, max_length=32),
     start_date: str = Query(...),
     end_date: str = Query(...),
     signal: Optional[str] = Query(None, description="Signal column to filter by"),
+    limit: Optional[int] = Query(None, ge=1, le=5000, description="Max rows to return"),
     _: dict = Depends(get_current_user),
 ):
     # Convert date format from DD-MM-YYYY to YYYY-MM-DD
@@ -93,38 +403,47 @@ def get_stock_data(
     if signal and signal not in allowed_signals:
         return JSONResponse(content=[])
 
+    start_ts = f"{start_date} 00:00:00"
+    end_ts = f"{end_date} 23:59:59"
+
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
 
         if symbol and signal:
             if signal == "NR":
-                query = f"SELECT * FROM historical_data WHERE Symbol = %s AND DATE(Timestamp) BETWEEN %s AND %s AND {signal} > 0 ORDER BY Timestamp ASC"
+                query = f"SELECT * FROM historical_data WHERE Symbol = %s AND Timestamp >= %s AND Timestamp <= %s AND {signal} > 0 ORDER BY Timestamp ASC"
             elif signal in ("rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score", "rsi_divergence"):
-                query = "SELECT * FROM historical_data WHERE Symbol = %s AND DATE(Timestamp) BETWEEN %s AND %s AND `rsi_divergence_type` IS NOT NULL ORDER BY Timestamp ASC"
+                query = "SELECT * FROM historical_data WHERE Symbol = %s AND Timestamp >= %s AND Timestamp <= %s AND `rsi_divergence_type` IS NOT NULL ORDER BY Timestamp ASC"
             elif signal == "RCS_30D":
-                query = "SELECT * FROM historical_data WHERE Symbol = %s AND DATE(Timestamp) BETWEEN %s AND %s AND `RCS_30D` > 0 ORDER BY Timestamp ASC"
+                query = "SELECT * FROM historical_data WHERE Symbol = %s AND Timestamp >= %s AND Timestamp <= %s AND `RCS_30D` > 0 ORDER BY Timestamp ASC"
             else:
-                query = f"SELECT * FROM historical_data WHERE Symbol = %s AND DATE(Timestamp) BETWEEN %s AND %s AND {signal} = 1 ORDER BY Timestamp ASC"
-            params = [symbol, start_date, end_date]
+                query = f"SELECT * FROM historical_data WHERE Symbol = %s AND Timestamp >= %s AND Timestamp <= %s AND {signal} = 1 ORDER BY Timestamp ASC"
+            params = [symbol, start_ts, end_ts]
         elif symbol:
-            query = "SELECT * FROM historical_data WHERE Symbol = %s AND DATE(Timestamp) BETWEEN %s AND %s ORDER BY Timestamp ASC"
-            params = [symbol, start_date, end_date]
+            query = "SELECT * FROM historical_data WHERE Symbol = %s AND Timestamp >= %s AND Timestamp <= %s ORDER BY Timestamp ASC"
+            params = [symbol, start_ts, end_ts]
         elif signal:
             if signal == "NR":
-                query = f"SELECT Symbol, Timestamp, {signal} FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND {signal} > 0 ORDER BY Timestamp ASC"
+                query = f"SELECT Symbol, Timestamp, {signal} FROM historical_data WHERE Timestamp >= %s AND Timestamp <= %s AND {signal} > 0 ORDER BY Timestamp ASC"
             elif signal in ("rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score", "rsi_divergence"):
-                query = "SELECT Symbol, Timestamp, `rsi_divergence_type`, `rsi_divergence_direction`, `rsi_divergence_score` FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND `rsi_divergence_type` IS NOT NULL ORDER BY Timestamp ASC"
+                query = "SELECT Symbol, Timestamp, `rsi_divergence_type`, `rsi_divergence_direction`, `rsi_divergence_score` FROM historical_data WHERE Timestamp >= %s AND Timestamp <= %s AND `rsi_divergence_type` IS NOT NULL ORDER BY Timestamp ASC"
             elif signal == "RCS_30D":
-                query = "SELECT Symbol, Timestamp, `RCS_30D` FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND `RCS_30D` > 0 ORDER BY Timestamp ASC"
+                query = "SELECT Symbol, Timestamp, `RCS_30D` FROM historical_data WHERE Timestamp >= %s AND Timestamp <= %s AND `RCS_30D` > 0 ORDER BY Timestamp ASC"
             elif signal == "delivery_momentum_signal":
-                query = "SELECT Symbol, Timestamp, `Recent_Deliv_Pct`, `Baseline_Deliv_Pct`, `delivery_momentum_signal` FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND `delivery_momentum_signal` = 1 ORDER BY Timestamp ASC"
+                query = "SELECT Symbol, Timestamp, `Recent_Deliv_Pct`, `Baseline_Deliv_Pct`, `delivery_momentum_signal` FROM historical_data WHERE Timestamp >= %s AND Timestamp <= %s AND `delivery_momentum_signal` = 1 ORDER BY Timestamp ASC"
             else:
-                query = f"SELECT Symbol, Timestamp, {signal} FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s AND {signal} = 1 ORDER BY Timestamp ASC"
-            params = [start_date, end_date]
+                query = f"SELECT Symbol, Timestamp, {signal} FROM historical_data WHERE Timestamp >= %s AND Timestamp <= %s AND {signal} = 1 ORDER BY Timestamp ASC"
+            params = [start_ts, end_ts]
         else:
-            query = "SELECT * FROM historical_data WHERE DATE(Timestamp) BETWEEN %s AND %s ORDER BY Timestamp ASC, Symbol ASC"
-            params = [start_date, end_date]
+            query = "SELECT * FROM historical_data WHERE Timestamp >= %s AND Timestamp <= %s ORDER BY Timestamp ASC, Symbol ASC"
+            params = [start_ts, end_ts]
+
+        if limit is not None:
+            query += " LIMIT %s"
+            params.append(limit)
+        elif not symbol and not signal:
+            query += " LIMIT 2000"
 
         logger.debug("Executing stock data query for symbol=%s, signal=%s", symbol, signal)
         cursor.execute(query, tuple(params))
@@ -267,6 +586,7 @@ def get_signal_scanner_data(
             logic="AND",
             start_date=start_date,
             end_date=end_date,
+            limit=limit,
         )
     except Exception as exc:
         logger.exception("Error executing signal scanner for signal=%s", signal)
@@ -346,7 +666,7 @@ def get_ohlcv(
         cursor = conn.cursor(dictionary=True)
         fields = (
             "DATE(Timestamp) as date, Open, High, Low, Close, Volume, "
-            "RSI14, "
+            "RSI14, SMA50, SMA200, "
             "Hammer, Shooting_Star, Doji, Engulfing, Dark_Cloud_Cover, Morning_Star, Evening_Star, Piercing_Line, "
             "signal1, signal2, signal3, signal4, signal5, top_decile, new_52w_high, new_52w_low, near_52w_high, NR, High_Relative_Volume_30, "
             "hit_2y_high_14d, hit_5y_high_14d, hit_10y_high_14d, oversold, overbought, rsi_lt_30, rsi_gt_70, adx_trigger, "
@@ -377,6 +697,8 @@ def get_ohlcv(
                 "close": float(r["Close"]),
                 "volume": int(r["Volume"]),
                 "rsi": float(r["RSI14"]) if r.get("RSI14") is not None else None,
+                "sma50": float(r["SMA50"]) if r.get("SMA50") is not None else None,
+                "sma200": float(r["SMA200"]) if r.get("SMA200") is not None else None,
                 "signals": {
                     "Hammer": bool(r.get("Hammer") == 1),
                     "Shooting_Star": bool(r.get("Shooting_Star") == 1),

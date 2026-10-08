@@ -168,6 +168,10 @@ class LoginRateLimiter:
         normalized_email = email.strip().lower()
         self.store.reset(f"ratelimit:account:{normalized_email}")
 
+    def reset_ip(self, ip: str) -> None:
+        """Reset attempts for a specific IP address."""
+        self.store.reset(f"ratelimit:ip:{ip}")
+
 
 # Global default login rate limiter instance
 login_rate_limiter = LoginRateLimiter()

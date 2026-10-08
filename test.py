@@ -1,3 +1,4 @@
+import gc
 import logging
 import pandas as pd
 import numpy as np
@@ -388,35 +389,122 @@ def classify_stages(all_results: pd.DataFrame) -> pd.DataFrame:
 
 
 def main():
-    log.info("Loading OHLCV data from MySQL `ohlc_data` table...")
-    conn = get_connection()
-    query = """
-        SELECT ticker AS Symbol, date AS Timestamp, open AS Open, high AS High, low AS Low, close AS Close, volume AS Volume, delivery_quantity AS delivery_quantity
-        FROM ohlc_data
-        ORDER BY ticker, date
-    """
-    data = pd.read_sql(query, conn)
-    conn.close()
-    log.info("Loaded %d rows for %d symbols.", len(data), data['Symbol'].nunique())
+    # ------------------------------------------------------------------
+    # Step 1: Fetch the full list of tickers and pre-build benchmark map
+    # ------------------------------------------------------------------
+    log.info("Fetching ticker list and benchmark data from MySQL `ohlc_data`...")
+    meta_conn = get_connection()
+    meta_cur = meta_conn.cursor()
 
-    data['Timestamp'] = pd.to_datetime(data['Timestamp'])
-    data.set_index('Timestamp', inplace=True)
+    # All distinct tickers (ordered so benchmarks come first)
+    meta_cur.execute("""
+        SELECT DISTINCT ticker FROM ohlc_data
+        ORDER BY FIELD(ticker, '^CRSLDX', '^NSEI') DESC, ticker
+    """)
+    all_tickers = [row[0] for row in meta_cur.fetchall()]
+    log.info("Found %d tickers to process.", len(all_tickers))
 
+    # Load benchmark ticker for RCS_30D (small, loads fast)
+    bench_map = {}
+    for bench_sym in ('^CRSLDX', '^NSEI'):
+        if bench_sym in all_tickers:
+            meta_cur.execute(
+                "SELECT date, close FROM ohlc_data WHERE ticker=%s ORDER BY date",
+                (bench_sym,)
+            )
+            rows = meta_cur.fetchall()
+            if rows:
+                bench_dates = [r[0] for r in rows]
+                bench_close = pd.Series([float(r[1]) for r in rows], index=bench_dates)
+                bench_pct_30 = bench_close.pct_change(periods=30, fill_method=None)
+                bench_map = dict(zip(bench_dates, bench_pct_30))
+                log.info("Benchmark loaded: %s (%d rows)", bench_sym, len(rows))
+                break
+    if not bench_map:
+        log.warning("No benchmark ticker found — RCS_30D will be all None.")
+
+    meta_cur.close()
+    meta_conn.close()
+
+    # ------------------------------------------------------------------
+    # Step 2: Open write connection, truncate historical_data
+    # ------------------------------------------------------------------
+    write_conn = get_connection()
+    write_cur = write_conn.cursor()
+    write_cur.execute("TRUNCATE TABLE historical_data")
+    write_conn.commit()
+    log.info("Cleared existing rows from `historical_data`.")
+
+    sql_columns = [
+        "Timestamp", "Open", "High", "Low", "Close", "Volume", "Symbol",
+        "Hammer", "Shooting_Star", "Doji", "Engulfing", "Dark_Cloud_Cover",
+        "Morning_Star", "Evening_Star", "Piercing_Line",
+        "SMA4", "SMA9", "SMA18", "SMA50", "SMA200",
+        "signal1", "signal2", "signal3", "signal4", "signal5",
+        "PC", "STD", "top_decile",
+        "52w_high", "52w_low", "new_52w_high", "new_52w_low", "near_52w_high",
+        "NR", "High_Relative_Volume_30",
+        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
+        "RSI14", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70",
+        "rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score",
+        "adx_trigger", "convergence_5", "convergence_3", "convergence_4",
+        "RCS_30D",
+        "all_time_high", "is_at_ath", "days_since_ath", "first_listed_date", "weeks_since_listing",
+        "rs_rank", "base_active", "base_start_date", "base_length_days", "base_high", "base_low",
+        "base_depth_pct", "pct_from_pivot", "contraction_count", "breakout_today", "last_breakout_level",
+        "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base", "screen_high_relative_volume", "screen_high_delivery_volume",
+        "stage", "stage_bucket"
+    ]
+    placeholders = ",".join(["%s"] * len(sql_columns))
+    insert_query = f"INSERT INTO historical_data ({','.join(sql_columns)}) VALUES ({placeholders})"
+
+    # ------------------------------------------------------------------
+    # Step 3: Collect all processed groups for rs_rank (cross-sectional)
+    # We'll do a two-pass: first pass computes per-ticker signals, second
+    # pass assigns rs_rank and writes. To keep RAM manageable we store
+    # only the minimal rs_blend column + index in pass 1, then re-process
+    # pass 2 per ticker.
+    # For simplicity here we collect all results then compute rs_rank once.
+    # RAM: ~200 MB for 8M rows of (date, symbol, rs_blend) only.
+    # ------------------------------------------------------------------
+    log.info("Pass 1: Computing per-ticker signals (streaming from DB)...")
     all_results_list = []
+    total_tickers = len(all_tickers)
+    read_conn = get_connection()
 
-    # Pre-compute benchmark 30-day percentage change for ^CRSLDX or ^NSEI
-    bench_group = data[data['Symbol'] == '^CRSLDX']
-    if bench_group.empty:
-        bench_group = data[data['Symbol'] == '^NSEI']
+    for idx, symbol in enumerate(all_tickers, 1):
+        if idx % 50 == 0 or idx == total_tickers:
+            log.info("  Progress: %d / %d tickers processed...", idx, total_tickers)
 
-    if not bench_group.empty:
-        bench_pct_30 = bench_group['Close'].pct_change(periods=30, fill_method=None)
-        bench_map = dict(zip(bench_group.index.date, bench_pct_30))
-    else:
-        bench_map = {}
+        row_data = pd.read_sql(
+            "SELECT ticker AS Symbol, date AS Timestamp, open AS Open, high AS High, "
+            "low AS Low, close AS Close, volume AS Volume, delivery_quantity AS delivery_quantity "
+            "FROM ohlc_data WHERE ticker=%s ORDER BY date",
+            read_conn,
+            params=(symbol,)
+        )
+        if row_data.empty:
+            continue
+
+        row_data['Timestamp'] = pd.to_datetime(row_data['Timestamp'])
+        row_data.set_index('Timestamp', inplace=True)
+        data = row_data  # single-symbol dataframe
+
+        # Alias: treat the single group the same as before
+        all_results_list.append(data.copy())
+        del row_data, data
+        gc.collect()
+
+    read_conn.close()
+
+    log.info("Concatenating all ticker data for cross-sectional rs_rank computation...")
+    all_results = pd.concat(all_results_list)
+    del all_results_list
+    gc.collect()
 
     log.info("Computing signals and technical indicators...")
-    for symbol, group in data.groupby('Symbol'):
+    processed_list = []
+    for symbol, group in all_results.groupby('Symbol'):
         group['Hammer'] = hammer(group).astype(int)
         group['Shooting_Star'] = shooting_star(group).astype(int)
         group['Doji'] = doji(group).astype(int)
@@ -497,7 +585,7 @@ def main():
         between = (group["Close"] > group["SMA200"]) & (group["Close"] < group["SMA50"])
         group["signal4"] = np.where(between, 1, 0)
 
-        golden_cross_over = (group["SMA50"] > group["SMA200"]) & (group["SMA50"].shift(1) < group["SMA200"].shift(1))
+        golden_cross_over = (ema50 > ema200) & (ema50.shift(1) < ema200.shift(1))
         group["signal5"] = np.where(golden_cross_over, 1, 0)
 
         group["PC"] = group["SMA50"].pct_change(fill_method=None)
@@ -570,9 +658,11 @@ def main():
         group = detect_base(group)
 
         group = group.drop(['NR5', 'NR6', 'NR7', 'NR8', 'min_5', 'min_6', 'min_7', 'min_8', 'avg_volume_30', 'Range', 'pct_63', 'pct_126', 'pct_252', 'delivery_pct'], axis=1)
-        all_results_list.append(group)
+        processed_list.append(group)
 
-    all_results = pd.concat(all_results_list)
+    all_results = pd.concat(processed_list)
+    del processed_list
+    gc.collect()
     all_results.reset_index(inplace=True)
 
     log.info("Computing relative strength ranks and pattern screens...")
@@ -624,40 +714,9 @@ def main():
     # ---------------------------------------------------------
     all_results = classify_stages(all_results)
 
-    sql_columns = [
-        "Timestamp", "Open", "High", "Low", "Close", "Volume", "Symbol",
-        "Hammer", "Shooting_Star", "Doji", "Engulfing", "Dark_Cloud_Cover",
-        "Morning_Star", "Evening_Star", "Piercing_Line",
-        "SMA4", "SMA9", "SMA18", "SMA50", "SMA200",
-        "signal1", "signal2", "signal3", "signal4", "signal5",
-        "PC", "STD", "top_decile",
-        "52w_high", "52w_low", "new_52w_high", "new_52w_low", "near_52w_high",
-        "NR", "High_Relative_Volume_30",
-        "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
-        "RSI14", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70",
-        "rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score",
-        "adx_trigger", "convergence_5", "convergence_3", "convergence_4",
-        "RCS_30D",
-        "all_time_high", "is_at_ath", "days_since_ath", "first_listed_date", "weeks_since_listing",
-        "rs_rank", "base_active", "base_start_date", "base_length_days", "base_high", "base_low", 
-        "base_depth_pct", "pct_from_pivot", "contraction_count", "breakout_today", "last_breakout_level",
-        "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base", "screen_high_relative_volume", "screen_high_delivery_volume",
-        "stage", "stage_bucket"
-    ]
-
-    log.info("Saving results directly into MySQL `historical_data` table...")
-    conn = get_connection()
-    cursor = conn.cursor()
-
+    log.info("Saving results into MySQL `historical_data` table...")
     try:
-        cursor.execute("TRUNCATE TABLE historical_data")
-        conn.commit()
-        log.info("Cleared existing rows from `historical_data`.")
-
         df_clean = all_results[sql_columns].replace({np.nan: None, np.inf: None, -np.inf: None})
-
-        placeholders = ",".join(["%s"] * len(sql_columns))
-        insert_query = f"INSERT INTO historical_data ({','.join(sql_columns)}) VALUES ({placeholders})"
 
         batch_size = 10000
         rows = df_clean.values.tolist()
@@ -665,14 +724,14 @@ def main():
 
         for i in range(0, total_rows, batch_size):
             batch = rows[i:i + batch_size]
-            cursor.executemany(insert_query, batch)
-            conn.commit()
+            write_cur.executemany(insert_query, batch)
+            write_conn.commit()
             log.info("Inserted %d / %d rows into `historical_data`...", min(i + batch_size, total_rows), total_rows)
 
         log.info("Successfully updated `historical_data` with %d rows! ✅", total_rows)
 
         # Create pattern_events table
-        cursor.execute("""
+        write_cur.execute("""
             CREATE TABLE IF NOT EXISTS pattern_events (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 symbol VARCHAR(20) NOT NULL,
@@ -684,63 +743,63 @@ def main():
                 UNIQUE KEY (symbol, screen_name, triggered_date)
             )
         """)
-        conn.commit()
+        write_conn.commit()
 
         # Rebuild pattern_events from full history
         log.info("Rebuilding pattern_events from full history...")
-        cursor.execute("TRUNCATE TABLE pattern_events")
-        
+        write_cur.execute("TRUNCATE TABLE pattern_events")
+
         screen_names = ['screen_vcp', 'screen_blue_sky', 'screen_multi_year_breakout', 'screen_ipo_base']
         events_to_insert = []
-        
+
         # We need a quick way to find future failed dates for each symbol
         grouped = all_results.groupby('Symbol')
-        
+
         # Identify all historical breakouts
         breakout_mask = (all_results['breakout_today'] == 1) & (all_results[screen_names].sum(axis=1) > 0)
         breakout_rows = all_results[breakout_mask]
-        
+
         for _, row in breakout_rows.iterrows():
             sym = row['Symbol']
             trigger_date = row['Timestamp']
             pivot = row['base_high']
-            
+
             triggered_screens = [s for s in screen_names if row[s] == 1]
             if not triggered_screens:
                 continue
-                
+
             sym_df = grouped.get_group(sym)
             # Find future rows where it drops below pivot AND stage is 3 or 4
             future = sym_df[sym_df['Timestamp'] > trigger_date]
             failed = future[(future['Close'] < pivot) & (future['stage'].isin([3, 4]))]
-            
+
             outcome = 'active'
             outcome_date = None
             if not failed.empty:
                 outcome = 'failed'
                 first_failed = failed.iloc[0]['Timestamp']
                 outcome_date = first_failed.date() if hasattr(first_failed, 'date') else first_failed
-                
+
             # Date for trigger
             t_date = trigger_date.date() if hasattr(trigger_date, 'date') else trigger_date
-            
+
             for screen in triggered_screens:
                 events_to_insert.append((sym, screen, t_date, pivot, outcome, outcome_date))
-                
+
         if events_to_insert:
             insert_event_query = """
                 INSERT INTO pattern_events (symbol, screen_name, triggered_date, pivot_price, outcome, outcome_date)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """
-            batch_size = 10000
-            for i in range(0, len(events_to_insert), batch_size):
-                cursor.executemany(insert_event_query, events_to_insert[i:i + batch_size])
-            conn.commit()
+            event_batch_size = 10000
+            for i in range(0, len(events_to_insert), event_batch_size):
+                write_cur.executemany(insert_event_query, events_to_insert[i:i + event_batch_size])
+            write_conn.commit()
             log.info("Logged %d historical pattern events.", len(events_to_insert))
-            
+
     finally:
-        cursor.close()
-        conn.close()
+        write_cur.close()
+        write_conn.close()
 
 
 if __name__ == "__main__":

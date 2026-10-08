@@ -373,7 +373,8 @@ async function loadUserInfo() {
     if (!r.ok) { window.location.href = "/login.html"; return; }
     const u = await r.json();
     document.getElementById("topbarUserName").textContent = u.name || u.email;
-    document.getElementById("topbarUserEmail").textContent = u.email;
+    const validityText = (u.days_remaining !== null && u.days_remaining !== undefined) ? ` • Validity: ${u.days_remaining} / 365 days` : '';
+    document.getElementById("topbarUserEmail").textContent = (u.email || '') + validityText;
     document.getElementById("topbarAvatar").textContent =
       (u.name || u.email).charAt(0).toUpperCase();
   } catch { window.location.href = "/login.html"; }

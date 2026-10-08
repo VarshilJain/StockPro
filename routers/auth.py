@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, field_validator
@@ -97,19 +97,22 @@ class ResetPasswordDirectRequest(BaseModel):
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, request: Request):
-    """Create a new user account."""
+    """Create a new user account with pending admin approval."""
     ip = get_client_ip(request)
     hashed = hash_password(body.password)
     try:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO users (email, hashed_password, name, role, auth_provider) VALUES (%s, %s, %s, %s, %s)",
-            (body.email.lower(), hashed, body.name.strip(), "user", "local"),
+            """
+            INSERT INTO users (email, hashed_password, name, role, auth_provider, is_active, approval_status, expires_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NULL)
+            """,
+            (body.email.lower(), hashed, body.name.strip(), "user", "local", 0, "pending"),
         )
         new_user_id = cursor.lastrowid
 
-        # Seed the 5 default strategies for the new user
+        # Seed default strategies for the new user
         default_strategies = [
             ("1. Institutional Delivery & Smart-Money Accumulation", json.dumps({"logic": "AND", "conditions": [{"field": "delivery_momentum_signal", "operator": "=="}, {"field": "High_Relative_Volume_30", "operator": "=="}]})),
             ("2. Momentum & Multi-Year Breakout", json.dumps({"logic": "AND", "conditions": [{"field": "new_52w_high", "operator": "=="}, {"field": "RCS_30D", "operator": ">", "value": 0}, {"field": "adx_trigger", "operator": "=="}]})),
@@ -126,7 +129,7 @@ def register(body: RegisterRequest, request: Request):
         conn.commit()
         cursor.close()
         conn.close()
-        logger.info("SECURITY_EVENT: AUTH_REGISTER_SUCCESS user_id=%s, email=%s, ip=%s", new_user_id, body.email.lower(), ip)
+        logger.info("SECURITY_EVENT: AUTH_REGISTER_PENDING_APPROVAL user_id=%s, email=%s, ip=%s", new_user_id, body.email.lower(), ip)
     except Exception as exc:
         err = str(exc)
         if "Duplicate entry" in err or "1062" in err:
@@ -138,12 +141,16 @@ def register(body: RegisterRequest, request: Request):
         logger.exception("Error during registration")
         raise HTTPException(status_code=500, detail="Registration failed. Please try again.")
 
-    return {"message": "Account created successfully. Please log in."}
+    return {
+        "message": "Registration submitted successfully! Your account request is pending admin approval. You will receive access once approved.",
+        "approval_status": "pending",
+        "user_id": new_user_id,
+    }
 
 
 @router.post("/login")
 def login(body: LoginRequest, request: Request, response: Response):
-    """Authenticate, record rate limits, and set httpOnly auth and CSRF cookies."""
+    """Authenticate, verify approval and 365-day validity, and set cookies."""
     ip = get_client_ip(request)
     login_rate_limiter.check_and_record(request, email=body.email)
 
@@ -152,7 +159,7 @@ def login(body: LoginRequest, request: Request, response: Response):
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute(
-            "SELECT id, hashed_password, is_active FROM users WHERE email = %s",
+            "SELECT id, hashed_password, is_active, approval_status, expires_at, token_version, role FROM users WHERE email = %s",
             (body.email.lower(),),
         )
         user = cursor.fetchone()
@@ -168,18 +175,56 @@ def login(body: LoginRequest, request: Request, response: Response):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password.",
         )
-    if not user.get("is_active"):
-        logger.warning("SECURITY_EVENT: AUTH_LOGIN_FAILED email=%s, ip=%s, reason=account_deactivated", body.email.lower(), ip)
+
+    # 1. Admin Approval check
+    if user.get("approval_status") == "pending":
+        logger.warning("SECURITY_EVENT: AUTH_LOGIN_BLOCKED email=%s, ip=%s, reason=pending_approval", body.email.lower(), ip)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This account has been deactivated.",
+            detail="Your account registration is pending admin approval. You will receive access once approved by an administrator.",
+        )
+    if user.get("approval_status") == "rejected":
+        logger.warning("SECURITY_EVENT: AUTH_LOGIN_BLOCKED email=%s, ip=%s, reason=rejected_registration", body.email.lower(), ip)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account registration request has been rejected by an administrator.",
+        )
+
+    # 2. Block / Deactivate check
+    if not user.get("is_active"):
+        logger.warning("SECURITY_EVENT: AUTH_LOGIN_FAILED email=%s, ip=%s, reason=account_blocked", body.email.lower(), ip)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been blocked or deactivated. Please contact an administrator.",
+        )
+
+    # 3. 365-Day Validity Expiration check
+    if user.get("expires_at") and user["expires_at"] < datetime.now():
+        logger.warning("SECURITY_EVENT: AUTH_LOGIN_FAILED email=%s, ip=%s, reason=account_expired, expired_at=%s", body.email.lower(), ip, user["expires_at"])
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your 365-day access validity has expired. Please contact an administrator to renew access.",
         )
 
     # Reset account failure attempts
     login_rate_limiter.reset_account(body.email)
 
+    # Update last login info
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET last_login_at = NOW(), last_login_ip = %s WHERE id = %s",
+            (ip, user["id"]),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception:
+        pass
+
     token = create_access_token(
-        {"sub": str(user["id"])},
+        {"sub": str(user["id"]), "ver": user.get("token_version", 1)},
         expires_delta=timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
     )
     csrf_token = generate_csrf_token()
@@ -206,8 +251,9 @@ def login(body: LoginRequest, request: Request, response: Response):
         path="/",
     )
 
-    logger.info("SECURITY_EVENT: AUTH_LOGIN_SUCCESS user_id=%s, email=%s, ip=%s", user["id"], body.email.lower(), ip)
-    return {"message": "Login successful.", "csrf_token": csrf_token}
+    user_role = user.get("role", "user")
+    logger.info("SECURITY_EVENT: AUTH_LOGIN_SUCCESS user_id=%s, email=%s, role=%s, ip=%s", user["id"], body.email.lower(), user_role, ip)
+    return {"message": "Login successful.", "csrf_token": csrf_token, "role": user_role}
 
 
 @router.post("/google")
@@ -256,13 +302,16 @@ def google_login(body: GoogleAuthRequest, request: Request, response: Response):
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, email, name, role, is_active FROM users WHERE email = %s", (email,))
+        cursor.execute("SELECT id, email, name, role, is_active, approval_status, expires_at FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
         if user is None:
-            # Auto-register new Google user
+            # Auto-register new Google verified user with 365-day validity
             cursor.execute(
-                "INSERT INTO users (email, name, role, google_id, auth_provider, is_active) VALUES (%s, %s, 'user', %s, 'google', 1)",
+                """
+                INSERT INTO users (email, name, role, google_id, auth_provider, is_active, approval_status, expires_at)
+                VALUES (%s, %s, 'user', %s, 'google', 1, 'approved', DATE_ADD(NOW(), INTERVAL 365 DAY))
+                """,
                 (email, name, google_id),
             )
             user_id = cursor.lastrowid
@@ -286,10 +335,26 @@ def google_login(body: GoogleAuthRequest, request: Request, response: Response):
         else:
             user_id = user["id"]
             role = user.get("role", "user")
+
+            if user.get("approval_status") == "pending":
+                cursor.close(); conn.close()
+                logger.warning("SECURITY_EVENT: GOOGLE_AUTH_PENDING user_id=%s, email=%s, ip=%s", user_id, email, ip)
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your account is pending admin approval.")
+
+            if user.get("approval_status") == "rejected":
+                cursor.close(); conn.close()
+                logger.warning("SECURITY_EVENT: GOOGLE_AUTH_REJECTED user_id=%s, email=%s, ip=%s", user_id, email, ip)
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your account registration request has been rejected by an administrator.")
+
             if not user.get("is_active"):
                 cursor.close(); conn.close()
                 logger.warning("SECURITY_EVENT: GOOGLE_AUTH_FAILED user_id=%s, email=%s, reason=deactivated, ip=%s", user_id, email, ip)
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been deactivated.")
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been blocked or deactivated.")
+
+            if user.get("expires_at") and user["expires_at"] < datetime.now():
+                cursor.close(); conn.close()
+                logger.warning("SECURITY_EVENT: GOOGLE_AUTH_EXPIRED user_id=%s, email=%s, reason=expired, ip=%s", user_id, email, ip)
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your 365-day access validity has expired.")
             
             # Update google_id if missing
             cursor.execute("UPDATE users SET google_id = %s WHERE id = %s AND (google_id IS NULL OR google_id = '')", (google_id, user_id))
@@ -369,17 +434,34 @@ def auth_config():
 
 @router.get("/me")
 def me(current_user: dict = Depends(get_current_user)):
-    """Return the currently authenticated user's public info."""
+    """Return the currently authenticated user's public info including 365-day validity countdown."""
     user = dict(current_user)
     # Serialize datetime fields
     if "created_at" in user and hasattr(user["created_at"], "isoformat"):
         user["created_at"] = user["created_at"].isoformat()
+
+    expires_at = user.get("expires_at")
+    days_remaining = None
+    if expires_at:
+        now = datetime.now()
+        diff = (expires_at - now).total_seconds() / 86400.0
+        days_remaining = max(0, int(diff + 0.999))
+        if hasattr(expires_at, "isoformat"):
+            expires_at = expires_at.isoformat()
+        else:
+            expires_at = str(expires_at)
+    elif user.get("role") == "admin":
+        days_remaining = 365
+
     return {
-        "id":         user["id"],
-        "email":      user["email"],
-        "name":       user["name"],
-        "role":       user.get("role", "user"),
-        "created_at": user.get("created_at"),
+        "id":             user["id"],
+        "email":          user["email"],
+        "name":           user["name"],
+        "role":           user.get("role", "user"),
+        "created_at":     user.get("created_at"),
+        "expires_at":     expires_at,
+        "days_remaining": days_remaining,
+        "total_days":     365,
     }
 
 

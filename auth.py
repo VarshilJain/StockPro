@@ -97,29 +97,36 @@ def get_current_user(access_token: Optional[str] = Cookie(default=None)) -> dict
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
         # Check columns to support installations before role migration
-        try:
-            cursor.execute(
-                "SELECT id, email, name, role, is_active, created_at FROM users WHERE id = %s",
-                (user_id,),
-            )
-            user = cursor.fetchone()
-        except Exception:
-            cursor.execute(
-                "SELECT id, email, name, is_active, created_at FROM users WHERE id = %s",
-                (user_id,),
-            )
-            user = cursor.fetchone()
-            if user:
-                user["role"] = "user"
-        finally:
-            cursor.close()
-            conn.close()
+        cursor.execute(
+            "SELECT id, email, name, role, is_active, created_at, token_version, approval_status, expires_at FROM users WHERE id = %s",
+            (user_id,),
+        )
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
     except Exception as exc:
         logger.error("DB error in get_current_user: %s", exc)
         raise _CREDENTIALS_EXCEPTION
 
     if user is None or not user.get("is_active"):
         raise _CREDENTIALS_EXCEPTION
+
+    # Approval workflow check
+    if user.get("approval_status") and user["approval_status"] != "approved":
+        logger.warning("Unapproved user attempted session access user_id=%s, status=%s", user_id, user.get("approval_status"))
+        raise _CREDENTIALS_EXCEPTION
+
+    # 365-day validity check
+    if user.get("expires_at") and user["expires_at"] < datetime.now():
+        logger.warning("Expired user access attempted user_id=%s, expired_at=%s", user_id, user["expires_at"])
+        raise _CREDENTIALS_EXCEPTION
+
+    # Session revocation check
+    token_ver = payload.get("ver")
+    if token_ver is not None and user.get("token_version") is not None:
+        if token_ver < user["token_version"]:
+            logger.warning("Revoked session token used by user_id=%s", user_id)
+            raise _CREDENTIALS_EXCEPTION
 
     if "role" not in user or not user["role"]:
         user["role"] = "user"

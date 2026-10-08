@@ -1,0 +1,2504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockPro — Operations Console & Admin Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/apple-theme.css?v=11">
+  <script>
+    (function () {
+      const savedTheme = localStorage.getItem('stockpro_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      window.addEventListener('DOMContentLoaded', () => {
+        const icon = document.getElementById('themeIcon');
+        if (icon) {
+          icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+      });
+    })();
+  </script>
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       STOCKPRO OPS CONSOLE — DESIGN SYSTEM (APPLE TERMINAL THEME)
+       ══════════════════════════════════════════════════════════════ */
+    html {
+      zoom: 0.8;
+      box-sizing: border-box;
+    }
+
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+
+    :root {
+      --admin-sidebar-width: 270px;
+      --admin-header-height: 64px;
+
+      /* Apple Light Palette */
+      --primary-bg: #F5F5F7;
+      --secondary-bg: #F2F2F7;
+      --tertiary-bg: #FFFFFF;
+      --card-bg: rgba(255, 255, 255, 0.92);
+      --card-border: rgba(0, 0, 0, 0.08);
+      --text-primary: #1D1D1F;
+      --text-secondary: #515154;
+      --text-muted: #86868B;
+      --text-very-muted: #A1A1A6;
+      --accent-primary: #0071E3;
+      --accent-secondary: #5856D6;
+      --accent-success: #34C759;
+      --accent-warning: #FF9500;
+      --accent-danger: #FF3B30;
+
+      --admin-bg: var(--primary-bg);
+      --admin-card-bg: var(--card-bg);
+      --admin-border: var(--card-border);
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       DARK THEME PARITY (EXACT MATCH WITH NORMAL USER DASHBOARD)
+       ══════════════════════════════════════════════════════════════ */
+    html[data-theme="dark"],
+    body[data-theme="dark"],
+    body.dark-mode {
+      --primary-bg: #0b0f19;
+      --secondary-bg: #131b2e;
+      --tertiary-bg: #1e293b;
+      --card-bg: rgba(19, 27, 46, 0.92);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #8492a6;
+      --text-very-muted: #64748b;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #6366f1;
+      --accent-success: #22c55e;
+      --accent-warning: #f59e0b;
+      --accent-danger: #ef4444;
+
+      --admin-bg: #0b0f19;
+      --admin-card-bg: rgba(19, 27, 46, 0.92);
+      --admin-border: rgba(255, 255, 255, 0.08);
+      background-color: #0b0f19 !important;
+      color: #f8fafc !important;
+    }
+
+    body {
+      background: var(--admin-bg);
+      color: var(--text-primary);
+      display: flex;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", 'Inter', "Helvetica Neue", sans-serif;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── Admin Sidebar ── */
+    .admin-sidebar {
+      width: var(--admin-sidebar-width);
+      background: rgba(248, 248, 250, 0.92);
+      border-right: 1px solid var(--admin-border);
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      backdrop-filter: blur(28px) saturate(170%);
+      -webkit-backdrop-filter: blur(28px) saturate(170%);
+      box-shadow: 1px 0 2px rgba(0, 0, 0, 0.02);
+    }
+
+    html[data-theme="dark"] .admin-sidebar {
+      background: rgba(15, 22, 38, 0.96) !important;
+      border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+      box-shadow: 1px 0 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .admin-brand {
+      padding: 1.35rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      border-bottom: 1px solid var(--admin-border);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .admin-brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.15rem;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+    }
+
+    .admin-brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .admin-brand-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .admin-brand-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-primary);
+    }
+
+    .admin-nav {
+      flex: 1;
+      padding: 1rem 0.75rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .admin-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+
+    .admin-nav-item i {
+      width: 20px;
+      text-align: center;
+      font-size: 1rem;
+      color: var(--text-muted);
+      transition: color 0.15s ease;
+    }
+
+    .admin-nav-item:hover {
+      background: rgba(59, 130, 246, 0.08);
+      color: var(--accent-primary);
+    }
+
+    html[data-theme="dark"] .admin-nav-item {
+      color: #cbd5e1;
+    }
+
+    html[data-theme="dark"] .admin-nav-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: #ffffff;
+    }
+
+    html[data-theme="dark"] .admin-nav-item:hover i {
+      color: #ffffff;
+    }
+
+    .admin-nav-item.active {
+      background: rgba(59, 130, 246, 0.16) !important;
+      color: #60a5fa !important;
+      font-weight: 600;
+      box-shadow: none;
+    }
+
+    .admin-nav-item.active i {
+      color: #60a5fa !important;
+    }
+
+    .admin-sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--admin-border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .admin-user-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .admin-user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.16);
+      color: #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .admin-user-meta {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .admin-user-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-primary);
+    }
+
+    .admin-user-role {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .btn-return-app {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.6rem;
+      border-radius: 9px;
+      background: rgba(239, 68, 68, 0.12);
+      color: #ef4444;
+      font-size: 0.82rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+
+    .btn-return-app:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    /* ── Main Content Area ── */
+    .admin-main {
+      margin-left: var(--admin-sidebar-width);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--admin-bg);
+    }
+
+    .admin-topbar {
+      height: var(--admin-header-height);
+      background: rgba(255, 255, 255, 0.88);
+      border-bottom: 1px solid var(--admin-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    html[data-theme="dark"] .admin-topbar {
+      background: rgba(11, 15, 25, 0.88) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+    }
+
+    .admin-topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .admin-page-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .admin-status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(34, 197, 94, 0.14);
+      color: #22c55e;
+    }
+
+    .admin-status-indicator.maintenance {
+      background: rgba(245, 158, 11, 0.16);
+      color: #f59e0b;
+    }
+
+    .admin-pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    .admin-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .admin-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem;
+      border-radius: 9px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .admin-btn-primary {
+      background: #3b82f6;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+    }
+    .admin-btn-primary:hover {
+      background: #2563eb;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.45);
+    }
+
+    .admin-btn-secondary {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      border-color: var(--admin-border);
+    }
+    html[data-theme="dark"] .admin-btn-secondary {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+    }
+    .admin-btn-secondary:hover {
+      background: rgba(0, 0, 0, 0.09);
+    }
+    html[data-theme="dark"] .admin-btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+
+    .admin-btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.25);
+    }
+    .admin-btn-danger:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .admin-btn-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+    .admin-btn-warning:hover {
+      background: #f59e0b;
+      color: #000000;
+    }
+
+    .admin-btn-sm {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+      height: 32px;
+    }
+
+    /* ── Content Wrapper ── */
+    .admin-content {
+      padding: 2rem;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Section Visibility */
+    .admin-section {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    .admin-section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── KPI Grid ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .kpi-card {
+      background: var(--admin-card-bg);
+      border: 1px solid var(--admin-border);
+      border-radius: 14px;
+      padding: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    html[data-theme="dark"] .kpi-card {
+      background: rgba(19, 27, 46, 0.92) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .kpi-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .kpi-card-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+
+    .kpi-card-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.12);
+      color: #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+    }
+
+    .kpi-card-value {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+      margin-bottom: 0.35rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .kpi-card-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* ── Table Panels ── */
+    .panel {
+      background: var(--admin-card-bg);
+      border: 1px solid var(--admin-border);
+      border-radius: 14px;
+      margin-bottom: 2rem;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+    }
+
+    html[data-theme="dark"] .panel {
+      background: rgba(19, 27, 46, 0.92) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .panel-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--admin-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .panel-title {
+      font-size: 1.05rem;
+      font-weight: 650;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .panel-filters {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .panel-search {
+      position: relative;
+    }
+
+    .panel-search i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .panel-search input,
+    .admin-input {
+      padding: 0.55rem 0.85rem 0.55rem 2.2rem;
+      border-radius: 9px;
+      border: 1px solid var(--admin-border);
+      background: var(--tertiary-bg);
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      outline: none;
+      min-width: 220px;
+      height: 38px;
+      box-sizing: border-box;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .admin-input {
+      padding-left: 0.85rem;
+      width: 100%;
+    }
+
+    html[data-theme="dark"] .panel-search input,
+    html[data-theme="dark"] .admin-input {
+      background: #1e293b !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      color: #f8fafc !important;
+    }
+
+    .panel-search input:focus,
+    .admin-input:focus,
+    .panel-select:focus {
+      border-color: #3b82f6 !important;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+    }
+
+    .panel-select {
+      padding: 0.5rem 0.85rem;
+      border-radius: 9px;
+      border: 1px solid var(--admin-border);
+      background: var(--tertiary-bg);
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      outline: none;
+      height: 38px;
+      box-sizing: border-box;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    html[data-theme="dark"] .panel-select {
+      background: #1e293b !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      color: #f8fafc !important;
+    }
+
+    html[data-theme="dark"] .panel-select option {
+      background: #1e293b !important;
+      color: #f8fafc !important;
+    }
+
+    /* ── Admin Tables ── */
+    .admin-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      text-align: left;
+    }
+
+    .admin-table th {
+      padding: 0.85rem 1.25rem;
+      background: rgba(0, 0, 0, 0.02);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--admin-border);
+      white-space: nowrap;
+    }
+
+    html[data-theme="dark"] .admin-table th {
+      background: #1a243a !important;
+      color: #94a3b8 !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-table td {
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--admin-border);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+
+    html[data-theme="dark"] .admin-table td {
+      background: #131b2e !important;
+      color: #f8fafc !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }
+
+    .admin-table tbody tr:hover td {
+      background: rgba(0, 113, 227, 0.03);
+    }
+
+    html[data-theme="dark"] .admin-table tbody tr:hover td {
+      background: rgba(59, 130, 246, 0.08) !important;
+    }
+
+    /* ── Table Action Button Group ── */
+    .table-actions-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+    }
+
+    .table-actions-cell .admin-btn {
+      padding: 0.3rem 0.55rem;
+      font-size: 0.75rem;
+      height: 28px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .badge-primary { background: rgba(59, 130, 246, 0.16); color: #60a5fa; }
+    .badge-success { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+    .badge-warning { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+    .badge-danger  { background: rgba(239, 68, 68, 0.16); color: #f87171; }
+    .badge-muted   { background: rgba(255, 255, 255, 0.08); color: #94a3b8; }
+
+    html[data-theme="light"] .badge-primary { background: rgba(0, 113, 227, 0.12); color: #0071E3; }
+    html[data-theme="light"] .badge-success { background: rgba(52, 199, 89, 0.12); color: #34C759; }
+    html[data-theme="light"] .badge-warning { background: rgba(255, 149, 0, 0.15); color: #FF9500; }
+    html[data-theme="light"] .badge-danger  { background: rgba(255, 59, 48, 0.12); color: #FF3B30; }
+    html[data-theme="light"] .badge-muted   { background: rgba(0, 0, 0, 0.06); color: #515154; }
+
+    /* Switch Toggles */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.18);
+      transition: .25s;
+      border-radius: 24px;
+    }
+
+    html[data-theme="light"] .slider { background-color: rgba(0, 0, 0, 0.15); }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .25s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    input:checked + .slider { background-color: #22c55e; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    /* Pagination */
+    .panel-footer {
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--admin-border);
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .pagination-btns {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       MODALS & DIALOGS (FIXED OVERLAY, CENTERED, GLASSMORPHIC)
+       ══════════════════════════════════════════════════════════════ */
+    .modal-overlay,
+    .modal-backdrop {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      background: rgba(3, 7, 18, 0.78) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      display: none !important;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 99999 !important;
+      padding: 1.5rem !important;
+      box-sizing: border-box !important;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    html[data-theme="light"] .modal-overlay,
+    html[data-theme="light"] .modal-backdrop {
+      background: rgba(0, 0, 0, 0.45) !important;
+    }
+
+    .modal-overlay.show,
+    .modal-backdrop.show {
+      display: flex !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+
+    .modal-card,
+    .modal-dialog {
+      background: #131b2e !important;
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      border-radius: 16px !important;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+      width: 100% !important;
+      max-width: 520px !important;
+      padding: 1.75rem !important;
+      color: #f8fafc !important;
+      transform: scale(0.96) translateY(8px);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-sizing: border-box !important;
+      position: relative;
+    }
+
+    html[data-theme="light"] .modal-card,
+    html[data-theme="light"] .modal-dialog {
+      background: #ffffff !important;
+      border: 1px solid rgba(0, 0, 0, 0.1) !important;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25) !important;
+      color: #1d1d1f !important;
+    }
+
+    .modal-overlay.show .modal-card,
+    .modal-backdrop.show .modal-dialog {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-header {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      margin-bottom: 1.25rem !important;
+      padding-bottom: 0.85rem !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    html[data-theme="light"] .modal-header {
+      border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .modal-title {
+      font-size: 1.15rem !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0 !important;
+      color: inherit !important;
+    }
+
+    .modal-close {
+      background: transparent !important;
+      border: none !important;
+      color: #8492a6 !important;
+      font-size: 1.5rem !important;
+      line-height: 1 !important;
+      cursor: pointer !important;
+      padding: 0.25rem 0.5rem !important;
+      border-radius: 8px !important;
+      transition: all 0.15s ease;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.1) !important;
+      color: #ffffff !important;
+    }
+
+    html[data-theme="light"] .modal-close:hover {
+      background: rgba(0, 0, 0, 0.06) !important;
+      color: #1d1d1f !important;
+    }
+
+    .modal-body {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    html[data-theme="light"] .modal-body {
+      color: #515154;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    html[data-theme="light"] .modal-actions {
+      border-top-color: rgba(0, 0, 0, 0.08);
+    }
+
+    /* ── Toast Notifications ── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 100000;
+    }
+
+    .admin-toast {
+      padding: 0.9rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      animation: slideIn 0.2s ease;
+    }
+    .admin-toast.success { background: #22c55e; }
+    .admin-toast.error { background: #ef4444; }
+    .admin-toast.info { background: #3b82f6; }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Admin Sidebar -->
+  <aside class="admin-sidebar">
+    <a href="/admin" class="admin-brand">
+      <div class="admin-brand-icon"><i class="fas fa-cubes"></i></div>
+      <div class="admin-brand-text">
+        <span class="admin-brand-title">StockPro</span>
+        <span class="admin-brand-badge">Ops Console</span>
+      </div>
+    </a>
+
+    <nav class="admin-nav">
+      <a class="admin-nav-item" data-section="overview" onclick="navigateSection('overview')">
+        <i class="fas fa-chart-pie"></i>
+        <span>Overview</span>
+      </a>
+      <a class="admin-nav-item" data-section="users" onclick="navigateSection('users')">
+        <i class="fas fa-users-gear"></i>
+        <span>Users & RBAC</span>
+        <span id="pendingNavBadge" class="badge badge-warning" style="display:none; margin-left:auto; font-size:0.68rem; padding:0.15rem 0.45rem;">0</span>
+      </a>
+      <a class="admin-nav-item" data-section="market-data" onclick="navigateSection('market-data')">
+        <i class="fas fa-database"></i>
+        <span>Market Universe</span>
+      </a>
+      <a class="admin-nav-item" data-section="scanners" onclick="navigateSection('scanners')">
+        <i class="fas fa-crosshairs"></i>
+        <span>Scanners & Strats</span>
+      </a>
+      <a class="admin-nav-item" data-section="monitoring" onclick="navigateSection('monitoring')">
+        <i class="fas fa-server"></i>
+        <span>System Health</span>
+      </a>
+      <a class="admin-nav-item" data-section="security" onclick="navigateSection('security')">
+        <i class="fas fa-shield-halved"></i>
+        <span>Security & Audit</span>
+      </a>
+      <a class="admin-nav-item" data-section="settings" onclick="navigateSection('settings')">
+        <i class="fas fa-sliders"></i>
+        <span>Configuration</span>
+      </a>
+    </nav>
+
+    <div class="admin-sidebar-footer">
+      <button class="btn-return-app" onclick="logoutAdmin()" style="width:100%; border:none; cursor:pointer; background:rgba(255, 59, 48, 0.08); color:#FF3B30; font-family:inherit;">
+        <i class="fas fa-right-from-bracket"></i>
+        <span>Sign Out</span>
+      </button>
+
+      <div class="admin-user-pill">
+        <div class="admin-user-avatar" id="adminUserAvatar">A</div>
+        <div class="admin-user-meta">
+          <div class="admin-user-name" id="adminUserName">Admin</div>
+          <div class="admin-user-role"><i class="fas fa-shield-check text-primary"></i> <span id="adminUserRole">SuperAdmin</span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content View -->
+  <main class="admin-main">
+    <header class="admin-topbar">
+      <div class="admin-topbar-left">
+        <h1 class="admin-page-title" id="pageTitle">Operations Overview</h1>
+        <div class="admin-status-indicator" id="systemHealthBadge">
+          <span class="admin-pulse-dot"></span>
+          <span id="systemHealthText">Operational</span>
+        </div>
+      </div>
+
+      <div class="admin-topbar-actions">
+        <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="flushCache()" title="Purge in-memory screen stages cache">
+          <i class="fas fa-bolt text-warning"></i> Flush Cache
+        </button>
+        <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="toggleTheme()" title="Toggle color scheme">
+          <i class="fas fa-moon" id="themeIcon"></i>
+        </button>
+      </div>
+    </header>
+
+    <div class="admin-content">
+
+      <!-- SECTION 1: OVERVIEW -->
+      <section id="sec-overview" class="admin-section active">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <span class="kpi-card-label">Registered Users</span>
+              <div class="kpi-card-icon"><i class="fas fa-users"></i></div>
+            </div>
+            <div class="kpi-card-value" id="kpiTotalUsers">-</div>
+            <div class="kpi-card-sub">
+              <span><strong id="kpiActiveUsers">-</strong> Active</span> • 
+              <span><strong id="kpiAdminUsers">-</strong> Admins</span>
+              <span id="kpiPendingWrap" style="display:none;"> • <strong id="kpiPendingUsers" style="color:#FF9500;">0</strong> Pending</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <span class="kpi-card-label">Stock Universe</span>
+              <div class="kpi-card-icon"><i class="fas fa-layer-group"></i></div>
+            </div>
+            <div class="kpi-card-value" id="kpiTotalSymbols">3,162</div>
+            <div class="kpi-card-sub">
+              <i class="fas fa-calendar-check text-success"></i>
+              <span>Latest Date: <strong id="kpiLatestDate">2026-09-25</strong></span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <span class="kpi-card-label">Signals & Records</span>
+              <div class="kpi-card-icon"><i class="fas fa-chart-line"></i></div>
+            </div>
+            <div class="kpi-card-value" id="kpiTotalRecords">8.1M</div>
+            <div class="kpi-card-sub">
+              <i class="fas fa-bullseye text-primary"></i>
+              <span><strong id="kpiPatternEvents">29,986</strong> Breakout Events</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <span class="kpi-card-label">Database Latency</span>
+              <div class="kpi-card-icon"><i class="fas fa-gauge-high"></i></div>
+            </div>
+            <div class="kpi-card-value" id="kpiDbLatency">1.2ms</div>
+            <div class="kpi-card-sub">
+              <i class="fas fa-circle-check text-success"></i>
+              <span>Pool Size: 15 (Active & Healthy)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fas fa-clock-rotate-left text-primary"></i> Recent Administrative Activity</div>
+            <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="loadOverview()"><i class="fas fa-rotate"></i> Refresh</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Admin</th>
+                  <th>Action</th>
+                  <th>Target Type</th>
+                  <th>Target ID</th>
+                  <th>IP Address</th>
+                </tr>
+              </thead>
+              <tbody id="overviewRecentLogs">
+                <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Loading activity stream...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- SECTION 2: USERS -->
+      <section id="sec-users" class="admin-section">
+        <!-- Pending Requests Alert Banner -->
+        <div id="pendingUsersBanner" style="display:none; margin-bottom:1.25rem; padding:1rem 1.25rem; border-radius:10px; background:rgba(255, 149, 0, 0.12); border:1px solid rgba(255, 149, 0, 0.3); align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:0.85rem;">
+            <div style="width:36px; height:36px; border-radius:8px; background:rgba(255, 149, 0, 0.2); display:flex; align-items:center; justify-content:center; color:#FF9500; font-size:1.1rem;">
+              <i class="fas fa-user-clock"></i>
+            </div>
+            <div>
+              <div style="font-weight:600; font-size:0.92rem; color:var(--text-primary);">Pending User Registration Requests</div>
+              <div style="font-size:0.8rem; color:var(--text-secondary);" id="pendingBannerText">New user registrations require administrator approval before access is granted.</div>
+            </div>
+          </div>
+          <button class="admin-btn admin-btn-warning admin-btn-sm" onclick="filterToPending()"><i class="fas fa-filter"></i> Review Pending Requests</button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fas fa-users-gear text-primary"></i> User Directory & Access Control</div>
+            <div class="panel-filters">
+              <div class="panel-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="userSearchInput" placeholder="Search name or email..." oninput="debounceUserSearch()">
+              </div>
+              <select class="panel-select" id="userApprovalFilter" onchange="loadUsers()">
+                <option value="">All Approvals</option>
+                <option value="pending">⏳ Pending Approval</option>
+                <option value="approved">✓ Approved</option>
+                <option value="rejected">✕ Rejected</option>
+              </select>
+              <select class="panel-select" id="userRoleFilter" onchange="loadUsers()">
+                <option value="">All Roles</option>
+                <option value="admin">Administrators</option>
+                <option value="user">Regular Users</option>
+              </select>
+              <select class="panel-select" id="userStatusFilter" onchange="loadUsers()">
+                <option value="">All Access States</option>
+                <option value="active">Active</option>
+                <option value="blocked">Blocked / Deactivated</option>
+                <option value="expired">Expired (365d completed)</option>
+              </select>
+              <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="openCreateUserModal()">
+                <i class="fas fa-plus"></i> New User / Admin
+              </button>
+            </div>
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">ID</th>
+                  <th style="min-width: 170px;">User Profile</th>
+                  <th style="width: 110px;">Role</th>
+                  <th style="width: 120px;">Approval</th>
+                  <th style="width: 100px;">Status</th>
+                  <th style="width: 150px;">365-Day Validity</th>
+                  <th style="width: 85px;">Provider</th>
+                  <th style="min-width: 230px; text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="8" style="text-align:center; color:var(--text-muted);">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel-footer">
+            <span id="userPaginationInfo">Showing page 1</span>
+            <div class="pagination-btns">
+              <button class="admin-btn admin-btn-secondary admin-btn-sm" id="userPrevBtn" onclick="prevUserPage()"><i class="fas fa-chevron-left"></i></button>
+              <button class="admin-btn admin-btn-secondary admin-btn-sm" id="userNextBtn" onclick="nextUserPage()"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- SECTION 3: MARKET DATA -->
+      <section id="sec-market-data" class="admin-section">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-card-header"><span class="kpi-card-label">Total Tickers</span><div class="kpi-card-icon"><i class="fas fa-tags"></i></div></div>
+            <div class="kpi-card-value" id="mdTotalTickers">3,162</div>
+            <div class="kpi-card-sub"><i class="fas fa-check text-success"></i> Clean Active Symbols</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header"><span class="kpi-card-label">Historical Signal Rows</span><div class="kpi-card-icon"><i class="fas fa-chart-column"></i></div></div>
+            <div class="kpi-card-value" id="mdHistoricalRows">8,106,430</div>
+            <div class="kpi-card-sub">From 1991 to 2026</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header"><span class="kpi-card-label">NSE Delivery Coverage</span><div class="kpi-card-icon"><i class="fas fa-truck-ramp-box"></i></div></div>
+            <div class="kpi-card-value" id="mdDeliveryCoverage">100%</div>
+            <div class="kpi-card-sub">Recent lookback trading days</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header"><span class="kpi-card-label">Data Sync Status</span><div class="kpi-card-icon"><i class="fas fa-arrows-rotate"></i></div></div>
+            <div class="kpi-card-value" id="mdSyncBadge" style="font-size:1.4rem; color:#34C759;">UP TO DATE</div>
+            <div class="kpi-card-sub">Latest Date: <span id="mdLatestTradingDate">2026-09-25</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fas fa-table-list text-primary"></i> Universe Symbols Inspector</div>
+            <div class="panel-filters">
+              <div class="panel-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="symbolSearchInput" placeholder="Filter ticker (e.g. RELIANCE)..." oninput="debounceSymbolSearch()">
+              </div>
+              <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="promptDataRefresh()">
+                <i class="fas fa-cloud-arrow-down"></i> Sync Verification
+              </button>
+            </div>
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Earliest Date</th>
+                  <th>Latest Date</th>
+                  <th>Total Rows</th>
+                  <th>Delivery Status</th>
+                </tr>
+              </thead>
+              <tbody id="symbolsTableBody">
+                <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Loading symbols...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-footer">
+            <span id="symbolPaginationInfo">Showing page 1</span>
+            <div class="pagination-btns">
+              <button class="admin-btn admin-btn-secondary admin-btn-sm" id="symbolPrevBtn" onclick="prevSymbolPage()"><i class="fas fa-chevron-left"></i></button>
+              <button class="admin-btn admin-btn-secondary admin-btn-sm" id="symbolNextBtn" onclick="nextSymbolPage()"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- SECTION 4: SCANNERS -->
+      <section id="sec-scanners" class="admin-section">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fas fa-crosshairs text-primary"></i> Preset Pattern Scanners & Strategy Telemetry</div>
+            <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="loadScanners()"><i class="fas fa-rotate"></i> Refresh Metrics</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Scanner Strategy</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Win Rate</th>
+                  <th>Avg Return</th>
+                  <th>Profit Factor</th>
+                  <th>Max Drawdown</th>
+                  <th>5D / 10D / 20D / 40D Return</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="scannersTableBody">
+                <tr><td colspan="9" style="text-align:center; color:var(--text-muted);">Loading scanners...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- SECTION 5: MONITORING -->
+      <section id="sec-monitoring" class="admin-section">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-card-header"><span class="kpi-card-label">App Process Memory</span><div class="kpi-card-icon"><i class="fas fa-memory"></i></div></div>
+            <div class="kpi-card-value" id="monProcessRam">-</div>
+            <div class="kpi-card-sub">FastAPI CPython Process RSS</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header"><span class="kpi-card-label">Total System RAM</span><div class="kpi-card-icon"><i class="fas fa-microchip"></i></div></div>
+            <div class="kpi-card-value" id="monSystemRam">-</div>
+            <div class="kpi-card-sub" id="monSystemRamPercent">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header"><span class="kpi-card-label">Python Environment</span><div class="kpi-card-icon"><i class="fab fa-python"></i></div></div>
+            <div class="kpi-card-value" id="monPythonVer">3.11.9</div>
+            <div class="kpi-card-sub">MySQL Connector Pooling</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header"><span class="kpi-card-label">In-Memory Cache</span><div class="kpi-card-icon"><i class="fas fa-bolt"></i></div></div>
+            <div class="kpi-card-value">Active</div>
+            <div class="kpi-card-sub"><button class="admin-btn admin-btn-danger admin-btn-sm" style="padding:2px 8px;" onclick="flushCache()">Clear Now</button></div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fas fa-hard-drive text-primary"></i> Database Storage by Table</div>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr><th>Table Name</th><th>Rows Count</th><th>Size on Disk (MB)</th></tr>
+                </thead>
+                <tbody id="monDbTables">
+                  <tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Loading tables...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title"><i class="fas fa-list-check text-primary"></i> Nightly Pipeline & Background Jobs</div>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr><th>Job Name</th><th>Status</th><th>Duration</th><th>Records</th><th>Triggered By</th></tr>
+                </thead>
+                <tbody id="monJobsTable">
+                  <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Loading jobs...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- SECTION 6: SECURITY -->
+      <section id="sec-security" class="admin-section">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fas fa-shield-halved text-primary"></i> Immutable Audit Trail</div>
+            <div class="panel-filters">
+              <select class="panel-select" id="auditActionFilter" onchange="loadAuditLogs()">
+                <option value="">All Action Types</option>
+                <option value="USER_ROLE_CHANGE">Role Changes</option>
+                <option value="USER_DEACTIVATE">Deactivations</option>
+                <option value="USER_ACTIVATE">Activations</option>
+                <option value="SESSIONS_REVOKE">Session Revocations</option>
+                <option value="SCANNER_TOGGLE">Scanner Toggles</option>
+                <option value="SETTING_UPDATE">Setting Updates</option>
+                <option value="CACHE_FLUSH_ALL">Cache Flushes</option>
+              </select>
+              <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="loadAuditLogs()"><i class="fas fa-rotate"></i></button>
+            </div>
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Admin</th>
+                  <th>Action</th>
+                  <th>Target Type</th>
+                  <th>Target ID</th>
+                  <th>Details</th>
+                  <th>IP Address</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Loading audit logs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-footer">
+            <span id="auditPaginationInfo">Showing page 1</span>
+            <div class="pagination-btns">
+              <button class="admin-btn admin-btn-secondary admin-btn-sm" id="auditPrevBtn" onclick="prevAuditPage()"><i class="fas fa-chevron-left"></i></button>
+              <button class="admin-btn admin-btn-secondary admin-btn-sm" id="auditNextBtn" onclick="nextAuditPage()"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- SECTION 7: SETTINGS -->
+      <section id="sec-settings" class="admin-section">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fas fa-toggle-on text-primary"></i> Application Feature Flags</div>
+          </div>
+          <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;" id="featureFlagsContainer">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title"><i class="fas fa-bullhorn text-warning"></i> Global Broadcast Announcement</div>
+          </div>
+          <div style="padding: 1.5rem;">
+            <div style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <strong>Broadcast Banner Active</strong>
+                <div style="font-size:0.8rem; color:var(--text-muted);">Display an alert banner across all platform header pages</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="settingAnnounceToggle" onchange="saveAnnouncementSetting()">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+              <select class="panel-select" id="settingAnnounceType" style="width: 140px;" onchange="saveAnnouncementSetting()">
+                <option value="info">Info (Blue)</option>
+                <option value="warning">Warning (Orange)</option>
+                <option value="success">Success (Green)</option>
+                <option value="danger">Critical (Red)</option>
+              </select>
+              <input type="text" id="settingAnnounceText" class="panel-select" style="flex:1;" placeholder="Enter announcement text..." onchange="saveAnnouncementSetting()">
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="border-color: rgba(255, 59, 48, 0.3);">
+          <div class="panel-header" style="background: rgba(255, 59, 48, 0.04);">
+            <div class="panel-title" style="color: #FF3B30;"><i class="fas fa-triangle-exclamation"></i> Maintenance Mode</div>
+          </div>
+          <div style="padding: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <strong>Emergency Maintenance Lockdown</strong>
+              <div style="font-size:0.8rem; color:var(--text-muted);">Blocks non-administrator users with a 503 Maintenance notice while allowing admin console access.</div>
+            </div>
+            <button class="admin-btn admin-btn-danger" id="maintenanceBtn" onclick="confirmMaintenanceToggle()">
+              Toggle Maintenance Mode
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Confirmation Modal -->
+  <div class="modal-backdrop" id="confirmModal">
+    <div class="modal-dialog">
+      <h3 class="modal-title" id="confirmModalTitle">Confirm Action</h3>
+      <div class="modal-body" id="confirmModalBody">Are you sure you want to proceed with this administrative action?</div>
+      <div class="modal-actions">
+        <button class="admin-btn admin-btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+        <button class="admin-btn admin-btn-primary" id="confirmModalActionBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create User / Admin Modal -->
+  <div class="modal-overlay" id="createUserModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fas fa-user-plus text-primary"></i> Create User or Administrator</div>
+        <button class="modal-close" onclick="closeCreateUserModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.25rem;">
+          Directly provision a new account. The user will be automatically approved with active access.
+        </p>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem; color:var(--text-secondary);">Full Name</label>
+          <input type="text" id="newUserName" class="admin-input" placeholder="e.g. John Doe">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem; color:var(--text-secondary);">Email Address</label>
+          <input type="email" id="newUserEmail" class="admin-input" placeholder="user@company.com">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem; color:var(--text-secondary);">Password (min 12 chars, letters & digits)</label>
+          <input type="password" id="newUserPassword" class="admin-input" placeholder="••••••••••••">
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div class="form-group">
+            <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem; color:var(--text-secondary);">Role</label>
+            <select id="newUserRole" class="panel-select" style="width:100%;">
+              <option value="user">Regular User</option>
+              <option value="admin">Administrator (Full Access)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem; color:var(--text-secondary);">Validity Period</label>
+            <select id="newUserValidity" class="panel-select" style="width:100%;">
+              <option value="365" selected>365 Days (1 Year)</option>
+              <option value="180">180 Days (6 Months)</option>
+              <option value="90">90 Days (3 Months)</option>
+              <option value="730">730 Days (2 Years)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="admin-btn admin-btn-secondary" onclick="closeCreateUserModal()">Cancel</button>
+        <button class="admin-btn admin-btn-primary" onclick="submitCreateUser()"><i class="fas fa-check"></i> Create Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    /* ─────────────────────────────────────────────────────────────
+       StockPro Admin Console Frontend Engine
+    ───────────────────────────────────────────────────────────── */
+    let currentAdminUser = null;
+    let csrfToken = '';
+    let userPage = 1;
+    let symbolPage = 1;
+    let auditPage = 1;
+
+    // Read CSRF Token from cookie
+    function getCsrfToken() {
+      const match = document.cookie.match(new RegExp('(^| )csrf_token=([^;]+)'));
+      return match ? decodeURIComponent(match[2]) : '';
+    }
+
+    // Toast notifications
+    function showToast(message, type = 'info') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = `admin-toast ${type}`;
+      t.innerHTML = `<i class="fas fa-${type === 'success' ? 'circle-check' : (type === 'error' ? 'circle-xmark' : 'circle-info')}"></i> <span>${message}</span>`;
+      c.appendChild(t);
+      setTimeout(() => { t.remove(); }, 3500);
+    }
+
+    // Modal Helpers
+    let _confirmCallback = null;
+    function openConfirmModal(title, body, btnText, btnClass, callback) {
+      document.getElementById('confirmModalTitle').innerText = title;
+      document.getElementById('confirmModalBody').innerText = body;
+      const btn = document.getElementById('confirmModalActionBtn');
+      btn.innerText = btnText;
+      btn.className = `admin-btn ${btnClass}`;
+      _confirmCallback = callback;
+      document.getElementById('confirmModal').classList.add('show');
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirmModal').classList.remove('show');
+      _confirmCallback = null;
+    }
+
+    document.getElementById('confirmModalActionBtn').addEventListener('click', () => {
+      if (_confirmCallback) _confirmCallback();
+      closeConfirmModal();
+    });
+
+    // Navigation and Routing
+    function navigateSection(sectionName, pushState = true) {
+      document.querySelectorAll('.admin-nav-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.section === sectionName);
+      });
+      document.querySelectorAll('.admin-section').forEach(el => {
+        el.classList.toggle('active', el.id === `sec-${sectionName}`);
+      });
+
+      const titles = {
+        'overview': 'Operations Overview',
+        'users': 'User Management & Permissions',
+        'market-data': 'Stock Universe & Sync Health',
+        'scanners': 'Scanners & Strategies Engine',
+        'monitoring': 'System Health & Pipeline Jobs',
+        'security': 'Security Events & Audit Trail',
+        'settings': 'Runtime Configuration & Settings'
+      };
+      document.getElementById('pageTitle').innerText = titles[sectionName] || 'Admin Console';
+
+      if (pushState) {
+        const path = sectionName === 'overview' ? '/admin' : `/admin/${sectionName}`;
+        window.history.pushState({ section: sectionName }, '', path);
+      }
+
+      // Load data for section
+      if (sectionName === 'overview') loadOverview();
+      else if (sectionName === 'users') loadUsers();
+      else if (sectionName === 'market-data') loadMarketData();
+      else if (sectionName === 'scanners') loadScanners();
+      else if (sectionName === 'monitoring') loadMonitoring();
+      else if (sectionName === 'security') loadAuditLogs();
+      else if (sectionName === 'settings') loadSettings();
+    }
+
+    window.addEventListener('popstate', () => {
+      syncSectionFromUrl();
+    });
+
+    function syncSectionFromUrl() {
+      const path = window.location.pathname.replace(/\/$/, '');
+      const map = {
+        '/admin': 'overview',
+        '/admin/users': 'users',
+        '/admin/market-data': 'market-data',
+        '/admin/scanners': 'scanners',
+        '/admin/monitoring': 'monitoring',
+        '/admin/security': 'security',
+        '/admin/settings': 'settings'
+      };
+      const sec = map[path] || 'overview';
+      navigateSection(sec, false);
+    }
+
+    // Theme toggle
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      if (next === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      localStorage.setItem('stockpro_theme', next);
+      const icon = document.getElementById('themeIcon');
+      if (icon) {
+        icon.className = next === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+      }
+    }
+
+    async function logoutAdmin() {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      } catch (e) {}
+      window.location.href = '/login';
+    }
+
+    // ── API DATA LOADERS ──────────────────────────────────────
+
+    // 1. Overview
+    async function loadOverview() {
+      try {
+        const res = await fetch('/api/admin/overview', { credentials: 'same-origin' });
+        if (res.status === 401 || res.status === 403) {
+          window.location.href = '/login?redirect=/admin';
+          return;
+        }
+        const data = await res.json();
+        
+        document.getElementById('kpiTotalUsers').innerText = data.users.total.toLocaleString();
+        document.getElementById('kpiActiveUsers').innerText = data.users.active.toLocaleString();
+        document.getElementById('kpiAdminUsers').innerText = data.users.admins.toLocaleString();
+
+        if (data.users.pending_approvals > 0) {
+          document.getElementById('kpiPendingWrap').style.display = 'inline';
+          document.getElementById('kpiPendingUsers').innerText = data.users.pending_approvals;
+          const navBadge = document.getElementById('pendingNavBadge');
+          if (navBadge) {
+            navBadge.style.display = 'inline-flex';
+            navBadge.innerText = data.users.pending_approvals;
+          }
+        } else {
+          document.getElementById('kpiPendingWrap').style.display = 'none';
+          const navBadge = document.getElementById('pendingNavBadge');
+          if (navBadge) navBadge.style.display = 'none';
+        }
+
+        document.getElementById('kpiTotalSymbols').innerText = data.market_data.total_symbols.toLocaleString();
+        document.getElementById('kpiLatestDate').innerText = data.market_data.latest_date;
+        document.getElementById('kpiTotalRecords').innerText = (data.market_data.ohlc_rows / 1000000).toFixed(1) + 'M';
+        document.getElementById('kpiPatternEvents').innerText = data.signals_and_patterns.pattern_events.toLocaleString();
+        document.getElementById('kpiDbLatency').innerText = data.system_health.db_ping_ms + 'ms';
+
+        // Maintenance state
+        const badge = document.getElementById('systemHealthBadge');
+        const text = document.getElementById('systemHealthText');
+        if (data.system_health.maintenance_mode) {
+          badge.className = 'admin-status-indicator maintenance';
+          text.innerText = 'Maintenance Active';
+        } else {
+          badge.className = 'admin-status-indicator';
+          text.innerText = 'Operational';
+        }
+
+        // Recent activity
+        const tbody = document.getElementById('overviewRecentLogs');
+        tbody.innerHTML = '';
+        if (!data.recent_activity.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No recent logs.</td></tr>';
+          return;
+        }
+        data.recent_activity.forEach(l => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${l.created_at}</td>
+            <td><strong>${l.admin_email}</strong></td>
+            <td><span class="badge badge-primary">${l.action}</span></td>
+            <td>${l.target_type}</td>
+            <td><span class="badge badge-muted">${l.target_id || '-'}</span></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${l.ip_address || '127.0.0.1'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // 2. Users Management
+    let userSearchTimeout = null;
+    function debounceUserSearch() {
+      clearTimeout(userSearchTimeout);
+      userSearchTimeout = setTimeout(() => { userPage = 1; loadUsers(); }, 300);
+    }
+
+    function filterToPending() {
+      const appFilter = document.getElementById('userApprovalFilter');
+      if (appFilter) appFilter.value = 'pending';
+      const statFilter = document.getElementById('userStatusFilter');
+      if (statFilter) statFilter.value = '';
+      userPage = 1;
+      loadUsers();
+    }
+
+    function openCreateUserModal() {
+      document.getElementById('newUserName').value = '';
+      document.getElementById('newUserEmail').value = '';
+      document.getElementById('newUserPassword').value = '';
+      document.getElementById('newUserRole').value = 'user';
+      document.getElementById('newUserValidity').value = '365';
+      document.getElementById('createUserModal').classList.add('show');
+    }
+
+    function closeCreateUserModal() {
+      document.getElementById('createUserModal').classList.remove('show');
+    }
+
+    async function submitCreateUser() {
+      const name = document.getElementById('newUserName').value.trim();
+      const email = document.getElementById('newUserEmail').value.trim();
+      const password = document.getElementById('newUserPassword').value;
+      const role = document.getElementById('newUserRole').value;
+      const validity_days = parseInt(document.getElementById('newUserValidity').value, 10) || 365;
+
+      if (!name) return showToast('Please enter full name', 'error');
+      if (!email || !email.includes('@')) return showToast('Please enter a valid email address', 'error');
+      if (!password || password.length < 12) return showToast('Password must be at least 12 characters long', 'error');
+
+      try {
+        const res = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+          credentials: 'same-origin',
+          body: JSON.stringify({ name, email, password, role, validity_days })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to create user');
+
+        showToast(data.message, 'success');
+        closeCreateUserModal();
+        loadUsers();
+        loadOverview();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadUsers() {
+      const q = document.getElementById('userSearchInput').value.trim();
+      const role = document.getElementById('userRoleFilter').value;
+      const status = document.getElementById('userStatusFilter').value;
+      const approval = document.getElementById('userApprovalFilter') ? document.getElementById('userApprovalFilter').value : '';
+
+      try {
+        const url = `/api/admin/users?page=${userPage}&limit=15&search=${encodeURIComponent(q)}&role=${role}&status=${status}&approval=${approval}`;
+        const res = await fetch(url, { credentials: 'same-origin' });
+        const data = await res.json();
+
+        // Update pending notifications
+        const pendingCount = data.pending_count || 0;
+        const banner = document.getElementById('pendingUsersBanner');
+        const navBadge = document.getElementById('pendingNavBadge');
+        if (banner) {
+          if (pendingCount > 0) {
+            banner.style.display = 'flex';
+            document.getElementById('pendingBannerText').innerText = `There are ${pendingCount} pending registration request(s) awaiting your review and approval.`;
+          } else {
+            banner.style.display = 'none';
+          }
+        }
+        if (navBadge) {
+          if (pendingCount > 0) {
+            navBadge.style.display = 'inline-flex';
+            navBadge.innerText = pendingCount;
+          } else {
+            navBadge.style.display = 'none';
+          }
+        }
+
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '';
+        if (!data.users.length) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:2rem;">No matching users found.</td></tr>';
+          return;
+        }
+
+        data.users.forEach(u => {
+          const tr = document.createElement('tr');
+          const isMe = currentAdminUser && currentAdminUser.id === u.id;
+          
+          // Approval badge
+          let approvalBadge = '';
+          if (u.approval_status === 'pending') {
+            approvalBadge = '<span class="badge badge-warning"><i class="fas fa-hourglass-half"></i> PENDING</span>';
+          } else if (u.approval_status === 'approved') {
+            approvalBadge = '<span class="badge badge-success"><i class="fas fa-check"></i> APPROVED</span>';
+          } else {
+            approvalBadge = '<span class="badge badge-danger"><i class="fas fa-xmark"></i> REJECTED</span>';
+          }
+
+          // Status badge
+          let statusBadge = '';
+          if (u.is_active) {
+            statusBadge = '<span class="badge badge-success"><i class="fas fa-circle-check"></i> Active</span>';
+          } else {
+            statusBadge = '<span class="badge badge-danger"><i class="fas fa-ban"></i> Blocked</span>';
+          }
+
+          // 365-Day Validity Badge
+          let validityBadge = '';
+          if (u.approval_status === 'pending') {
+            validityBadge = '<span class="badge badge-muted">Awaiting Approval</span>';
+          } else if (u.is_expired) {
+            validityBadge = '<span class="badge badge-danger" title="Account Access Expired"><i class="fas fa-calendar-xmark"></i> 0 / 365d (Expired)</span>';
+          } else if (u.days_remaining !== null) {
+            if (u.days_remaining <= 30) {
+              validityBadge = `<span class="badge badge-warning" title="${u.days_remaining} days remaining of 365"><i class="fas fa-clock"></i> ${u.days_remaining} / 365d left</span>`;
+            } else {
+              validityBadge = `<span class="badge badge-success" title="${u.days_remaining} days remaining of 365"><i class="fas fa-calendar-check"></i> ${u.days_remaining} / 365d left</span>`;
+            }
+          } else {
+            validityBadge = '<span class="badge badge-muted">Unlimited</span>';
+          }
+
+          // Actions
+          let actionsHtml = '';
+          if (u.approval_status === 'pending') {
+            actionsHtml = `
+              <div class="table-actions-cell" style="justify-content: flex-end;">
+                <button class="admin-btn admin-btn-primary admin-btn-sm" title="Approve Request (Grant 365-Day Access)" onclick="promptApproveUser(${u.id}, '${u.email}')">
+                  <i class="fas fa-check"></i> Approve
+                </button>
+                <button class="admin-btn admin-btn-secondary admin-btn-sm" title="Reject Request" onclick="promptRejectUser(${u.id}, '${u.email}')">
+                  <i class="fas fa-xmark text-danger"></i> Reject
+                </button>
+                <button class="admin-btn admin-btn-danger admin-btn-sm" title="Delete Request" onclick="promptDeleteUser(${u.id}, '${u.email}')">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            `;
+          } else {
+            actionsHtml = `
+              <div class="table-actions-cell" style="justify-content: flex-end;">
+                <button class="admin-btn admin-btn-secondary admin-btn-sm" title="Toggle Role (Admin / User)" onclick="promptRoleChange(${u.id}, '${u.email}', '${u.role}')">
+                  <i class="fas fa-user-gear"></i> Role
+                </button>
+                <button class="admin-btn ${u.is_active ? 'admin-btn-secondary' : 'admin-btn-warning'} admin-btn-sm" title="${u.is_active ? 'Block Access' : 'Unblock Access'}" onclick="promptStatusToggle(${u.id}, '${u.email}', ${u.is_active})">
+                  <i class="fas fa-${u.is_active ? 'ban text-danger' : 'unlock text-success'}"></i> ${u.is_active ? 'Block' : 'Unblock'}
+                </button>
+                <button class="admin-btn admin-btn-secondary admin-btn-sm" title="Extend Validity by 365 Days" onclick="promptRenewUser(${u.id}, '${u.email}')">
+                  <i class="fas fa-calendar-plus text-primary"></i> +365d
+                </button>
+                <button class="admin-btn admin-btn-secondary admin-btn-sm" title="Revoke Active Sessions" onclick="promptRevokeSessions(${u.id}, '${u.email}')">
+                  <i class="fas fa-right-from-bracket"></i>
+                </button>
+                <button class="admin-btn admin-btn-danger admin-btn-sm" title="Permanently Remove User" onclick="promptDeleteUser(${u.id}, '${u.email}')">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            `;
+          }
+
+          tr.innerHTML = `
+            <td style="font-family:'JetBrains Mono',monospace;">#${u.id}</td>
+            <td>
+              <div style="font-weight:600;">${u.name} ${isMe ? '<span class="badge badge-primary" style="font-size:0.65rem;">You</span>' : ''}</div>
+              <div style="font-size:0.78rem; color:var(--text-muted);">${u.email}</div>
+            </td>
+            <td>
+              <span class="badge ${u.role === 'admin' ? 'badge-primary' : 'badge-muted'}">
+                <i class="fas fa-${u.role === 'admin' ? 'shield' : 'user'}"></i> ${u.role.toUpperCase()}
+              </span>
+            </td>
+            <td>${approvalBadge}</td>
+            <td>${statusBadge}</td>
+            <td>${validityBadge}</td>
+            <td><span class="badge badge-muted">${u.auth_provider}</span></td>
+            <td style="text-align: right;">${actionsHtml}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('userPaginationInfo').innerText = `Showing Page ${data.page} of ${data.total_pages} (${data.total_count} total)`;
+        document.getElementById('userPrevBtn').disabled = data.page <= 1;
+        document.getElementById('userNextBtn').disabled = data.page >= data.total_pages;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function prevUserPage() { if (userPage > 1) { userPage--; loadUsers(); } }
+    function nextUserPage() { userPage++; loadUsers(); }
+
+    function promptApproveUser(userId, email) {
+      openConfirmModal(
+        'Approve User Registration',
+        `Approve registration for ${email}? This will activate the account and grant 365 days of platform access.`,
+        'Approve & Grant 365d Access',
+        'admin-btn-primary',
+        async () => {
+          try {
+            const res = await fetch(`/api/admin/users/${userId}/approve`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+              credentials: 'same-origin',
+              body: JSON.stringify({ validity_days: 365 })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to approve user');
+            showToast(data.message, 'success');
+            loadUsers();
+            loadOverview();
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
+        }
+      );
+    }
+
+    function promptRejectUser(userId, email) {
+      openConfirmModal(
+        'Reject User Registration',
+        `Are you sure you want to reject the registration request for ${email}?`,
+        'Reject Request',
+        'admin-btn-danger',
+        async () => {
+          try {
+            const res = await fetch(`/api/admin/users/${userId}/reject`, {
+              method: 'POST',
+              headers: { 'X-CSRF-Token': getCsrfToken() },
+              credentials: 'same-origin'
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to reject user');
+            showToast(data.message, 'success');
+            loadUsers();
+            loadOverview();
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
+        }
+      );
+    }
+
+    function promptRenewUser(userId, email) {
+      openConfirmModal(
+        'Renew / Extend Validity',
+        `Extend access validity for ${email} by 365 days?`,
+        'Extend 365 Days',
+        'admin-btn-primary',
+        async () => {
+          try {
+            const res = await fetch(`/api/admin/users/${userId}/renew`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+              credentials: 'same-origin',
+              body: JSON.stringify({ days: 365 })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to renew user validity');
+            showToast(data.message, 'success');
+            loadUsers();
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
+        }
+      );
+    }
+
+    function promptDeleteUser(userId, email) {
+      openConfirmModal(
+        'Permanently Remove User',
+        `Are you sure you want to permanently delete ${email}? All user access and saved configurations will be removed. This cannot be undone.`,
+        'Permanently Remove',
+        'admin-btn-danger',
+        async () => {
+          try {
+            const res = await fetch(`/api/admin/users/${userId}`, {
+              method: 'DELETE',
+              headers: { 'X-CSRF-Token': getCsrfToken() },
+              credentials: 'same-origin'
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to delete user');
+            showToast(data.message, 'success');
+            loadUsers();
+            loadOverview();
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
+        }
+      );
+    }
+
+    function promptRoleChange(userId, email, currentRole) {
+      const newRole = currentRole === 'admin' ? 'user' : 'admin';
+      openConfirmModal(
+        'Confirm Role Change',
+        `Are you sure you want to change the role of ${email} to ${newRole.toUpperCase()}?`,
+        `Set to ${newRole.toUpperCase()}`,
+        'admin-btn-primary',
+        async () => {
+          try {
+            const res = await fetch(`/api/admin/users/${userId}/role`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+              credentials: 'same-origin',
+              body: JSON.stringify({ role: newRole })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to update role');
+            showToast(data.message, 'success');
+            loadUsers();
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
+        }
+      );
+    }
+
+    function promptStatusToggle(userId, email, isActive) {
+      const nextStatus = !isActive;
+      openConfirmModal(
+        nextStatus ? 'Unblock User Access' : 'Block User Access',
+        nextStatus 
+          ? `Are you sure you want to unblock and restore platform access for ${email}?` 
+          : `Are you sure you want to block access for ${email}? Their active sessions will be terminated immediately.`,
+        nextStatus ? 'Unblock Access' : 'Block Access',
+        nextStatus ? 'admin-btn-primary' : 'admin-btn-danger',
+        async () => {
+          try {
+            const res = await fetch(`/api/admin/users/${userId}/status`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+              credentials: 'same-origin',
+              body: JSON.stringify({ is_active: nextStatus })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to update status');
+            showToast(data.message, 'success');
+            loadUsers();
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
+        }
+      );
+    }
+
+    function promptRevokeSessions(userId, email) {
+      openConfirmModal(
+        'Revoke Active Sessions',
+        `This will immediately invalidate all active JWT login sessions across all devices for ${email}. Continue?`,
+        'Revoke Sessions',
+        'admin-btn-danger',
+        async () => {
+          try {
+            const res = await fetch(`/api/admin/users/${userId}/revoke-sessions`, {
+              method: 'POST',
+              headers: { 'X-CSRF-Token': getCsrfToken() },
+              credentials: 'same-origin'
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to revoke sessions');
+            showToast(data.message, 'success');
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
+        }
+      );
+    }
+
+    // 3. Market Data
+    async function loadMarketData() {
+      try {
+        const res = await fetch('/api/admin/market-data/status', { credentials: 'same-origin' });
+        const data = await res.json();
+
+        document.getElementById('mdTotalTickers').innerText = data.ohlc_data.symbols.toLocaleString();
+        document.getElementById('mdHistoricalRows').innerText = data.historical_signals.total_rows.toLocaleString();
+        document.getElementById('mdDeliveryCoverage').innerText = data.ohlc_data.delivery_coverage_pct + '%';
+        document.getElementById('mdLatestTradingDate').innerText = data.ohlc_data.latest_date || 'N/A';
+
+        const syncBadge = document.getElementById('mdSyncBadge');
+        if (data.sync_status === 'UP_TO_DATE') {
+          syncBadge.innerText = 'UP TO DATE';
+          syncBadge.style.color = '#34C759';
+        } else {
+          syncBadge.innerText = 'NEEDS SYNC';
+          syncBadge.style.color = '#FF9500';
+        }
+
+        loadSymbolsTable();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    let symbolSearchTimeout = null;
+    function debounceSymbolSearch() {
+      clearTimeout(symbolSearchTimeout);
+      symbolSearchTimeout = setTimeout(() => { symbolPage = 1; loadSymbolsTable(); }, 300);
+    }
+
+    async function loadSymbolsTable() {
+      const q = document.getElementById('symbolSearchInput').value.trim();
+      try {
+        const res = await fetch(`/api/admin/market-data/symbols?page=${symbolPage}&limit=20&search=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
+        const data = await res.json();
+
+        const tbody = document.getElementById('symbolsTableBody');
+        tbody.innerHTML = '';
+        if (!data.symbols.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">No matching symbols.</td></tr>';
+          return;
+        }
+
+        data.symbols.forEach(s => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${s.ticker}</strong></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${s.first_date}</td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${s.last_date}</td>
+            <td style="font-family:'JetBrains Mono',monospace;">${s.rows_count.toLocaleString()}</td>
+            <td>
+              <span class="badge ${s.has_delivery ? 'badge-success' : 'badge-muted'}">
+                <i class="fas fa-${s.has_delivery ? 'check' : 'minus'}"></i> ${s.has_delivery ? 'Delivery Active' : 'No Delivery'}
+              </span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('symbolPaginationInfo').innerText = `Showing Page ${data.page} of ${data.total_pages} (${data.total_count} total)`;
+        document.getElementById('symbolPrevBtn').disabled = data.page <= 1;
+        document.getElementById('symbolNextBtn').disabled = data.page >= data.total_pages;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function prevSymbolPage() { if (symbolPage > 1) { symbolPage--; loadSymbolsTable(); } }
+    function nextSymbolPage() { symbolPage++; loadSymbolsTable(); }
+
+    function promptDataRefresh() {
+      openConfirmModal(
+        'Verify & Refresh Market Data Pipeline',
+        'This triggers cache validation and logs a synchronization audit check. The nightly pipeline updates live at 7:00 PM IST automatically. Proceed?',
+        'Verify Pipeline',
+        'admin-btn-primary',
+        async () => {
+          try {
+            const res = await fetch('/api/admin/market-data/refresh', {
+              method: 'POST',
+              headers: { 'X-CSRF-Token': getCsrfToken() },
+              credentials: 'same-origin'
+            });
+            const data = await res.json();
+            showToast(data.message, 'success');
+            loadMarketData();
+          } catch (e) {
+            showToast(e.message, 'error');
+          }
+        }
+      );
+    }
+
+    // 4. Scanners & Strategies
+    async function loadScanners() {
+      try {
+        const res = await fetch('/api/admin/scanners', { credentials: 'same-origin' });
+        const scanners = await res.json();
+
+        const tbody = document.getElementById('scannersTableBody');
+        tbody.innerHTML = '';
+        scanners.forEach(sc => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>
+              <div style="font-weight:600;">${sc.name}</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); max-width:320px;">${sc.description || ''}</div>
+            </td>
+            <td><span class="badge badge-muted">${sc.category}</span></td>
+            <td>
+              <span class="badge ${sc.is_enabled ? 'badge-success' : 'badge-danger'}">
+                ${sc.is_enabled ? 'Active' : 'Disabled'}
+              </span>
+            </td>
+            <td style="font-weight:700; color:${sc.win_rate >= 60 ? '#34C759' : '#0071E3'}; font-family:'JetBrains Mono',monospace;">
+              ${sc.win_rate.toFixed(1)}%
+            </td>
+            <td style="font-weight:600; font-family:'JetBrains Mono',monospace;">+${sc.avg_return.toFixed(1)}%</td>
+            <td style="font-weight:600; font-family:'JetBrains Mono',monospace;">${sc.profit_factor.toFixed(2)}</td>
+            <td style="color:#FF3B30; font-family:'JetBrains Mono',monospace;">${sc.max_drawdown.toFixed(1)}%</td>
+            <td style="font-size:0.78rem; font-family:'JetBrains Mono',monospace;">
+              5D: <strong>+${sc.return_5d}%</strong> | 10D: <strong>+${sc.return_10d}%</strong> | 20D: <strong>+${sc.return_20d}%</strong> | 40D: <strong>+${sc.return_40d}%</strong>
+            </td>
+            <td>
+              <label class="switch">
+                <input type="checkbox" ${sc.is_enabled ? 'checked' : ''} onchange="toggleScanner('${sc.id}', this.checked)">
+                <span class="slider"></span>
+              </label>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function toggleScanner(scannerId, isEnabled) {
+      try {
+        const res = await fetch(`/api/admin/scanners/${scannerId}/toggle`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+          credentials: 'same-origin',
+          body: JSON.stringify({ is_enabled: isEnabled })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to toggle scanner');
+        showToast(data.message, 'success');
+        loadScanners();
+      } catch (e) {
+        showToast(e.message, 'error');
+        loadScanners();
+      }
+    }
+
+    // 5. Monitoring
+    async function loadMonitoring() {
+      try {
+        const res = await fetch('/api/admin/monitoring/health', { credentials: 'same-origin' });
+        const data = await res.json();
+
+        document.getElementById('monProcessRam').innerText = data.server.process_ram_mb + ' MB';
+        document.getElementById('monSystemRam').innerText = data.server.system_ram_gb + ' GB';
+        document.getElementById('monSystemRamPercent').innerText = `${data.server.system_ram_percent}% System Load`;
+        document.getElementById('monPythonVer').innerText = data.server.python_version;
+
+        // DB tables
+        const dtbody = document.getElementById('monDbTables');
+        dtbody.innerHTML = '';
+        data.database.tables.forEach(t => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${t.name}</strong></td>
+            <td style="font-family:'JetBrains Mono',monospace;">${t.rows.toLocaleString()}</td>
+            <td style="font-family:'JetBrains Mono',monospace;">${t.size_mb.toFixed(2)} MB</td>
+          `;
+          dtbody.appendChild(tr);
+        });
+
+        // Jobs
+        const jtbody = document.getElementById('monJobsTable');
+        jtbody.innerHTML = '';
+        data.background_jobs.forEach(j => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${j.name}</strong></td>
+            <td><span class="badge ${j.status === 'completed' ? 'badge-success' : (j.status === 'running' ? 'badge-primary' : 'badge-danger')}">${j.status.toUpperCase()}</span></td>
+            <td style="font-family:'JetBrains Mono',monospace;">${j.duration_sec ? j.duration_sec.toFixed(0) + 's' : '-'}</td>
+            <td style="font-family:'JetBrains Mono',monospace;">${j.records_processed ? j.records_processed.toLocaleString() : '-'}</td>
+            <td><span class="badge badge-muted">${j.triggered_by}</span></td>
+          `;
+          jtbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // 6. Security & Audit
+    async function loadAuditLogs() {
+      const action = document.getElementById('auditActionFilter').value;
+      try {
+        const res = await fetch(`/api/admin/security/audit-logs?page=${auditPage}&limit=25&action=${action}`, { credentials: 'same-origin' });
+        const data = await res.json();
+
+        const tbody = document.getElementById('auditTableBody');
+        tbody.innerHTML = '';
+        if (!data.logs.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">No audit records found.</td></tr>';
+          return;
+        }
+
+        data.logs.forEach(l => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.78rem;">${l.created_at}</td>
+            <td><strong>${l.admin_email}</strong></td>
+            <td><span class="badge badge-primary">${l.action}</span></td>
+            <td>${l.target_type}</td>
+            <td><span class="badge badge-muted">${l.target_id || '-'}</span></td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; max-width:240px; overflow:hidden; text-overflow:ellipsis;">
+              ${JSON.stringify(l.details)}
+            </td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.78rem;">${l.ip_address || '127.0.0.1'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('auditPaginationInfo').innerText = `Showing Page ${data.page} of ${data.total_pages} (${data.total_count} records)`;
+        document.getElementById('auditPrevBtn').disabled = data.page <= 1;
+        document.getElementById('auditNextBtn').disabled = data.page >= data.total_pages;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function prevAuditPage() { if (auditPage > 1) { auditPage--; loadAuditLogs(); } }
+    function nextAuditPage() { auditPage++; loadAuditLogs(); }
+
+    // 7. Settings
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/admin/settings', { credentials: 'same-origin' });
+        const grouped = await res.json();
+
+        // Feature flags
+        const ffContainer = document.getElementById('featureFlagsContainer');
+        ffContainer.innerHTML = '';
+        (grouped['feature_flags'] || []).forEach(f => {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.justifyContent = 'space-between';
+          row.style.borderBottom = '1px solid var(--admin-border)';
+          row.style.paddingBottom = '0.75rem';
+          row.innerHTML = `
+            <div>
+              <strong>${f.description || f.key}</strong>
+              <div style="font-size:0.78rem; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">${f.key}</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" ${f.value.toLowerCase() === 'true' ? 'checked' : ''} onchange="updateSingleSetting('${f.key}', this.checked ? 'true' : 'false')">
+              <span class="slider"></span>
+            </label>
+          `;
+          ffContainer.appendChild(row);
+        });
+
+        // Announcements
+        const annEnabled = (grouped['announcements'] || []).find(s => s.key === 'global_announcement_enabled');
+        const annText = (grouped['announcements'] || []).find(s => s.key === 'global_announcement_text');
+        const annType = (grouped['announcements'] || []).find(s => s.key === 'global_announcement_type');
+        if (annEnabled) document.getElementById('settingAnnounceToggle').checked = annEnabled.value.toLowerCase() === 'true';
+        if (annText) document.getElementById('settingAnnounceText').value = annText.value;
+        if (annType) document.getElementById('settingAnnounceType').value = annType.value;
+
+        // Maintenance state
+        const maint = (grouped['maintenance'] || []).find(s => s.key === 'maintenance_mode');
+        const isMaint = maint && maint.value.toLowerCase() === 'true';
+        const mBtn = document.getElementById('maintenanceBtn');
+        if (isMaint) {
+          mBtn.className = 'admin-btn admin-btn-primary';
+          mBtn.innerText = 'Disable Maintenance Mode';
+        } else {
+          mBtn.className = 'admin-btn admin-btn-danger';
+          mBtn.innerText = 'Enable Maintenance Mode';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function updateSingleSetting(key, val) {
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+          credentials: 'same-origin',
+          body: JSON.stringify({ key, value: val })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to update setting');
+        showToast(data.message, 'success');
+      } catch (e) {
+        showToast(e.message, 'error');
+        loadSettings();
+      }
+    }
+
+    function saveAnnouncementSetting() {
+      const enabled = document.getElementById('settingAnnounceToggle').checked ? 'true' : 'false';
+      const text = document.getElementById('settingAnnounceText').value.trim();
+      const type = document.getElementById('settingAnnounceType').value;
+
+      fetch('/api/admin/settings/batch', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          settings: {
+            'global_announcement_enabled': enabled,
+            'global_announcement_text': text,
+            'global_announcement_type': type
+          }
+        })
+      }).then(r => r.json()).then(data => {
+        showToast('Announcement configuration updated.', 'success');
+      }).catch(e => {
+        showToast(e.message, 'error');
+      });
+    }
+
+    function confirmMaintenanceToggle() {
+      const isMaint = document.getElementById('maintenanceBtn').innerText.includes('Disable');
+      openConfirmModal(
+        isMaint ? 'Disable Maintenance Mode' : 'Enable Maintenance Mode',
+        isMaint 
+          ? 'Normal user operations will resume immediately.' 
+          : 'Enabling Maintenance Mode will block non-admin users with a 503 notice. All administrator consoles remain active. Proceed?',
+        isMaint ? 'Resume Normal Mode' : 'Activate Lockdown',
+        isMaint ? 'admin-btn-primary' : 'admin-btn-danger',
+        () => {
+          updateSingleSetting('maintenance_mode', isMaint ? 'false' : 'true').then(() => {
+            loadSettings();
+            loadOverview();
+          });
+        }
+      );
+    }
+
+    async function flushCache() {
+      try {
+        const res = await fetch('/api/admin/monitoring/cache/flush', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': getCsrfToken() },
+          credentials: 'same-origin'
+        });
+        const data = await res.json();
+        showToast(data.message, 'success');
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    // Fetch current user and initialize
+    async function initAdmin() {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        if (res.status === 401 || res.status === 403) {
+          window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+          return;
+        }
+        const user = await res.json();
+        if (user.role !== 'admin') {
+          window.location.href = '/?error=unauthorized_admin';
+          return;
+        }
+        currentAdminUser = user;
+        document.getElementById('adminUserName').innerText = user.name || 'Admin';
+        document.getElementById('adminUserAvatar').innerText = (user.name || 'A')[0].toUpperCase();
+        document.getElementById('adminUserRole').innerText = user.role.toUpperCase();
+
+        syncSectionFromUrl();
+      } catch (err) {
+        window.location.href = '/login?redirect=/admin';
+      }
+    }
+
+    initAdmin();
+  </script>
+</body>
+</html>

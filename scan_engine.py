@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -303,6 +304,34 @@ def _condition_to_clause(cond: dict) -> tuple[str, list]:
 # Date window resolution
 # ──────────────────────────────────────────────────────────────
 
+def _get_latest_active_date(conn) -> date:
+    """Return the latest legitimate active trading date with market breadth and volume."""
+    raw = conn.cursor()
+    raw.execute("""
+        SELECT Timestamp
+        FROM historical_data
+        WHERE Timestamp >= DATE_SUB((SELECT MAX(Timestamp) FROM historical_data), INTERVAL 30 DAY)
+        GROUP BY Timestamp
+        HAVING COUNT(*) >= 500 AND SUM(Volume) > 0
+        ORDER BY Timestamp DESC
+        LIMIT 1
+    """)
+    row = raw.fetchone()
+    if row and row[0]:
+        val = row[0]
+        raw.close()
+        return val.date() if hasattr(val, "date") else val
+    raw.execute("SELECT DATE(MAX(Timestamp)) FROM historical_data")
+    row = raw.fetchone()
+    raw.close()
+    if not row or not row[0]:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No data in historical_data table.",
+        )
+    return row[0]
+
+
 def _resolve_date_window(
     conditions: list[dict],
     start_date: Optional[str],
@@ -322,16 +351,7 @@ def _resolve_date_window(
     all_auto = all(c["field"] in _AUTO_WINDOW_FIELDS for c in conditions)
 
     if has_rcs or all_auto:
-        raw = conn.cursor()
-        raw.execute("SELECT DATE(MAX(Timestamp)) FROM historical_data")
-        row = raw.fetchone()
-        raw.close()
-        if not row or not row[0]:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="No data in historical_data table.",
-            )
-        last_date: date = row[0]
+        last_date = _get_latest_active_date(conn)
         if has_rcs:
             # RCS, Delivery, and Near 52W High scans lock strictly to the latest trading date available if start/end date not explicitly passed
             if start_date and end_date and not any(c["field"] in ("RCS_30D", "near_52w_high") for c in conditions):
@@ -343,17 +363,9 @@ def _resolve_date_window(
         )
 
     if not start_date or not end_date:
-        raw = conn.cursor()
-        raw.execute("SELECT DATE(MAX(Timestamp)) FROM historical_data")
-        row = raw.fetchone()
-        raw.close()
-        if row and row[0]:
-            last_date_str = row[0].strftime("%Y-%m-%d")
-            return last_date_str, last_date_str
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="'start_date' and 'end_date' are required (YYYY-MM-DD) for the selected conditions.",
-        )
+        last_date = _get_latest_active_date(conn)
+        last_date_str = last_date.strftime("%Y-%m-%d")
+        return last_date_str, last_date_str
     return start_date, end_date
 
 
@@ -366,6 +378,7 @@ def run_scan(
     logic: str = "AND",
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    limit: Optional[int] = None,
 ) -> list[dict]:
     """
     Execute a multi-condition scan against historical_data.
@@ -376,6 +389,7 @@ def run_scan(
     logic      : 'AND' | 'OR'
     start_date : 'YYYY-MM-DD'
     end_date   : 'YYYY-MM-DD'
+    limit      : Optional maximum number of rows to return
 
     Returns a list of dicts with Symbol, Timestamp, and all matched
     signal columns, deduplicated by (Symbol, Timestamp).
@@ -416,13 +430,26 @@ def run_scan(
             op = "AND" if str(cond_logic).upper() == "AND" else "OR"
             where_conditions = f"({where_conditions} {op} {frag})"
 
+        # Convert date strings into full datetime bounds so MySQL can leverage idx_timestamp range scan
+        start_ts = f"{eff_start} 00:00:00"
+        end_ts = f"{eff_end} 23:59:59"
+
+        needs_custom_sort = any(
+            f in fields_in_query
+            for f in ("delivery_momentum_signal", "RCS_30D", "rsi_divergence_score")
+        )
+
         query = (
             f"SELECT {select_cols} FROM historical_data "
-            f"WHERE DATE(Timestamp) BETWEEN %s AND %s "
+            f"WHERE Timestamp >= %s AND Timestamp <= %s "
             f"AND ({where_conditions}) "
             f"ORDER BY Timestamp DESC, Symbol ASC"
         )
-        all_params = [eff_start, eff_end] + params
+        all_params = [start_ts, end_ts] + params
+
+        if limit is not None and not needs_custom_sort:
+            query += " LIMIT %s"
+            all_params.append(limit)
 
         logger.info("scan_engine SQL: %s | params: %s", query, all_params)
 
@@ -453,7 +480,10 @@ def run_scan(
             reverse=True,
         )
 
-    # Deduplicate by (Symbol, Timestamp) and serialise datetime objects
+    if needs_custom_sort and limit is not None:
+        rows = rows[:limit]
+
+    # Deduplicate by (Symbol, Timestamp) and serialise datetime/decimal objects
     seen: set = set()
     result: list[dict] = []
     for row in rows:
@@ -464,13 +494,13 @@ def run_scan(
         if not isinstance(row["Timestamp"], str):
             row["Timestamp"] = row["Timestamp"].strftime("%Y-%m-%d %H:%M:%S")
         
-        from decimal import Decimal
-        import datetime
         for k, v in row.items():
             if isinstance(v, Decimal):
                 row[k] = float(v)
-            elif isinstance(v, (datetime.date, datetime.datetime)) and k != "Timestamp":
+            elif isinstance(v, (date, datetime)) and k != "Timestamp":
                 row[k] = str(v)
         result.append(row)
+        if limit is not None and len(result) >= limit:
+            break
 
     return result
