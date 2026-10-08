@@ -1341,6 +1341,16 @@
 
             <!-- ── STOCK CHART ── -->
             <div class="card fade-in" id="stockChartSection" style="display:none;">
+                <!-- Full Chart Return Bar (when navigated from Pattern Screen or Watchlist) -->
+                <div id="chartReturnBar" style="display:none; padding: 0.65rem 1rem; margin-bottom: 1rem; background: var(--secondary-bg); border: 1px solid var(--card-border); border-radius: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div style="font-size:0.86rem; color:var(--text-secondary); display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-arrow-left" style="color:var(--accent-primary);"></i>
+                        <span>Opened from <strong id="chartReturnScreenName" style="color:var(--text-primary);">Pattern Screen</strong></span>
+                    </div>
+                    <button class="btn btn-primary" onclick="exitChartToReturnState()" style="font-size:0.8rem; padding:5px 12px; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fas fa-undo"></i> Return to Screen
+                    </button>
+                </div>
                 <div class="card-header">
                     <h2 class="card-title"><i class="fas fa-chart-candlestick"></i> Stock Chart &amp; Indicators</h2>
                     <p class="card-subtitle">Interactive candlestick chart with live technical indicator panel</p>
@@ -1463,7 +1473,7 @@
                                 </div>
                                 <button class="btn btn-secondary" onclick="toggleChartFullscreen()"
                                     style="background:rgba(255,255,255,0.15);color:white;border:none;padding:0.4rem 0.8rem;cursor:pointer;">
-                                    <i class="fas fa-times"></i> Exit Fullscreen
+                                    <i class="fas fa-times"></i> <span id="fsExitText">Exit Fullscreen</span>
                                 </button>
                             </div>
                             <div id="lwChart">
@@ -4081,6 +4091,12 @@
             if (target) target.style.display = 'block';
             if (clickedEl) clickedEl.classList.add('active');
 
+            if (name !== 'stockChart') {
+                _fullChartReturnState = null;
+                const returnBar = document.getElementById('chartReturnBar');
+                if (returnBar) returnBar.style.display = 'none';
+            }
+
             // Side-effects on section open
             if (name === 'dashboard') loadDashboard();
             if (name === 'watchlist') loadWatchlist();
@@ -4255,7 +4271,78 @@
 
 
 
+        let _fullChartReturnState = null;
+
+        function exitChartToReturnState() {
+            if (!_fullChartReturnState) return;
+            const state = _fullChartReturnState;
+            _fullChartReturnState = null;
+
+            // Hide return bar
+            const returnBar = document.getElementById('chartReturnBar');
+            if (returnBar) returnBar.style.display = 'none';
+
+            // Exit fullscreen if still open
+            const wrap = document.getElementById('chartCanvasWrap');
+            if (wrap && wrap.classList.contains('is-fullscreen')) {
+                wrap.classList.remove('is-fullscreen');
+                const fsHeader = document.getElementById('fsHeader');
+                if (fsHeader) fsHeader.style.display = 'none';
+                const fsIcon = document.getElementById('fsIcon');
+                if (fsIcon) fsIcon.className = 'fas fa-expand';
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                }
+            }
+
+            if (state.section === 'patternScreen' && state.screenName) {
+                const navIdMap = {
+                    'vcp': 'nav-pattern-vcp',
+                    'blue-sky': 'nav-pattern-blue-sky',
+                    'multi-year-breakout': 'nav-pattern-multi-year',
+                    'high-relative-volume': 'nav-pattern-high-vol',
+                    'high-delivery-volume': 'nav-pattern-high-deliv',
+                    'rsi-divergence': 'nav-pattern-rsi-div',
+                    'ema-convergence': 'nav-pattern-ema-convergence',
+                    'golden-crossover': 'nav-pattern-golden-cross',
+                    'stage-2': 'nav-pattern-stage-2',
+                    'stage-2-stocks': 'nav-pattern-stage-2'
+                };
+                const navEl = document.getElementById(navIdMap[state.screenName] || 'nav-pattern-vcp');
+                showSection('patternScreen', navEl);
+
+                // Highlight correct sidebar item
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                if (navEl) navEl.classList.add('active');
+
+                // If bucket was selected, ensure it remains selected
+                if (state.bucket && typeof selectPatternBucket === 'function') {
+                    selectPatternBucket(state.bucket);
+                }
+            } else if (state.section === 'watchlist') {
+                const navEl = document.getElementById('nav-watchlist');
+                showSection('watchlist', navEl);
+            } else if (state.section) {
+                const navEl = document.getElementById('nav-' + state.section);
+                showSection(state.section, navEl);
+            }
+        }
+
         function viewStockChart(symbol) {
+            _fullChartReturnState = {
+                section: 'watchlist',
+                screenName: null,
+                screenTitle: 'Watchlist'
+            };
+            const returnBar = document.getElementById('chartReturnBar');
+            const returnNameEl = document.getElementById('chartReturnScreenName');
+            if (returnBar) {
+                returnBar.style.display = 'flex';
+                if (returnNameEl) returnNameEl.textContent = 'Watchlist';
+            }
+            const fsExitText = document.getElementById('fsExitText');
+            if (fsExitText) fsExitText.textContent = 'Exit to Watchlist';
+
             const selectEl = document.getElementById('chartSymbol');
             if (selectEl) {
                 let option = Array.from(selectEl.options).find(o => o.value === symbol);
@@ -4275,6 +4362,25 @@
         }
 
         function openFullChartWithRsi(symbol) {
+            // Track exact pattern screen state
+            const currentTitle = document.getElementById('patternScreenTitle')?.innerText?.trim() || 'Pattern Screen';
+            _fullChartReturnState = {
+                section: 'patternScreen',
+                screenName: currentPatternScreenName,
+                bucket: currentPatternSelectedBucket,
+                screenTitle: currentTitle
+            };
+
+            const returnBar = document.getElementById('chartReturnBar');
+            const returnNameEl = document.getElementById('chartReturnScreenName');
+            if (returnBar) {
+                returnBar.style.display = 'flex';
+                if (returnNameEl) returnNameEl.textContent = currentTitle;
+            }
+
+            const fsExitText = document.getElementById('fsExitText');
+            if (fsExitText) fsExitText.textContent = `Exit to ${currentTitle}`;
+
             // 1. Set the sub-panel dropdown to "rsi" and trigger change
             const subPanelSelect = document.getElementById('chartSubPanelSelect');
             if (subPanelSelect) {
@@ -5365,6 +5471,10 @@
                 if (document.fullscreenElement && document.exitFullscreen) {
                     document.exitFullscreen().catch(() => { });
                 }
+                if (_fullChartReturnState) {
+                    exitChartToReturnState();
+                    return;
+                }
             }
 
             const sym = document.getElementById('chartSymbol').value || 'STOCK CHART';
@@ -5399,6 +5509,10 @@
                 wrap.classList.remove('is-fullscreen');
                 if (fsHeader) fsHeader.style.display = 'none';
                 if (fsIcon) fsIcon.className = 'fas fa-expand';
+                if (_fullChartReturnState) {
+                    exitChartToReturnState();
+                    return;
+                }
             }
 
             requestAnimationFrame(() => {
