@@ -3009,11 +3009,54 @@
                 }
             }
 
-            // Instantiate mini charts sequentially for this batch
-            for (const data of batch) {
-                if (currentEpoch !== patternRenderEpoch) break;
-                if (typeof data !== 'string') {
-                    await renderMiniChart(data, currentScreen, currentEpoch);
+            // ── BATCH OHLCV & PARALLEL MINI-CHART RENDERING ──────────────────
+            const lookbackDays = (currentScreen === 'golden-crossover' || currentScreen === 'ema-convergence') ? 180 : 90;
+            const symbolsToFetch = batch
+                .map(d => (typeof d === 'string' ? d : d.symbol))
+                .filter(s => s && typeof s === 'string');
+
+            if (currentScreen === 'rsi-divergence') {
+                // RSI Divergence points endpoint: fetch in parallel chunks
+                const RSI_PARALLEL_CHUNK = 5;
+                for (let i = 0; i < batch.length; i += RSI_PARALLEL_CHUNK) {
+                    if (currentEpoch !== patternRenderEpoch) break;
+                    const chunk = batch.slice(i, i + RSI_PARALLEL_CHUNK);
+                    await Promise.allSettled(chunk.map(d => {
+                        if (typeof d === 'string') return Promise.resolve();
+                        return renderMiniChart(d, currentScreen, currentEpoch, null, lookbackDays);
+                    }));
+                }
+            } else {
+                // High-performance single batch fetch for all symbols in this page
+                let batchOhlcMap = {};
+                try {
+                    const resp = await fetch('/api/ohlcv/batch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ symbols: symbolsToFetch, days: lookbackDays })
+                    });
+                    if (resp.ok) {
+                        const resJson = await resp.json();
+                        batchOhlcMap = resJson.data || {};
+                    }
+                } catch (err) {
+                    console.warn('Batch OHLCV fetch error, falling back to per-card fetch:', err);
+                }
+
+                if (currentEpoch !== patternRenderEpoch) return;
+
+                // Render mini charts in parallel chunks using preloaded OHLCV data
+                const PARALLEL_CHUNK = 5;
+                for (let i = 0; i < batch.length; i += PARALLEL_CHUNK) {
+                    if (currentEpoch !== patternRenderEpoch) break;
+                    const chunk = batch.slice(i, i + PARALLEL_CHUNK);
+                    await Promise.allSettled(chunk.map(d => {
+                        if (typeof d === 'string') return Promise.resolve();
+                        const sym = d.symbol;
+                        const preloaded = batchOhlcMap[sym] || null;
+                        return renderMiniChart(d, currentScreen, currentEpoch, preloaded, lookbackDays);
+                    }));
                 }
             }
         }
@@ -3294,7 +3337,7 @@
                 `;
         }
 
-        async function renderMiniChart(data, targetScreen, epoch) {
+        async function renderMiniChart(data, targetScreen, epoch, preloadedOhlcData = null, lookbackDays = 90) {
             const isWatchlist = targetScreen === 'watchlist';
             const isStale = () => isWatchlist ? (epoch !== watchlistRenderEpoch) : (epoch !== patternRenderEpoch);
             if (isStale()) return;
@@ -3308,7 +3351,9 @@
             
             try {
                 let ohlcData, divergences = [];
-                if (isRsiDiv) {
+                if (preloadedOhlcData && Array.isArray(preloadedOhlcData) && preloadedOhlcData.length > 0) {
+                    ohlcData = preloadedOhlcData;
+                } else if (isRsiDiv) {
                     const response = await fetch(`/api/screens/rsi-divergence-points/${sym}`, { credentials: 'same-origin' });
                     if (!response.ok) throw new Error('Failed to fetch points');
                     if (isStale()) return;
@@ -3316,7 +3361,8 @@
                     ohlcData = resJson.ohlcv;
                     divergences = resJson.divergences;
                 } else {
-                    const response = await fetch(`/api/ohlcv/${sym}`, { credentials: 'same-origin' });
+                    const daysParam = lookbackDays ? `?days=${lookbackDays}` : '?days=90';
+                    const response = await fetch(`/api/ohlcv/${sym}${daysParam}`, { credentials: 'same-origin' });
                     if (!response.ok) throw new Error('Failed to fetch data');
                     if (isStale()) return;
                     ohlcData = await response.json();
@@ -3947,10 +3993,34 @@
                     `;
                 }).join('');
 
-                // Render mini charts sequentially
-                for (const item of items) {
+                // Render mini charts in parallel using batch OHLCV (90 days)
+                const wlSymbols = items.map(it => it.symbol).filter(Boolean);
+                let wlOhlcMap = {};
+                try {
+                    const resp = await fetch('/api/ohlcv/batch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({ symbols: wlSymbols, days: 90 })
+                    });
+                    if (resp.ok) {
+                        const json = await resp.json();
+                        wlOhlcMap = json.data || {};
+                    }
+                } catch (e) {
+                    console.warn('Watchlist batch OHLCV fetch failed:', e);
+                }
+
+                if (currentEpoch !== watchlistRenderEpoch) return;
+
+                const WL_CHUNK = 5;
+                for (let i = 0; i < items.length; i += WL_CHUNK) {
                     if (currentEpoch !== watchlistRenderEpoch) break;
-                    await renderMiniChart({ symbol: item.symbol }, 'watchlist', currentEpoch);
+                    const chunk = items.slice(i, i + WL_CHUNK);
+                    await Promise.allSettled(chunk.map(item => {
+                        const preloaded = wlOhlcMap[item.symbol] || null;
+                        return renderMiniChart({ symbol: item.symbol }, 'watchlist', currentEpoch, preloaded, 90);
+                    }));
                 }
             } catch (err) {
                 console.error('Failed to load watchlist:', err);

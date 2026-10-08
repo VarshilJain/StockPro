@@ -654,6 +654,96 @@ def get_indicators(symbol: str, _: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to fetch indicators.")
 
 
+class BatchOhlcvRequest(BaseModel):
+    symbols: List[str]
+    days: int = Field(default=90, ge=1, le=1260)
+
+
+def _fetch_batch_ohlcv_data(symbols: List[str], days: int = 90) -> dict:
+    if not symbols:
+        return {"data": {}, "count": 0}
+
+    # Clean and deduplicate symbols, capping at 100 per batch
+    clean_symbols = list(dict.fromkeys([s.strip().upper() for s in symbols if s and isinstance(s, str)]))[:100]
+    if not clean_symbols:
+        return {"data": {}, "count": 0}
+
+    safe_days = max(1, min(days, 1260))
+    cal_days = max(30, int(safe_days * 1.6) + 15)
+
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT MAX(Timestamp) as max_date FROM historical_data")
+        max_row = cursor.fetchone()
+        max_date = max_row["max_date"] if max_row and max_row["max_date"] else None
+        if not max_date:
+            return {"data": {s: [] for s in clean_symbols}, "count": 0}
+
+        in_clause = ",".join(["%s"] * len(clean_symbols))
+        query = f"""
+            SELECT Symbol, DATE(Timestamp) as date, Open, High, Low, Close, Volume, RSI14, SMA50, SMA200
+            FROM historical_data
+            WHERE Symbol IN ({in_clause})
+              AND Timestamp >= %s - INTERVAL %s DAY
+            ORDER BY Symbol, Timestamp ASC
+        """
+        params = clean_symbols + [max_date, cal_days]
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        result = {s: [] for s in clean_symbols}
+        for r in rows:
+            sym = r["Symbol"]
+            d = r["date"]
+            if sym in result:
+                result[sym].append({
+                    "time": d.isoformat() if hasattr(d, "isoformat") else str(d),
+                    "open": float(r["Open"]),
+                    "high": float(r["High"]),
+                    "low": float(r["Low"]),
+                    "close": float(r["Close"]),
+                    "volume": int(r["Volume"]),
+                    "rsi": float(r["RSI14"]) if r.get("RSI14") is not None else None,
+                    "sma50": float(r["SMA50"]) if r.get("SMA50") is not None else None,
+                    "sma200": float(r["SMA200"]) if r.get("SMA200") is not None else None,
+                })
+
+        for sym in result:
+            if len(result[sym]) > safe_days:
+                result[sym] = result[sym][-safe_days:]
+
+        return {"data": result, "count": len(result)}
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@router.post("/ohlcv/batch")
+def get_ohlcv_batch(req: BatchOhlcvRequest, _: dict = Depends(get_current_user)):
+    """Return compact OHLCV data for multiple symbols in a single high-performance batch query."""
+    try:
+        return _fetch_batch_ohlcv_data(req.symbols, req.days)
+    except Exception as exc:
+        logger.exception("Error in batch OHLCV fetch: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to fetch batch OHLCV data.")
+
+
+@router.get("/ohlcv/batch")
+def get_ohlcv_batch_get(
+    symbols: str = Query(..., description="Comma-separated symbols"),
+    days: int = Query(90, ge=1, le=1260),
+    _: dict = Depends(get_current_user)
+):
+    """GET alternative for batch OHLCV fetch."""
+    try:
+        sym_list = [s.strip() for s in symbols.split(",") if s.strip()]
+        return _fetch_batch_ohlcv_data(sym_list, days)
+    except Exception as exc:
+        logger.exception("Error in batch OHLCV GET fetch: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to fetch batch OHLCV data.")
+
+
 @router.get("/ohlcv/{symbol}")
 def get_ohlcv(
     symbol: str,
