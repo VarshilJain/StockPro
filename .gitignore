@@ -26,4 +26,5 @@ node_modules/
 output.txt
 *.db
 *.sqlite
+*.exe
 

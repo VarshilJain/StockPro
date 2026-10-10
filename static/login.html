@@ -259,15 +259,17 @@
     </div>
   </footer>
 
-  <!-- Modal: Reset Password (Direct In-App) -->
-  <div class="modal-backdrop" id="forgotModal">
+  <!-- Modal: Reset Password (Send Reset Link) -->
+  <div class="modal-backdrop" id="forgotModal" role="dialog" aria-modal="true" aria-labelledby="forgotModalTitle">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 class="modal-title">Reset Password</h3>
-        <button type="button" class="modal-close" onclick="closeModal('forgotModal')">&times;</button>
+        <h3 class="modal-title" id="forgotModalTitle">Reset Password</h3>
+        <button type="button" class="modal-close" onclick="closeModal('forgotModal')" aria-label="Close modal">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="font-size: 0.86rem; margin-bottom: 1.25rem;">Verify your current credentials and choose a new secure password.</p>
+        <p style="font-size: 0.88rem; margin-bottom: 1.25rem; color: var(--sp-text-muted);">
+          Enter your account email address. If an account exists, we'll send you a password reset link valid for 30 minutes.
+        </p>
 
         <!-- Reset Alerts -->
         <div class="auth-alert error" id="resetErrorAlert" style="display:none;" role="alert">
@@ -282,68 +284,18 @@
         <form id="resetPasswordForm" novalidate>
           
           <!-- Email Input -->
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom: 1.25rem;">
             <label class="form-label" for="resetEmail">Email address</label>
             <div class="input-container">
               <i class="fas fa-envelope input-icon-left"></i>
-              <input class="sp-input" type="email" id="resetEmail" placeholder="you@example.com" required>
-            </div>
-          </div>
-
-          <!-- Current Password Input -->
-          <div class="form-group">
-            <label class="form-label" for="resetCurrentPwd">Current password</label>
-            <div class="input-container">
-              <i class="fas fa-lock input-icon-left"></i>
-              <input class="sp-input" type="password" id="resetCurrentPwd" placeholder="Enter current password" required>
-              <button type="button" class="toggle-password" id="toggleCurrentPwdBtn" aria-label="Toggle visibility">
-                <i class="far fa-eye" id="currentEyeIcon"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- New Password Input -->
-          <div class="form-group" style="margin-bottom: 0.5rem;">
-            <label class="form-label" for="resetNewPwd">New password</label>
-            <div class="input-container">
-              <i class="fas fa-lock input-icon-left"></i>
-              <input class="sp-input" type="password" id="resetNewPwd" placeholder="Min. 12 chars, letter & digit" required>
-              <button type="button" class="toggle-password" id="toggleNewPwdBtn" aria-label="Toggle visibility">
-                <i class="far fa-eye" id="newEyeIcon"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Password Strength Indicator -->
-          <div class="strength-container" style="margin-bottom: 1rem;">
-            <div class="strength-header">
-              <span>Password strength</span>
-              <span id="resetStrengthLabel" style="font-weight:600;">Weak</span>
-            </div>
-            <div class="strength-bars">
-              <div class="strength-segment" id="rseg1"></div>
-              <div class="strength-segment" id="rseg2"></div>
-              <div class="strength-segment" id="rseg3"></div>
-              <div class="strength-segment" id="rseg4"></div>
-            </div>
-          </div>
-
-          <!-- Confirm New Password Input -->
-          <div class="form-group">
-            <label class="form-label" for="resetConfirmPwd">Confirm new password</label>
-            <div class="input-container">
-              <i class="fas fa-lock input-icon-left"></i>
-              <input class="sp-input" type="password" id="resetConfirmPwd" placeholder="Confirm new password" required>
-              <button type="button" class="toggle-password" id="toggleConfirmPwdBtn" aria-label="Toggle visibility">
-                <i class="far fa-eye" id="confirmEyeIcon"></i>
-              </button>
+              <input class="sp-input" type="email" id="resetEmail" placeholder="you@example.com" required autocomplete="email">
             </div>
           </div>
 
           <!-- Submit Button -->
-          <button type="submit" class="btn-primary-auth" id="resetSubmitBtn" style="margin-top: 1.25rem;">
+          <button type="submit" class="btn-primary-auth" id="resetSubmitBtn" style="margin-top: 0.5rem; width: 100%;">
             <div class="spinner"></div>
-            <span class="btn-text"><i class="fas fa-key"></i> Update Password</span>
+            <span class="btn-text"><i class="fas fa-paper-plane" style="margin-right: 0.5rem;"></i> Send reset link</span>
           </button>
         </form>
       </div>
@@ -464,6 +416,8 @@
           showError('Too many login attempts. Please wait a moment and try again.');
         } else if (res.status === 401) {
           showError('Incorrect email or password. Please verify and try again.');
+        } else if (res.status === 403) {
+          showError(data.detail || 'Your account access is pending review or has expired. Please contact an administrator.');
         } else {
           showError(data.detail || 'Sign in failed. Please try again.');
         }
@@ -562,22 +516,14 @@
       document.getElementById(id).classList.remove('show');
     }
 
-    // Direct Reset Password Setup
+    // Forgot Password (Send Reset Link) Setup
     const resetForm         = document.getElementById('resetPasswordForm');
     const resetEmail        = document.getElementById('resetEmail');
-    const resetCurrentPwd   = document.getElementById('resetCurrentPwd');
-    const resetNewPwd       = document.getElementById('resetNewPwd');
-    const resetConfirmPwd   = document.getElementById('resetConfirmPwd');
     const resetSubmitBtn    = document.getElementById('resetSubmitBtn');
     const resetErrorAlert   = document.getElementById('resetErrorAlert');
     const resetErrorMsg     = document.getElementById('resetErrorMsg');
     const resetSuccessAlert = document.getElementById('resetSuccessAlert');
     const resetSuccessMsg   = document.getElementById('resetSuccessMsg');
-    const resetStrengthLbl  = document.getElementById('resetStrengthLabel');
-    const rseg1 = document.getElementById('rseg1');
-    const rseg2 = document.getElementById('rseg2');
-    const rseg3 = document.getElementById('rseg3');
-    const rseg4 = document.getElementById('rseg4');
 
     document.getElementById('forgotPwdBtn').addEventListener('click', () => {
       const currentEmail = emailInput.value.trim();
@@ -587,90 +533,17 @@
       resetErrorAlert.style.display = 'none';
       resetSuccessAlert.style.display = 'none';
       openModal('forgotModal');
+      setTimeout(() => resetEmail.focus(), 50);
     });
 
-    // Toggle Visibility in Reset Modal
-    function setupToggle(btnId, inputId, iconId) {
-      document.getElementById(btnId).addEventListener('click', () => {
-        const inp = document.getElementById(inputId);
-        const icn = document.getElementById(iconId);
-        const isPwd = inp.type === 'password';
-        inp.type = isPwd ? 'text' : 'password';
-        icn.className = isPwd ? 'far fa-eye-slash' : 'far fa-eye';
-      });
-    }
-    setupToggle('toggleCurrentPwdBtn', 'resetCurrentPwd', 'currentEyeIcon');
-    setupToggle('toggleNewPwdBtn', 'resetNewPwd', 'newEyeIcon');
-    setupToggle('toggleConfirmPwdBtn', 'resetConfirmPwd', 'confirmEyeIcon');
-
-    // Reset Password Strength Meter
-    resetNewPwd.addEventListener('input', () => {
-      const val = resetNewPwd.value;
-      let score = 0;
-      if (val.length >= 8) score++;
-      if (val.length >= 12) score++;
-      if (/[A-Za-z]/.test(val) && /\d/.test(val)) score++;
-      if (/[^A-Za-z0-9]/.test(val) || (val.length >= 14)) score++;
-
-      const segments = [rseg1, rseg2, rseg3, rseg4];
-      segments.forEach(s => s.style.backgroundColor = '#E2E8F0');
-
-      if (!val) {
-        resetStrengthLbl.textContent = 'Weak';
-        resetStrengthLbl.style.color = 'var(--sp-text-muted)';
-        return;
-      }
-
-      if (score === 1) {
-        rseg1.style.backgroundColor = '#EF4444';
-        resetStrengthLbl.textContent = 'Weak';
-        resetStrengthLbl.style.color = '#EF4444';
-      } else if (score === 2) {
-        rseg1.style.backgroundColor = '#F59E0B';
-        rseg2.style.backgroundColor = '#F59E0B';
-        resetStrengthLbl.textContent = 'Fair';
-        resetStrengthLbl.style.color = '#F59E0B';
-      } else if (score === 3) {
-        rseg1.style.backgroundColor = '#3B82F6';
-        rseg2.style.backgroundColor = '#3B82F6';
-        rseg3.style.backgroundColor = '#3B82F6';
-        resetStrengthLbl.textContent = 'Good';
-        resetStrengthLbl.style.color = '#3B82F6';
-      } else if (score >= 4) {
-        segments.forEach(s => s.style.backgroundColor = '#10B981');
-        resetStrengthLbl.textContent = 'Strong';
-        resetStrengthLbl.style.color = '#10B981';
-      }
-    });
-
-    // Submit Direct Reset Form
     resetForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       resetErrorAlert.style.display = 'none';
       resetSuccessAlert.style.display = 'none';
 
-      const email       = resetEmail.value.trim();
-      const currentPwd  = resetCurrentPwd.value;
-      const newPwd      = resetNewPwd.value;
-      const confirmPwd  = resetConfirmPwd.value;
-
-      if (!email || !currentPwd || !newPwd || !confirmPwd) {
-        resetErrorMsg.textContent = 'Please fill in all required fields.';
-        resetErrorAlert.style.display = 'flex';
-        return;
-      }
-      if (newPwd.length < 12) {
-        resetErrorMsg.textContent = 'New password must be at least 12 characters long.';
-        resetErrorAlert.style.display = 'flex';
-        return;
-      }
-      if (!/[A-Za-z]/.test(newPwd) || !/\d/.test(newPwd)) {
-        resetErrorMsg.textContent = 'New password must contain both letters and digits.';
-        resetErrorAlert.style.display = 'flex';
-        return;
-      }
-      if (newPwd !== confirmPwd) {
-        resetErrorMsg.textContent = 'New passwords do not match. Please verify.';
+      const email = resetEmail.value.trim();
+      if (!email) {
+        resetErrorMsg.textContent = 'Please enter your email address.';
         resetErrorAlert.style.display = 'flex';
         return;
       }
@@ -679,40 +552,18 @@
       resetSubmitBtn.disabled = true;
 
       try {
-        const res = await fetch('/api/auth/reset-password', {
+        const res = await fetch('/api/auth/forgot-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({
-            email: email,
-            current_password: currentPwd,
-            new_password: newPwd,
-          }),
+          body: JSON.stringify({ email }),
         });
 
         const data = await res.json().catch(() => ({}));
-
-        if (res.ok) {
-          resetSuccessMsg.textContent = data.message || 'Password updated successfully! You can now sign in.';
-          resetSuccessAlert.style.display = 'flex';
-          resetForm.reset();
-          setTimeout(() => {
-            closeModal('forgotModal');
-            emailInput.value = email;
-            pwdInput.value = '';
-            pwdInput.focus();
-          }, 1800);
-          return;
-        }
-
-        if (res.status === 401) {
-          resetErrorMsg.textContent = data.detail || 'Current password or email is incorrect.';
-        } else if (res.status === 429) {
-          resetErrorMsg.textContent = 'Too many attempts. Please wait a moment and try again.';
-        } else {
-          resetErrorMsg.textContent = data.detail || 'Password update failed. Please try again.';
-        }
-        resetErrorAlert.style.display = 'flex';
+        // Always show neutral confirmation, regardless of outcome
+        resetSuccessMsg.textContent = data.message || "If an account exists for that email, we've sent a reset link. It expires in 30 minutes.";
+        resetSuccessAlert.style.display = 'flex';
+        resetForm.reset();
       } catch (err) {
         resetErrorMsg.textContent = 'Network error. Please check your connection.';
         resetErrorAlert.style.display = 'flex';

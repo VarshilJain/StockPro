@@ -28,8 +28,14 @@
        STOCKPRO OPS CONSOLE — DESIGN SYSTEM (APPLE TERMINAL THEME)
        ══════════════════════════════════════════════════════════════ */
     html {
-      zoom: 0.8;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    @media (min-width: 1025px) {
+      html {
+        zoom: 0.85;
+      }
     }
 
     *, *:before, *:after {
@@ -958,19 +964,490 @@
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
+
+    /* ══════════════════════════════════════════════════════════════
+       RESPONSIVE & MOBILE/TABLET DESIGN SYSTEM
+       ══════════════════════════════════════════════════════════════ */
+    .admin-mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--admin-border);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 1.05rem;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    html[data-theme="dark"] .admin-mobile-toggle {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+    }
+
+    .admin-mobile-toggle:hover,
+    .admin-mobile-toggle:active {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+    }
+
+    .admin-brand-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--admin-border);
+    }
+
+    .admin-brand-wrap .admin-brand {
+      border-bottom: none;
+      flex: 1;
+    }
+
+    .admin-sidebar-close {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      margin-right: 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--admin-border);
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.15s ease;
+    }
+
+    html[data-theme="dark"] .admin-sidebar-close {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+    }
+
+    .admin-sidebar-close:hover {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .admin-sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.65);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 1001;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .admin-sidebar-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .monitoring-split-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* Mobile Bottom Navigation Bar (< 768px) */
+    .admin-bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(58px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: rgba(255, 255, 255, 0.94);
+      border-top: 1px solid var(--admin-border);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      z-index: 1000;
+      justify-content: space-around;
+      align-items: center;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    html[data-theme="dark"] .admin-bottom-nav {
+      background: rgba(15, 22, 38, 0.94);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.45);
+    }
+
+    .admin-bottom-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      background: transparent;
+      border: none;
+      padding: 6px 0;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.7rem;
+      font-weight: 500;
+      position: relative;
+      transition: color 0.15s ease;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .admin-bottom-nav-item i {
+      font-size: 1.15rem;
+      transition: transform 0.15s ease;
+    }
+
+    .admin-bottom-nav-item:active i {
+      transform: scale(0.9);
+    }
+
+    .admin-bottom-nav-item.active {
+      color: #3b82f6 !important;
+      font-weight: 600;
+    }
+
+    .bottom-nav-badge {
+      position: absolute;
+      top: 3px;
+      right: calc(50% - 18px);
+      background: #FF9500;
+      color: #000;
+      font-size: 0.62rem;
+      font-weight: 700;
+      border-radius: 10px;
+      padding: 1px 5px;
+      line-height: 1.2;
+    }
+
+    /* Desktop Viewport Defaults (> 1024px) */
+    @media (min-width: 1025px) {
+      .admin-mobile-toggle,
+      .admin-sidebar-close,
+      .admin-sidebar-backdrop,
+      .admin-bottom-nav {
+        display: none !important;
+      }
+    }
+
+    /* Tablet & Medium Screens (<= 1024px) */
+    @media (max-width: 1024px) {
+      html {
+        zoom: 1 !important;
+      }
+
+      :root {
+        --admin-header-height: 58px;
+      }
+
+      body {
+        overflow-x: hidden;
+      }
+
+      /* Off-canvas sidebar */
+      .admin-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease;
+        width: 280px;
+        max-width: 85vw;
+        z-index: 1002;
+        box-shadow: none;
+      }
+
+      .admin-sidebar.open {
+        transform: translateX(0);
+        box-shadow: 14px 0 45px rgba(0, 0, 0, 0.45);
+      }
+
+      .admin-sidebar-close {
+        display: inline-flex;
+      }
+
+      /* Main container occupies full width */
+      .admin-main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      /* Topbar */
+      .admin-topbar {
+        padding: 0 1.25rem;
+      }
+
+      .admin-mobile-toggle {
+        display: inline-flex;
+      }
+
+      .admin-content {
+        padding: 1.25rem;
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      .monitoring-split-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1.25rem !important;
+      }
+    }
+
+    /* Mobile Phones & Portrait Tablets (<= 768px) */
+    @media (max-width: 768px) {
+      :root {
+        --admin-header-height: 54px;
+      }
+
+      .admin-topbar {
+        padding: 0 0.85rem;
+      }
+
+      .admin-page-title {
+        font-size: 1.05rem;
+        max-width: 190px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .admin-status-indicator {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.7rem;
+      }
+
+      .admin-status-indicator .status-text-label {
+        display: none;
+      }
+
+      .btn-label-text {
+        display: none;
+      }
+
+      .admin-topbar-actions .admin-btn {
+        padding: 0.45rem 0.65rem;
+      }
+
+      /* Content with safe area bottom clearance for bottom nav bar */
+      .admin-content {
+        padding: 0.85rem 0.85rem calc(68px + env(safe-area-inset-bottom, 12px)) 0.85rem;
+      }
+
+      /* Panels */
+      .panel {
+        border-radius: 12px;
+        margin-bottom: 1.25rem;
+      }
+
+      .panel-header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+        gap: 0.75rem;
+      }
+
+      .panel-title {
+        font-size: 0.95rem;
+      }
+
+      .panel-filters {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .panel-search {
+        flex: 1 1 100%;
+        width: 100%;
+      }
+
+      .panel-search input {
+        width: 100%;
+        min-width: 0;
+        height: 38px;
+        font-size: 16px; /* Prevents auto-zoom on iOS safari */
+      }
+
+      .panel-select {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-width: 125px;
+        height: 38px;
+        font-size: 14px;
+      }
+
+      .panel-filters .admin-btn {
+        flex: 1 1 100%;
+        justify-content: center;
+        height: 38px;
+      }
+
+      /* Table touch ergonomics */
+      .admin-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 0 0 12px 12px;
+      }
+
+      .admin-table th,
+      .admin-table td {
+        padding: 0.65rem 0.75rem;
+        font-size: 0.8rem;
+      }
+
+      .table-actions-cell {
+        flex-wrap: wrap;
+        gap: 0.3rem;
+      }
+
+      .table-actions-cell .admin-btn {
+        height: 32px;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.74rem;
+      }
+
+      /* Footer & pagination */
+      .panel-footer {
+        flex-direction: column;
+        gap: 0.65rem;
+        align-items: center;
+        text-align: center;
+        padding: 0.85rem 1rem;
+      }
+
+      /* Pending banner responsive stack */
+      .pending-users-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.85rem !important;
+      }
+
+      .pending-users-banner .admin-btn {
+        width: 100% !important;
+        justify-content: center !important;
+      }
+
+      /* Settings maintenance & announcements */
+      .maintenance-box-content {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 1rem !important;
+      }
+
+      .maintenance-box-content .admin-btn {
+        width: 100% !important;
+        justify-content: center !important;
+      }
+
+      .announcement-inputs-row {
+        flex-direction: column !important;
+        gap: 0.65rem !important;
+      }
+
+      .announcement-inputs-row select {
+        width: 100% !important;
+      }
+
+      /* Create User Modal 2-col to 1-col */
+      .create-user-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+      }
+
+      /* Modals */
+      .modal-overlay,
+      .modal-backdrop {
+        padding: 0.75rem !important;
+      }
+
+      .modal-card,
+      .modal-dialog {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 1.25rem !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+      }
+
+      .modal-actions {
+        flex-direction: column-reverse;
+        gap: 0.5rem;
+      }
+
+      .modal-actions .admin-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* Toast Notification dock clearance */
+      .toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: calc(68px + env(safe-area-inset-bottom, 12px) + 8px);
+        align-items: stretch;
+      }
+
+      /* Show bottom navigation bar on mobile */
+      .admin-bottom-nav {
+        display: flex;
+      }
+    }
+
+    /* Small Mobile (< 480px) */
+    @media (max-width: 480px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+
+      .kpi-card {
+        padding: 1rem;
+      }
+
+      .kpi-card-value {
+        font-size: 1.6rem;
+      }
+
+      .panel-select {
+        flex: 1 1 100%;
+      }
+
+      .admin-page-title {
+        max-width: 140px;
+        font-size: 0.98rem;
+      }
+    }
   </style>
 </head>
 <body>
 
   <!-- Admin Sidebar -->
   <aside class="admin-sidebar">
-    <a href="/admin" class="admin-brand">
-      <div class="admin-brand-icon"><i class="fas fa-cubes"></i></div>
-      <div class="admin-brand-text">
-        <span class="admin-brand-title">StockPro</span>
-        <span class="admin-brand-badge">Ops Console</span>
-      </div>
-    </a>
+    <div class="admin-brand-wrap">
+      <a href="/admin" class="admin-brand">
+        <div class="admin-brand-icon"><i class="fas fa-cubes"></i></div>
+        <div class="admin-brand-text">
+          <span class="admin-brand-title">StockPro</span>
+          <span class="admin-brand-badge">Ops Console</span>
+        </div>
+      </a>
+      <button class="admin-sidebar-close" onclick="closeSidebar()" aria-label="Close navigation menu">
+        <i class="fas fa-xmark"></i>
+      </button>
+    </div>
 
     <nav class="admin-nav">
       <a class="admin-nav-item" data-section="overview" onclick="navigateSection('overview')">
@@ -1020,20 +1497,26 @@
     </div>
   </aside>
 
+  <!-- Mobile & Tablet Sidebar Backdrop Overlay -->
+  <div class="admin-sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
   <!-- Main Content View -->
   <main class="admin-main">
     <header class="admin-topbar">
       <div class="admin-topbar-left">
+        <button class="admin-mobile-toggle" id="adminSidebarToggle" onclick="toggleSidebar()" aria-label="Toggle navigation drawer">
+          <i class="fas fa-bars"></i>
+        </button>
         <h1 class="admin-page-title" id="pageTitle">Operations Overview</h1>
         <div class="admin-status-indicator" id="systemHealthBadge">
           <span class="admin-pulse-dot"></span>
-          <span id="systemHealthText">Operational</span>
+          <span class="status-text-label" id="systemHealthText">Operational</span>
         </div>
       </div>
 
       <div class="admin-topbar-actions">
         <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="flushCache()" title="Purge in-memory screen stages cache">
-          <i class="fas fa-bolt text-warning"></i> Flush Cache
+          <i class="fas fa-bolt text-warning"></i> <span class="btn-label-text">Flush Cache</span>
         </button>
         <button class="admin-btn admin-btn-secondary admin-btn-sm" onclick="toggleTheme()" title="Toggle color scheme">
           <i class="fas fa-moon" id="themeIcon"></i>
@@ -1125,7 +1608,7 @@
       <!-- SECTION 2: USERS -->
       <section id="sec-users" class="admin-section">
         <!-- Pending Requests Alert Banner -->
-        <div id="pendingUsersBanner" style="display:none; margin-bottom:1.25rem; padding:1rem 1.25rem; border-radius:10px; background:rgba(255, 149, 0, 0.12); border:1px solid rgba(255, 149, 0, 0.3); align-items:center; justify-content:space-between;">
+        <div id="pendingUsersBanner" class="pending-users-banner" style="display:none; margin-bottom:1.25rem; padding:1rem 1.25rem; border-radius:10px; background:rgba(255, 149, 0, 0.12); border:1px solid rgba(255, 149, 0, 0.3); align-items:center; justify-content:space-between;">
           <div style="display:flex; align-items:center; gap:0.85rem;">
             <div style="width:36px; height:36px; border-radius:8px; background:rgba(255, 149, 0, 0.2); display:flex; align-items:center; justify-content:center; color:#FF9500; font-size:1.1rem;">
               <i class="fas fa-user-clock"></i>
@@ -1322,7 +1805,7 @@
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+        <div class="monitoring-split-grid">
           <div class="panel">
             <div class="panel-header">
               <div class="panel-title"><i class="fas fa-hard-drive text-primary"></i> Database Storage by Table</div>
@@ -1433,7 +1916,7 @@
                 <span class="slider"></span>
               </label>
             </div>
-            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+            <div class="announcement-inputs-row" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
               <select class="panel-select" id="settingAnnounceType" style="width: 140px;" onchange="saveAnnouncementSetting()">
                 <option value="info">Info (Blue)</option>
                 <option value="warning">Warning (Orange)</option>
@@ -1449,7 +1932,7 @@
           <div class="panel-header" style="background: rgba(255, 59, 48, 0.04);">
             <div class="panel-title" style="color: #FF3B30;"><i class="fas fa-triangle-exclamation"></i> Maintenance Mode</div>
           </div>
-          <div style="padding: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+          <div class="maintenance-box-content" style="padding: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
             <div>
               <strong>Emergency Maintenance Lockdown</strong>
               <div style="font-size:0.8rem; color:var(--text-muted);">Blocks non-administrator users with a 503 Maintenance notice while allowing admin console access.</div>
@@ -1499,7 +1982,7 @@
           <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem; color:var(--text-secondary);">Password (min 12 chars, letters & digits)</label>
           <input type="password" id="newUserPassword" class="admin-input" placeholder="••••••••••••">
         </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+        <div class="create-user-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
           <div class="form-group">
             <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.4rem; color:var(--text-secondary);">Role</label>
             <select id="newUserRole" class="panel-select" style="width:100%;">
@@ -1524,6 +2007,31 @@
       </div>
     </div>
   </div>
+
+  <!-- Mobile Bottom Navigation Bar (< 768px) -->
+  <nav class="admin-bottom-nav" id="adminBottomNav">
+    <button class="admin-bottom-nav-item active" data-section="overview" onclick="navigateSection('overview')">
+      <i class="fas fa-chart-pie"></i>
+      <span>Overview</span>
+    </button>
+    <button class="admin-bottom-nav-item" data-section="users" onclick="navigateSection('users')">
+      <i class="fas fa-users-gear"></i>
+      <span>Users</span>
+      <span id="bottomNavPendingBadge" class="bottom-nav-badge" style="display:none;">0</span>
+    </button>
+    <button class="admin-bottom-nav-item" data-section="market-data" onclick="navigateSection('market-data')">
+      <i class="fas fa-database"></i>
+      <span>Data</span>
+    </button>
+    <button class="admin-bottom-nav-item" data-section="monitoring" onclick="navigateSection('monitoring')">
+      <i class="fas fa-server"></i>
+      <span>Health</span>
+    </button>
+    <button class="admin-bottom-nav-item" onclick="openSidebar()">
+      <i class="fas fa-bars"></i>
+      <span>Menu</span>
+    </button>
+  </nav>
 
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer"></div>
@@ -1581,9 +2089,16 @@
       document.querySelectorAll('.admin-nav-item').forEach(el => {
         el.classList.toggle('active', el.dataset.section === sectionName);
       });
+      document.querySelectorAll('.admin-bottom-nav-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.section === sectionName);
+      });
       document.querySelectorAll('.admin-section').forEach(el => {
         el.classList.toggle('active', el.id === `sec-${sectionName}`);
       });
+
+      if (window.innerWidth <= 1024) {
+        closeSidebar();
+      }
 
       const titles = {
         'overview': 'Operations Overview',
@@ -1610,6 +2125,48 @@
       else if (sectionName === 'security') loadAuditLogs();
       else if (sectionName === 'settings') loadSettings();
     }
+
+    // Sidebar drawer toggle functions (Mobile & Tablet)
+    function openSidebar() {
+      const sidebar = document.querySelector('.admin-sidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      if (sidebar) sidebar.classList.add('open');
+      if (backdrop) backdrop.classList.add('show');
+      if (window.innerWidth <= 1024) {
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeSidebar() {
+      const sidebar = document.querySelector('.admin-sidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      if (sidebar) sidebar.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.admin-sidebar');
+      if (sidebar && sidebar.classList.contains('open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 1024) {
+        closeSidebar();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeSidebar();
+        closeConfirmModal();
+        closeCreateUserModal();
+      }
+    });
 
     window.addEventListener('popstate', () => {
       syncSectionFromUrl();
@@ -1678,10 +2235,17 @@
             navBadge.style.display = 'inline-flex';
             navBadge.innerText = data.users.pending_approvals;
           }
+          const bottomBadge = document.getElementById('bottomNavPendingBadge');
+          if (bottomBadge) {
+            bottomBadge.style.display = 'block';
+            bottomBadge.innerText = data.users.pending_approvals;
+          }
         } else {
           document.getElementById('kpiPendingWrap').style.display = 'none';
           const navBadge = document.getElementById('pendingNavBadge');
           if (navBadge) navBadge.style.display = 'none';
+          const bottomBadge = document.getElementById('bottomNavPendingBadge');
+          if (bottomBadge) bottomBadge.style.display = 'none';
         }
 
         document.getElementById('kpiTotalSymbols').innerText = data.market_data.total_symbols.toLocaleString();
@@ -1813,6 +2377,15 @@
             navBadge.innerText = pendingCount;
           } else {
             navBadge.style.display = 'none';
+          }
+        }
+        const bottomBadge = document.getElementById('bottomNavPendingBadge');
+        if (bottomBadge) {
+          if (pendingCount > 0) {
+            bottomBadge.style.display = 'block';
+            bottomBadge.innerText = pendingCount;
+          } else {
+            bottomBadge.style.display = 'none';
           }
         }
 

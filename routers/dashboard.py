@@ -44,6 +44,7 @@ from pydantic import BaseModel
 from auth import get_current_user, verify_csrf
 from database import get_connection
 from scan_engine import run_scan
+import cache
 
 logger = logging.getLogger(__name__)
 
@@ -490,3 +491,333 @@ def widget_summary(
             del _summary_cache[k]
 
     return {**result, "cached": False}
+
+
+# ──────────────────────────────────────────────────────────────
+# GET /api/market-strip
+# ──────────────────────────────────────────────────────────────
+
+@router.get("/market-strip", tags=["Dashboard"])
+def get_market_strip():
+    """
+    Returns full-width market strip data:
+    Nifty 50, Nifty 500 close & % change, breadth (advancing, declining, unchanged),
+    market turnover, and latest close date.
+    """
+    conn = get_connection()
+    try:
+        data_version = _get_data_version(conn)
+    finally:
+        conn.close()
+
+    cache_key = "market_strip_v1"
+    cached = cache.get(cache_key, data_version) if "cache" in globals() else None
+    if cached is not None:
+        return JSONResponse(content=cached)
+
+    conn = get_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT DISTINCT Timestamp FROM historical_data ORDER BY Timestamp DESC LIMIT 2")
+        date_rows = cur.fetchall()
+        if not date_rows:
+            return JSONResponse(content={"error": "No data available"})
+
+        latest_ts = date_rows[0]["Timestamp"]
+        prev_ts = date_rows[1]["Timestamp"] if len(date_rows) > 1 else None
+
+        # Fetch index values for latest and previous date
+        cur.execute(
+            """
+            SELECT Symbol, Timestamp, Close, Open
+            FROM historical_data
+            WHERE Symbol IN ('^NSEI', '^CRSLDX')
+              AND Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
+            """,
+            (latest_ts, latest_ts)
+        )
+        latest_indices = {r["Symbol"]: r for r in cur.fetchall()}
+
+        prev_indices = {}
+        if prev_ts:
+            cur.execute(
+                """
+                SELECT Symbol, Timestamp, Close
+                FROM historical_data
+                WHERE Symbol IN ('^NSEI', '^CRSLDX')
+                  AND Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
+                """,
+                (prev_ts, prev_ts)
+            )
+            prev_indices = {r["Symbol"]: r for r in cur.fetchall()}
+
+        def _calc_change(sym):
+            curr = latest_indices.get(sym)
+            if not curr or curr["Close"] is None:
+                return {"close": None, "change_pct": 0.0}
+            c_val = float(curr["Close"])
+            prev = prev_indices.get(sym)
+            if prev and prev["Close"]:
+                p_val = float(prev["Close"])
+                pct = round(((c_val - p_val) / p_val) * 100, 2)
+            elif curr.get("Open"):
+                o_val = float(curr["Open"])
+                pct = round(((c_val - o_val) / o_val) * 100, 2)
+            else:
+                pct = 0.0
+            return {"close": c_val, "change_pct": pct}
+
+        nifty50_data = _calc_change("^NSEI")
+        nifty500_data = _calc_change("^CRSLDX")
+
+        # Market Breadth and Turnover on latest_ts
+        cur.execute(
+            """
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN Close > Open THEN 1 ELSE 0 END) as advances,
+                SUM(CASE WHEN Close < Open THEN 1 ELSE 0 END) as declines,
+                SUM(CASE WHEN Close = Open THEN 1 ELSE 0 END) as unchanged,
+                SUM(Volume * Close) as turnover_val,
+                SUM(Volume) as total_volume
+            FROM historical_data
+            WHERE Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
+              AND Symbol NOT LIKE '%%^%%'
+            """,
+            (latest_ts, latest_ts)
+        )
+        breadth_row = cur.fetchone() or {}
+
+        tot = int(breadth_row.get("total") or 0)
+        adv = int(breadth_row.get("advances") or 0)
+        dec = int(breadth_row.get("declines") or 0)
+        unc = int(breadth_row.get("unchanged") or 0)
+        turnover_val = float(breadth_row.get("turnover_val") or 0)
+
+        # Formatted turnover
+        turnover_cr = round(turnover_val / 1e7, 2)
+        turnover_str = f"₹{turnover_cr:,.0f} Cr" if turnover_cr >= 1 else f"₹{turnover_val:,.0f}"
+
+        as_of_str = latest_ts.strftime("%Y-%m-%d") if hasattr(latest_ts, "strftime") else str(latest_ts)[:10]
+
+        result = {
+            "as_of_date": as_of_str,
+            "nifty_50": nifty50_data,
+            "nifty_500": nifty500_data,
+            "breadth": {
+                "total": tot,
+                "advancing": adv,
+                "declining": dec,
+                "unchanged": unc,
+                "advancing_pct": round((adv / max(tot, 1)) * 100, 1),
+                "declining_pct": round((dec / max(tot, 1)) * 100, 1),
+                "unchanged_pct": round((unc / max(tot, 1)) * 100, 1),
+            },
+            "turnover": turnover_val,
+            "turnover_cr": turnover_cr,
+            "turnover_formatted": turnover_str,
+        }
+
+        try:
+            cache.set(cache_key, result, data_version, ttl=120)
+        except Exception:
+            pass
+
+        return JSONResponse(content=result)
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ──────────────────────────────────────────────────────────────
+# GET /api/dashboard/today
+# ──────────────────────────────────────────────────────────────
+
+@router.get("/dashboard/today", tags=["Dashboard"])
+def get_dashboard_today(current_user: dict = Depends(get_current_user)):
+    """
+    Returns today's pattern screens snapshot with:
+    - Counts and deltas vs previous trading session
+    - Top 3 tickers by RS rating for each screen
+    """
+    conn = get_connection()
+    try:
+        data_version = _get_data_version(conn)
+    finally:
+        conn.close()
+
+    cache_key = "dashboard_today_v1"
+    try:
+        cached = cache.get(cache_key, data_version)
+        if cached is not None:
+            return JSONResponse(content=cached)
+    except Exception:
+        pass
+
+    conn = get_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT DISTINCT Timestamp FROM historical_data ORDER BY Timestamp DESC LIMIT 2")
+        date_rows = cur.fetchall()
+        if not date_rows:
+            return JSONResponse(content={"as_of_date": None, "screens": []})
+
+        latest_ts = date_rows[0]["Timestamp"]
+        prev_ts = date_rows[1]["Timestamp"] if len(date_rows) > 1 else None
+
+        # 1. Screen counts today
+        cur.execute(
+            """
+            SELECT 
+                SUM(screen_vcp) as vcp_cnt,
+                SUM(screen_blue_sky) as bluesky_cnt,
+                SUM(screen_multi_year_breakout) as myb_cnt,
+                SUM(High_Relative_Volume_30) as hrv_cnt,
+                SUM(screen_high_delivery_volume) as hdv_cnt,
+                SUM(CASE WHEN rsi_divergence_type IS NOT NULL THEN 1 ELSE 0 END) as rsi_cnt,
+                SUM(convergence_3) as conv_cnt,
+                SUM(signal5) as gc_cnt,
+                SUM(CASE WHEN stage=2 AND stage_bucket='fresh_breakout' THEN 1 ELSE 0 END) as s2_cnt
+            FROM historical_data
+            WHERE Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
+            """,
+            (latest_ts, latest_ts)
+        )
+        today_counts = cur.fetchone() or {}
+
+        # 2. Screen counts yesterday for deltas
+        prev_counts = {}
+        if prev_ts:
+            cur.execute(
+                """
+                SELECT 
+                    SUM(screen_vcp) as vcp_cnt,
+                    SUM(screen_blue_sky) as bluesky_cnt,
+                    SUM(screen_multi_year_breakout) as myb_cnt,
+                    SUM(High_Relative_Volume_30) as hrv_cnt,
+                    SUM(screen_high_delivery_volume) as hdv_cnt,
+                    SUM(CASE WHEN rsi_divergence_type IS NOT NULL THEN 1 ELSE 0 END) as rsi_cnt,
+                    SUM(convergence_3) as conv_cnt,
+                    SUM(signal5) as gc_cnt,
+                    SUM(CASE WHEN stage=2 AND stage_bucket='fresh_breakout' THEN 1 ELSE 0 END) as s2_cnt
+                FROM historical_data
+                WHERE Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
+                """,
+                (prev_ts, prev_ts)
+            )
+            prev_counts = cur.fetchone() or {}
+
+        # 3. Top tickers by RS rank today
+        cur.execute(
+            """
+            SELECT 
+                Symbol, IFNULL(rs_rank, 0) as rs_rank, Close, Open,
+                screen_vcp, screen_blue_sky, screen_multi_year_breakout,
+                High_Relative_Volume_30, screen_high_delivery_volume,
+                rsi_divergence_type, convergence_3, signal5,
+                (stage=2 AND stage_bucket='fresh_breakout') as s2
+            FROM historical_data
+            WHERE Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
+              AND Symbol NOT LIKE '%%^%%'
+            ORDER BY IFNULL(rs_rank, 0) DESC
+            """,
+            (latest_ts, latest_ts)
+        )
+        ranked_rows = cur.fetchall()
+
+        screen_configs = [
+            {"id": "vcp", "name": "Price Compression Setup", "acronym": "PCS", "key": "vcp_cnt", "flag": "screen_vcp", "icon": "fa-compress-alt"},
+            {"id": "blue-sky", "name": "All-Time Peak Breakout", "acronym": "APB", "key": "bluesky_cnt", "flag": "screen_blue_sky", "icon": "fa-cloud"},
+            {"id": "multi-year-breakout", "name": "Multi-Year Breakout", "acronym": "MYB", "key": "myb_cnt", "flag": "screen_multi_year_breakout", "icon": "fa-calendar-alt"},
+            {"id": "high-relative-volume", "name": "High Relative Volume", "acronym": "5x", "key": "hrv_cnt", "flag": "High_Relative_Volume_30", "icon": "fa-volume-up"},
+            {"id": "high-delivery-volume", "name": "High Delivery Volume", "acronym": "75%-99%", "key": "hdv_cnt", "flag": "screen_high_delivery_volume", "icon": "fa-truck-loading"},
+            {"id": "rsi-divergence", "name": "RSI Divergence", "acronym": "RSI", "key": "rsi_cnt", "flag": "rsi_divergence_type", "icon": "fa-arrows-alt-h"},
+            {"id": "ema-convergence", "name": "EMA Convergence", "acronym": "C3", "key": "conv_cnt", "flag": "convergence_3", "icon": "fa-compress-arrows-alt"},
+            {"id": "golden-crossover", "name": "Golden Crossover", "acronym": "50/200", "key": "gc_cnt", "flag": "signal5", "icon": "fa-crosshairs"},
+            {"id": "stage-2", "name": "Stage 2 Stocks", "acronym": "Stage 2", "key": "s2_cnt", "flag": "s2", "icon": "fa-arrow-trend-up"}
+        ]
+
+        def _clean_sym(s):
+            return s[:-3] if s.endswith(".NS") else s
+
+        screen_results = []
+        for sc in screen_configs:
+            cnt = int(today_counts.get(sc["key"]) or 0)
+            p_cnt = int(prev_counts.get(sc["key"]) or 0)
+            delta = cnt - p_cnt
+
+            flag_name = sc["flag"]
+            top_stocks = []
+            for r in ranked_rows:
+                val = r.get(flag_name)
+                if val and val != 0 and val != "0":
+                    c_val = float(r["Close"]) if r.get("Close") else 0
+                    o_val = float(r["Open"]) if r.get("Open") else c_val
+                    chg = round(((c_val - o_val) / o_val) * 100, 2) if o_val else 0
+                    top_stocks.append({
+                        "symbol": _clean_sym(r["Symbol"]),
+                        "full_symbol": r["Symbol"],
+                        "rs_rank": float(r["rs_rank"] or 0),
+                        "close": c_val,
+                        "change_pct": chg
+                    })
+                    if len(top_stocks) >= 3:
+                        break
+
+            # Special case for RSI divergence if count on single day is 0: check recent divergence window
+            if sc["id"] == "rsi-divergence" and cnt == 0:
+                try:
+                    cur.execute(
+                        """
+                        SELECT Symbol, IFNULL(rs_rank, 0) as rs_rank, Close, Open
+                        FROM historical_data
+                        WHERE rsi_divergence_type IS NOT NULL
+                          AND Timestamp >= DATE_SUB(%s, INTERVAL 15 DAY)
+                          AND Symbol NOT LIKE '%%^%%'
+                        ORDER BY rsi_divergence_score DESC, IFNULL(rs_rank, 0) DESC
+                        LIMIT 3
+                        """,
+                        (latest_ts,)
+                    )
+                    rsi_rows = cur.fetchall()
+                    if rsi_rows:
+                        cnt = len(rsi_rows)
+                        for rr in rsi_rows:
+                            rc = float(rr["Close"]) if rr.get("Close") else 0
+                            ro = float(rr["Open"]) if rr.get("Open") else rc
+                            top_stocks.append({
+                                "symbol": _clean_sym(rr["Symbol"]),
+                                "full_symbol": rr["Symbol"],
+                                "rs_rank": float(rr["rs_rank"] or 0),
+                                "close": rc,
+                                "change_pct": round(((rc - ro) / ro) * 100, 2) if ro else 0
+                            })
+                except Exception:
+                    pass
+
+            screen_results.append({
+                "id": sc["id"],
+                "name": sc["name"],
+                "acronym": sc["acronym"],
+                "icon": sc["icon"],
+                "count": cnt,
+                "delta": delta,
+                "top_tickers": top_stocks
+            })
+
+        as_of_str = latest_ts.strftime("%Y-%m-%d") if hasattr(latest_ts, "strftime") else str(latest_ts)[:10]
+
+        res = {
+            "as_of_date": as_of_str,
+            "screens": screen_results
+        }
+
+        try:
+            cache.set(cache_key, res, data_version, ttl=180)
+        except Exception:
+            pass
+
+        return JSONResponse(content=res)
+    finally:
+        cur.close()
+        conn.close()

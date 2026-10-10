@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 from auth import get_current_user
 from database import get_connection
 from routers.dashboard import _get_data_version
+from routers.screens import get_symbol_market_cap
 import cache
 
 logger = logging.getLogger(__name__)
@@ -183,6 +184,12 @@ def get_signal_confluence(
             "sma50": sma50,
             "sma200": sma200,
             "stage_bucket": row.get("stage_bucket"),
+            "delivery_pct": float(row.get("Recent_Deliv_Pct") or 0) if row.get("Recent_Deliv_Pct") is not None else None,
+            "high_52w": float(row.get("52w_high") or 0) if row.get("52w_high") is not None else None,
+            "low_52w": float(row.get("52w_low") or 0) if row.get("52w_low") is not None else None,
+            "base_high": float(row.get("base_high") or 0) if row.get("base_high") is not None else None,
+            "pct_from_pivot": float(row.get("pct_from_pivot") or 0) if row.get("pct_from_pivot") is not None else None,
+            "market_cap_cr": get_symbol_market_cap(symbol),
         },
     })
 

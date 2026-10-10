@@ -475,7 +475,16 @@ def get_screen_stages(
             
             # Find which symbols triggered in their last 5 days
             last_5_df = df.groupby('Symbol').tail(5)
-            triggered = last_5_df[last_5_df['metric_value'] >= threshold]
+            if screen_name == "high-relative-volume":
+                triggered = last_5_df[(last_5_df['metric_value'] >= threshold) & (last_5_df['avg_volume_30'] > 50000)]
+            elif screen_name == "high-delivery-volume":
+                triggered = last_5_df[
+                    (last_5_df['metric_value'] > 0.75) &
+                    (last_5_df['metric_value'] < 0.99) &
+                    (last_5_df['delivery_quantity'] > 100000)
+                ]
+            else:
+                triggered = last_5_df[last_5_df['metric_value'] >= threshold]
             triggered_grouped = triggered.sort_values('metric_value').groupby('Symbol').last().reset_index()
             triggered_dict = {r.Symbol: r for r in triggered_grouped.itertuples()}
             
@@ -528,8 +537,18 @@ def get_screen_stages(
                     avg_vol = getattr(r, 'avg_volume_30', None)
                     item["avg_volume"] = float(avg_vol) if avg_vol is not None and not pd.isna(avg_vol) else None
                 
-                if is_latest_day and cur_val >= threshold:
-                    stages["fresh_breakout"]["symbols"].append(item)
+                if is_latest_day:
+                    if screen_name == "high-delivery-volume":
+                        if (
+                            item["delivery_pct"] is not None and 0.75 < item["delivery_pct"] < 0.99
+                            and item["delivery_qty"] is not None and item["delivery_qty"] > 100000
+                        ):
+                            stages["fresh_breakout"]["symbols"].append(item)
+                    elif screen_name == "high-relative-volume":
+                        if cur_val >= threshold and item["avg_volume"] is not None and item["avg_volume"] > 50000:
+                            stages["fresh_breakout"]["symbols"].append(item)
+                    elif cur_val >= threshold:
+                        stages["fresh_breakout"]["symbols"].append(item)
                 
                 if sym in triggered_dict:
                     trig_row = triggered_dict[sym]
@@ -543,13 +562,20 @@ def get_screen_stages(
                         deliv_qty_trig = getattr(trig_row, 'delivery_quantity', None)
                         item_recent["delivery_qty"] = int(deliv_qty_trig) if deliv_qty_trig is not None and not pd.isna(deliv_qty_trig) else None
                         item_recent["delivery_pct"] = float(trig_row.metric_value)
+                        t_str = trig_row.Timestamp.strftime("%Y-%m-%d") if hasattr(trig_row.Timestamp, 'strftime') else str(trig_row.Timestamp)
+                        item_recent["base_start_date"] = t_str.split(' ')[0].split('T')[0]
+                        if (
+                            item_recent["delivery_pct"] is not None and 0.75 < item_recent["delivery_pct"] < 0.99
+                            and item_recent["delivery_qty"] is not None and item_recent["delivery_qty"] > 100000
+                        ):
+                            stages["climbing"]["symbols"].append(item_recent)
                     else:
                         avg_vol_trig = getattr(trig_row, 'avg_volume_30', None)
                         item_recent["avg_volume"] = float(avg_vol_trig) if avg_vol_trig is not None and not pd.isna(avg_vol_trig) else None
-                    
-                    t_str = trig_row.Timestamp.strftime("%Y-%m-%d") if hasattr(trig_row.Timestamp, 'strftime') else str(trig_row.Timestamp)
-                    item_recent["base_start_date"] = t_str.split(' ')[0].split('T')[0]
-                    stages["climbing"]["symbols"].append(item_recent)
+                        t_str = trig_row.Timestamp.strftime("%Y-%m-%d") if hasattr(trig_row.Timestamp, 'strftime') else str(trig_row.Timestamp)
+                        item_recent["base_start_date"] = t_str.split(' ')[0].split('T')[0]
+                        if screen_name != "high-relative-volume" or (item_recent["avg_volume"] is not None and item_recent["avg_volume"] > 50000):
+                            stages["climbing"]["symbols"].append(item_recent)
             
             # Sort and count
             for b in stages:

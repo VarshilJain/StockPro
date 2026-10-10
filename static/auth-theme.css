@@ -4,15 +4,15 @@
 
 :root {
   /* Brand Palettes */
-  --sp-primary: #0066FF;
-  --sp-primary-hover: #0052CC;
-  --sp-primary-light: #EFF6FF;
-  --sp-primary-ring: rgba(0, 102, 255, 0.15);
+  --sp-primary: #0071E3;
+  --sp-primary-hover: #005bb5;
+  --sp-primary-light: #F0F6FF;
+  --sp-primary-ring: rgba(0, 113, 227, 0.2);
 
-  --sp-emerald: #10B981;
-  --sp-emerald-hover: #059669;
-  --sp-emerald-light: #ECFDF5;
-  --sp-emerald-ring: rgba(16, 185, 129, 0.15);
+  --sp-emerald: #0071E3;
+  --sp-emerald-hover: #005bb5;
+  --sp-emerald-light: #F0F6FF;
+  --sp-emerald-ring: rgba(0, 113, 227, 0.2);
 
   --sp-danger: #EF4444;
   --sp-danger-light: #FEF2F2;
@@ -39,10 +39,6 @@
 }
 
 /* ── Reset & Global ──────────────────────────────────────────────────────── */
-html {
-  zoom: 0.8;
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -51,10 +47,10 @@ html {
 
 body.auth-page {
   font-family: var(--sp-font);
+  font-size: 15px;
   background-color: var(--sp-bg);
   color: var(--sp-text-main);
-  min-height: 125vh;
-  height: 125vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -428,10 +424,10 @@ body.auth-page {
 
 .form-label {
   display: block;
-  font-size: 0.8rem;
+  font-size: 13px;
   font-weight: 600;
   color: var(--sp-text-main);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
   letter-spacing: -0.01em;
 }
 
@@ -445,21 +441,21 @@ body.auth-page {
   position: absolute;
   left: 13px;
   color: var(--sp-text-subtle);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   pointer-events: none;
   transition: color 0.15s ease;
 }
 
 .sp-input {
   width: 100%;
-  height: 40px;
-  padding: 0 38px 0 38px;
+  height: 44px;
+  padding: 0 40px 0 40px;
   font-family: inherit;
-  font-size: 0.88rem;
+  font-size: 16px;
   color: var(--sp-text-main);
   background: var(--sp-input-bg);
   border: 1px solid var(--sp-input-border);
-  border-radius: 8px;
+  border-radius: 10px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -858,16 +854,80 @@ body.auth-page {
   }
 }
 
+@media (max-width: 768px) {
+  .auth-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.25rem 1rem;
+  }
+
+  .card-wrapper {
+    order: 1;
+    width: 100%;
+  }
+
+  .hero-content {
+    order: 2;
+    padding: 0;
+    margin-top: 1rem;
+  }
+
+  .features-list {
+    display: none !important;
+  }
+
+  .hero-subheading {
+    margin-bottom: 1rem;
+  }
+}
+
 @media (max-width: 480px) {
   .auth-card {
     padding: 1.75rem 1.25rem;
   }
 
   .hero-heading {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
 
   .social-buttons-grid {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Coarse Pointer Tap Targets (Min 44x44px) [X6] ─────────────────────── */
+@media (pointer: coarse) {
+  .toggle-password {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+
+  .link-forgot,
+  .auth-footer a,
+  .brand-link,
+  .header-action a,
+  .modal-close {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 4px;
+  }
+
+  .btn-auth-primary,
+  .btn-social-auth {
+    min-height: 48px;
+  }
+
+  .checkbox-label {
+    min-height: 44px;
+    padding: 6px 0;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+}
+

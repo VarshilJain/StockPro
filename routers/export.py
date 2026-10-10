@@ -179,13 +179,45 @@ def export_screen_results(
 
         elif screen_name == "high-relative-volume":
             cursor.execute("""
-                SELECT Symbol, Timestamp, Close, Open, SMA50, SMA200, IFNULL(rs_rank, 0) as rs_rank
-                FROM historical_data
-                WHERE Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
+                SELECT DISTINCT Symbol 
+                FROM historical_data 
+                WHERE Timestamp >= %s - INTERVAL 10 DAY 
                   AND (screen_high_relative_volume = 1 OR High_Relative_Volume_30 = 1)
-                ORDER BY IFNULL(rs_rank, 0) DESC
-            """, (max_date, max_date))
-            db_rows = cursor.fetchall()
+            """, (max_date,))
+            candidate_symbols = [r["Symbol"] for r in cursor.fetchall()]
+            if candidate_symbols:
+                import pandas as pd
+                import numpy as np
+                format_strings = ','.join(['%s'] * len(candidate_symbols))
+                cursor.execute(f"""
+                    SELECT ticker as Symbol, date as Timestamp, volume as Volume
+                    FROM ohlc_data
+                    WHERE date >= %s - INTERVAL 50 DAY AND ticker IN ({format_strings})
+                    ORDER BY ticker, date ASC
+                """, [max_date] + candidate_symbols)
+                df_exp = pd.DataFrame(cursor.fetchall())
+                if not df_exp.empty:
+                    df_exp['Timestamp'] = pd.to_datetime(df_exp['Timestamp'])
+                    df_exp['avg_volume_30'] = df_exp.groupby('Symbol')['Volume'].transform(lambda x: x.rolling(window=30, min_periods=1).mean())
+                    df_exp['metric_value'] = df_exp['Volume'] / df_exp['avg_volume_30'].replace(0, np.nan)
+                    last_5 = df_exp.groupby('Symbol').tail(5)
+                    qual_symbols = list(last_5[(last_5['metric_value'] >= 5.0) & (last_5['avg_volume_30'] > 50000)]['Symbol'].unique())
+                    if qual_symbols:
+                        q_fmt = ','.join(['%s'] * len(qual_symbols))
+                        cursor.execute(f"""
+                            SELECT Symbol, Timestamp, Close, Open, SMA50, SMA200, IFNULL(rs_rank, 0) as rs_rank
+                            FROM historical_data
+                            WHERE Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
+                              AND Symbol IN ({q_fmt})
+                            ORDER BY IFNULL(rs_rank, 0) DESC
+                        """, [max_date, max_date] + qual_symbols)
+                        db_rows = cursor.fetchall()
+                    else:
+                        db_rows = []
+                else:
+                    db_rows = []
+            else:
+                db_rows = []
 
         elif screen_name == "high-delivery-volume":
             cursor.execute("""
@@ -193,7 +225,10 @@ def export_screen_results(
                        ROUND((delivery_quantity / volume) * 100, 2) as delivery_pct
                 FROM ohlc_data
                 WHERE date = (SELECT MAX(date) FROM ohlc_data)
-                  AND delivery_quantity IS NOT NULL AND volume > 0 AND (delivery_quantity / volume) >= 0.8
+                  AND delivery_quantity IS NOT NULL AND volume > 0 
+                  AND delivery_quantity > 100000
+                  AND (delivery_quantity / volume) > 0.75 
+                  AND (delivery_quantity / volume) < 0.99
                 ORDER BY delivery_pct DESC
             """)
             db_rows = cursor.fetchall()

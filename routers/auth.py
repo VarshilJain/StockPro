@@ -8,12 +8,15 @@ import logging
 import re
 from datetime import datetime, timedelta
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, field_validator
 
 from auth import (
     CSRF_COOKIE_NAME,
     create_access_token,
+    decode_token,
     generate_csrf_token,
     get_current_user,
     hash_password,
@@ -73,8 +76,37 @@ class GoogleAuthRequest(BaseModel):
     credential: str
 
 
-class ResetPasswordDirectRequest(BaseModel):
+class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: Optional[str] = None
+    email: Optional[EmailStr] = None
+    current_password: Optional[str] = None
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 12:
+            raise ValueError("New password must be at least 12 characters long.")
+        if not re.search(r"[A-Za-z]", v):
+            raise ValueError("New password must contain at least one letter.")
+        if not re.search(r"\d", v):
+            raise ValueError("New password must contain at least one digit.")
+        return v
+
+
+class ResetPasswordDirectRequest(ResetPasswordRequest):
+    pass
+
+
+ResetPasswordRequest.model_rebuild()
+ResetPasswordDirectRequest.model_rebuild()
+
+
+class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
@@ -465,10 +497,11 @@ def me(current_user: dict = Depends(get_current_user)):
     }
 
 
-@router.post("/reset-password")
-def reset_password_direct(body: ResetPasswordDirectRequest, request: Request):
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordRequest, request: Request):
     """
-    Direct password reset requiring email, current password, and new password.
+    Generate password reset link. Returns neutral response regardless of whether email exists.
+    Link valid for 30 minutes. Single-use via token_version.
     """
     ip = get_client_ip(request)
     login_rate_limiter.check_and_record(request, email=body.email)
@@ -476,46 +509,166 @@ def reset_password_direct(body: ResetPasswordDirectRequest, request: Request):
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            "SELECT id, email, hashed_password, is_active FROM users WHERE email = %s",
-            (body.email.lower(),),
+        cursor.execute("SELECT id, email, token_version, is_active FROM users WHERE email = %s", (body.email.lower(),))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if user and user.get("is_active"):
+            reset_token = create_access_token(
+                {
+                    "sub": str(user["id"]),
+                    "purpose": "password_reset",
+                    "ver": user.get("token_version", 1),
+                },
+                expires_delta=timedelta(minutes=30),
+            )
+            logger.info("SECURITY_EVENT: PASSWORD_RESET_REQUESTED email=%s, ip=%s", body.email.lower(), ip)
+            logger.info("PASSWORD_RESET_LINK: /reset-password.html?token=%s (for email=%s)", reset_token, body.email.lower())
+    except Exception:
+        logger.exception("Error processing forgot-password for email: %s", body.email.lower())
+
+    return {
+        "message": "If an account exists for that email, we've sent a reset link. It expires in 30 minutes."
+    }
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest, request: Request):
+    """
+    Password reset supporting either a single-use 30-min token (from email link)
+    or direct reset with email + current_password (backward compatibility).
+    """
+    ip = get_client_ip(request)
+
+    if body.token:
+        # 1. Token-based reset from reset-password.html
+        payload = decode_token(body.token)
+        if not payload or payload.get("purpose") != "password_reset":
+            logger.warning("SECURITY_EVENT: PASSWORD_RESET_TOKEN_INVALID ip=%s", ip)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset link. Please request a new one.",
+            )
+        user_id = payload.get("sub")
+        token_ver = payload.get("ver", 1)
+
+        try:
+            conn = get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, email, is_active, token_version FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+
+            if not user or not user.get("is_active"):
+                cursor.close()
+                conn.close()
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Account not found or deactivated.")
+
+            if user.get("token_version", 1) != token_ver:
+                cursor.close()
+                conn.close()
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This reset link has already been used.")
+
+            new_hash = hash_password(body.new_password)
+            new_version = user.get("token_version", 1) + 1
+            cursor.execute(
+                "UPDATE users SET hashed_password = %s, token_version = %s WHERE id = %s",
+                (new_hash, new_version, user["id"]),
+            )
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+            logger.info("SECURITY_EVENT: PASSWORD_RESET_TOKEN_SUCCESS user_id=%s, ip=%s", user["id"], ip)
+            return {"message": "Password updated successfully. You can now sign in with your new password."}
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception("DB error during token password reset")
+            raise HTTPException(status_code=500, detail="Password update failed. Please try again.")
+
+    elif body.email and body.current_password:
+        # 2. Direct reset with current password
+        login_rate_limiter.check_and_record(request, email=body.email)
+        try:
+            conn = get_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT id, email, hashed_password, is_active, token_version FROM users WHERE email = %s",
+                (body.email.lower(),),
+            )
+            user = cursor.fetchone()
+
+            if user is None or not user.get("hashed_password") or not verify_password(body.current_password, user["hashed_password"]):
+                cursor.close()
+                conn.close()
+                logger.warning("SECURITY_EVENT: PASSWORD_RESET_FAILED email=%s, ip=%s, reason=invalid_credentials", body.email.lower(), ip)
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Current password or email is incorrect.",
+                )
+
+            if not user.get("is_active"):
+                cursor.close()
+                conn.close()
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been deactivated.")
+
+            new_hash = hash_password(body.new_password)
+            new_ver = user.get("token_version", 1) + 1
+            cursor.execute("UPDATE users SET hashed_password = %s, token_version = %s WHERE id = %s", (new_hash, new_ver, user["id"]))
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+            login_rate_limiter.reset_account(body.email)
+            logger.info("SECURITY_EVENT: PASSWORD_RESET_SUCCESS user_id=%s, email=%s, ip=%s", user["id"], body.email.lower(), ip)
+            return {"message": "Password updated successfully. You can now sign in with your new password."}
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception("DB error during direct password reset for email: %s", body.email.lower())
+            raise HTTPException(status_code=500, detail="Password update failed. Please try again.")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either a reset token or current password and email are required.",
         )
+
+
+@router.post("/change-password")
+def change_password(body: ChangePasswordRequest, request: Request, current_user: dict = Depends(get_current_user)):
+    """
+    Authenticated change password endpoint from avatar menu.
+    """
+    user_id = current_user["id"]
+    ip = get_client_ip(request)
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, hashed_password, token_version FROM users WHERE id = %s", (user_id,))
         user = cursor.fetchone()
 
-        if user is None or not user.get("hashed_password") or not verify_password(body.current_password, user["hashed_password"]):
+        if not user or not user.get("hashed_password") or not verify_password(body.current_password, user["hashed_password"]):
             cursor.close()
             conn.close()
-            logger.warning("SECURITY_EVENT: PASSWORD_RESET_FAILED email=%s, ip=%s, reason=invalid_credentials", body.email.lower(), ip)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Current password or email is incorrect.",
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Current password is incorrect.")
 
-        if not user.get("is_active"):
-            cursor.close()
-            conn.close()
-            logger.warning("SECURITY_EVENT: PASSWORD_RESET_FAILED email=%s, ip=%s, reason=deactivated", body.email.lower(), ip)
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="This account has been deactivated.",
-            )
-
-        # Update password hash
         new_hash = hash_password(body.new_password)
-        cursor.execute("UPDATE users SET hashed_password = %s WHERE id = %s", (new_hash, user["id"]))
+        new_ver = user.get("token_version", 1) + 1
+        cursor.execute("UPDATE users SET hashed_password = %s, token_version = %s WHERE id = %s", (new_hash, new_ver, user_id))
         conn.commit()
         cursor.close()
         conn.close()
 
-        login_rate_limiter.reset_account(body.email)
-        logger.info("SECURITY_EVENT: PASSWORD_RESET_SUCCESS user_id=%s, email=%s, ip=%s", user["id"], body.email.lower(), ip)
-        return {"message": "Password updated successfully. You can now sign in with your new password."}
-
+        logger.info("SECURITY_EVENT: PASSWORD_CHANGED_SUCCESS user_id=%s, ip=%s", user_id, ip)
+        return {"message": "Password changed successfully."}
     except HTTPException:
         raise
     except Exception:
-        logger.exception("DB error during direct password reset for email: %s", body.email.lower())
-        raise HTTPException(status_code=500, detail="Password update failed. Please try again.")
+        logger.exception("Error changing password for user_id=%s", user_id)
+        raise HTTPException(status_code=500, detail="Failed to change password. Please try again.")
+
 
 
 

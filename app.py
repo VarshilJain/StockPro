@@ -189,6 +189,11 @@ def serve_register():
     return FileResponse("static/register.html")
 
 
+@app.get("/reset-password", include_in_schema=False)
+def serve_reset_password():
+    return FileResponse("static/reset-password.html")
+
+
 # ──────────────────────────────────────────────────────────────
 # Mount static files (must come LAST, after all API routes)
 # ──────────────────────────────────────────────────────────────

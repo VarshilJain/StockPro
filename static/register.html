@@ -19,20 +19,20 @@
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body class="auth-page theme-green">
+<body class="auth-page theme-blue">
 
   <!-- Background Ambient Glow -->
   <div class="auth-bg-glow">
-    <div class="glow-circle-1" style="background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(248, 250, 252, 0) 70%);"></div>
-    <div class="glow-circle-2" style="background: radial-gradient(circle, rgba(0, 102, 255, 0.08) 0%, rgba(248, 250, 252, 0) 70%);"></div>
-    <div class="glow-circle-3" style="background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, rgba(248, 250, 252, 0) 70%);"></div>
+    <div class="glow-circle-1" style="background: radial-gradient(circle, rgba(0, 113, 227, 0.12) 0%, rgba(248, 250, 252, 0) 70%);"></div>
+    <div class="glow-circle-2" style="background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, rgba(248, 250, 252, 0) 70%);"></div>
+    <div class="glow-circle-3" style="background: radial-gradient(circle, rgba(0, 113, 227, 0.06) 0%, rgba(248, 250, 252, 0) 70%);"></div>
   </div>
 
 
   <!-- Header -->
   <header class="auth-header">
     <a href="/" class="brand-link" aria-label="StockPro Home">
-      <div class="brand-badge">
+      <div class="brand-badge" style="background: linear-gradient(135deg, #0071E3 0%, #004fb3 100%);">
         <i class="fas fa-chart-line"></i>
       </div>
       <div class="brand-titles">
@@ -47,96 +47,87 @@
     
     <!-- Left Hero Section -->
     <section class="hero-content">
-      <h1 class="hero-heading">Create your <span class="brand-highlight" style="color:#0066FF;">StockPro</span> account</h1>
-      <p class="hero-subheading">Join thousands of traders and investors making smarter decisions every day.</p>
+      <h1 class="hero-heading">Request access to <span class="brand-highlight" style="color:#0071E3;">StockPro</span></h1>
+      <p class="hero-subheading">New accounts are reviewed by an admin. You'll get access for 365 days once approved.</p>
 
       <div class="features-list">
         <div class="feature-item">
-          <div class="feature-icon-box">
-            <i class="fas fa-bolt"></i>
+          <div class="feature-icon-box" style="background: var(--sp-primary-light); color: var(--sp-primary); border-color: rgba(0,113,227,0.15);">
+            <i class="fas fa-calendar-check"></i>
           </div>
           <div class="feature-text">
-            <h4>Fast & Free</h4>
-            <p>Create your account in seconds. No hidden fees.</p>
+            <h4>365-Day Validity</h4>
+            <p>Full platform access for one year once reviewed and approved.</p>
           </div>
         </div>
 
         <div class="feature-item">
-          <div class="feature-icon-box">
-            <i class="fas fa-chart-column"></i>
+          <div class="feature-icon-box" style="background: var(--sp-primary-light); color: var(--sp-primary); border-color: rgba(0,113,227,0.15);">
+            <i class="fas fa-chart-line"></i>
           </div>
           <div class="feature-text">
-            <h4>Powerful Tools</h4>
-            <p>Access advanced analytics, scanners, and trackers.</p>
+            <h4>Institutional Scanners</h4>
+            <p>Access delivery spikes, VCPs, NR contractions, and EMA trends.</p>
           </div>
         </div>
 
         <div class="feature-item">
-          <div class="feature-icon-box">
-            <i class="fas fa-lock"></i>
+          <div class="feature-icon-box" style="background: var(--sp-primary-light); color: var(--sp-primary); border-color: rgba(0,113,227,0.15);">
+            <i class="fas fa-shield-halved"></i>
           </div>
           <div class="feature-text">
             <h4>Secure & Private</h4>
-            <p>Your data is encrypted and always protected.</p>
+            <p>Your watchlists, alerts, and scan strategies stay private.</p>
           </div>
         </div>
       </div>
 
-      <!-- Subtle Fintech Stock Chart Vector Illustration (Emerald/Mint Accent) -->
+      <!-- Subtle Fintech Stock Chart Vector Illustration -->
       <div class="chart-visual-bg" aria-hidden="true">
         <svg viewBox="0 0 500 320" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="chartGreenGlow" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#10B981" stop-opacity="0.18"/>
-              <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+            <linearGradient id="chartBlueGlow" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0071E3" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#0071E3" stop-opacity="0"/>
             </linearGradient>
-            <linearGradient id="lineGreenGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#6EE7B7"/>
-              <stop offset="50%" stop-color="#34D399"/>
-              <stop offset="100%" stop-color="#10B981"/>
+            <linearGradient id="lineBlueGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#60A5FA"/>
+              <stop offset="50%" stop-color="#3B82F6"/>
+              <stop offset="100%" stop-color="#0071E3"/>
             </linearGradient>
           </defs>
 
           <!-- Translucent Background Candlesticks -->
           <g opacity="0.45">
-            <!-- Candle 1 -->
-            <line x1="300" y1="130" x2="300" y2="240" stroke="#6EE7B7" stroke-width="1.5"/>
-            <rect x="294" y="150" width="12" height="60" rx="2" fill="#A7F3D0" fill-opacity="0.6"/>
-            <!-- Candle 2 -->
-            <line x1="330" y1="110" x2="330" y2="210" stroke="#34D399" stroke-width="1.5"/>
-            <rect x="324" y="130" width="12" height="55" rx="2" fill="#6EE7B7" fill-opacity="0.7"/>
-            <!-- Candle 3 -->
-            <line x1="360" y1="80" x2="360" y2="190" stroke="#10B981" stroke-width="1.5"/>
-            <rect x="354" y="100" width="12" height="65" rx="2" fill="#34D399" fill-opacity="0.75"/>
-            <!-- Candle 4 -->
-            <line x1="390" y1="40" x2="390" y2="160" stroke="#059669" stroke-width="1.5"/>
-            <rect x="384" y="60" width="12" height="80" rx="2" fill="#10B981" fill-opacity="0.8"/>
+            <line x1="300" y1="130" x2="300" y2="240" stroke="#60A5FA" stroke-width="1.5"/>
+            <rect x="294" y="150" width="12" height="60" rx="2" fill="#93C5FD" fill-opacity="0.6"/>
+            <line x1="330" y1="110" x2="330" y2="210" stroke="#3B82F6" stroke-width="1.5"/>
+            <rect x="324" y="130" width="12" height="55" rx="2" fill="#60A5FA" fill-opacity="0.7"/>
+            <line x1="360" y1="80" x2="360" y2="190" stroke="#0071E3" stroke-width="1.5"/>
+            <rect x="354" y="100" width="12" height="65" rx="2" fill="#3B82F6" fill-opacity="0.75"/>
+            <line x1="390" y1="40" x2="390" y2="160" stroke="#0052CC" stroke-width="1.5"/>
+            <rect x="384" y="60" width="12" height="80" rx="2" fill="#0071E3" fill-opacity="0.8"/>
           </g>
 
-          <!-- Area Fill -->
-          <path d="M 10 270 C 120 250, 190 230, 250 160 C 310 90, 370 120, 480 30 L 480 320 L 10 320 Z" fill="url(#chartGreenGlow)"/>
-          
-          <!-- Upward Line Trend -->
-          <path d="M 10 270 C 120 250, 190 230, 250 160 C 310 90, 370 120, 480 30" stroke="url(#lineGreenGrad)" stroke-width="3.5" stroke-linecap="round"/>
-          
-          <!-- Key Node Points -->
-          <circle cx="250" cy="160" r="5" fill="#FFFFFF" stroke="#10B981" stroke-width="3"/>
-          <circle cx="480" cy="30" r="6" fill="#10B981" stroke="#FFFFFF" stroke-width="3"/>
+          <path d="M 10 270 C 120 250, 190 230, 250 160 C 310 90, 370 120, 480 30 L 480 320 L 10 320 Z" fill="url(#chartBlueGlow)"/>
+          <path d="M 10 270 C 120 250, 190 230, 250 160 C 310 90, 370 120, 480 30" stroke="url(#lineBlueGrad)" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="250" cy="160" r="5" fill="#FFFFFF" stroke="#0071E3" stroke-width="3"/>
+          <circle cx="480" cy="30" r="6" fill="#0071E3" stroke="#FFFFFF" stroke-width="3"/>
         </svg>
       </div>
     </section>
 
     <!-- Right Register Card -->
     <section class="card-wrapper">
-      <div class="auth-card">
+      <div class="auth-card" id="registerCard">
         
         <!-- Center Top Icon Badge -->
         <div class="card-top-icon">
           <i class="fas fa-user-plus"></i>
         </div>
 
-        <h2 class="card-title">Create account</h2>
-        <p class="card-subtitle">Enter your details to get started</p>
+        <h2 class="card-title" id="cardTitle">Request access</h2>
+        <p class="card-subtitle" id="cardSubtitle">Enter your details to request an account</p>
 
         <!-- Alert Banners -->
         <div class="auth-alert error" id="errorAlert" role="alert">
@@ -146,6 +137,20 @@
         <div class="auth-alert success" id="successAlert" role="status">
           <i class="fas fa-circle-check"></i>
           <span id="successMsg"></span>
+        </div>
+
+        <div id="requestReceivedState" style="display:none; text-align:center; padding: 1rem 0;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16, 185, 129, 0.12); color: #10B981; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.25rem;">
+            <i class="fas fa-circle-check"></i>
+          </div>
+          <h3 style="font-size: 1.35rem; font-weight: 700; color: var(--sp-text-main); margin-bottom: 0.75rem;">Request received</h3>
+          <p style="font-size: 0.92rem; color: var(--sp-text-muted); line-height: 1.55; margin-bottom: 1.5rem;">
+            New accounts are reviewed by an administrator. You'll get access for 365 days once approved.
+          </p>
+          <a href="/login.html" class="btn-primary-auth" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:0.5rem; width:100%;">
+            <span>Return to Sign in</span>
+            <i class="fas fa-arrow-right"></i>
+          </a>
         </div>
 
         <form id="registerForm" novalidate>
@@ -213,13 +218,33 @@
           <div class="strength-container">
             <div class="strength-header">
               <span>Password strength</span>
-              <span id="strengthLabel" style="font-weight:600;">Weak</span>
+              <span id="strengthLabel" style="font-weight:600;">--</span>
             </div>
             <div class="strength-bars">
               <div class="strength-segment" id="seg1"></div>
               <div class="strength-segment" id="seg2"></div>
               <div class="strength-segment" id="seg3"></div>
               <div class="strength-segment" id="seg4"></div>
+            </div>
+          </div>
+
+          <!-- Live Password Rule Checklist [A5] -->
+          <div id="passwordChecklist" class="password-checklist" style="margin: 0.75rem 0 0.25rem; font-size: 0.82rem; color: var(--sp-text-muted); display: flex; flex-direction: column; gap: 0.35rem;">
+            <div id="chkLength" class="chk-item" style="display: flex; align-items: center; gap: 0.45rem; transition: color 0.15s ease;">
+              <i class="far fa-circle" id="icoLength" style="font-size: 0.8rem; width: 14px;"></i>
+              <span>At least 12 characters</span>
+            </div>
+            <div id="chkLetter" class="chk-item" style="display: flex; align-items: center; gap: 0.45rem; transition: color 0.15s ease;">
+              <i class="far fa-circle" id="icoLetter" style="font-size: 0.8rem; width: 14px;"></i>
+              <span>Contains at least one letter</span>
+            </div>
+            <div id="chkDigit" class="chk-item" style="display: flex; align-items: center; gap: 0.45rem; transition: color 0.15s ease;">
+              <i class="far fa-circle" id="icoDigit" style="font-size: 0.8rem; width: 14px;"></i>
+              <span>Contains at least one number</span>
+            </div>
+            <div id="chkMatch" class="chk-item" style="display: flex; align-items: center; gap: 0.45rem; transition: color 0.15s ease;">
+              <i class="far fa-circle" id="icoMatch" style="font-size: 0.8rem; width: 14px;"></i>
+              <span>Passwords match</span>
             </div>
           </div>
 
@@ -250,7 +275,7 @@
 
           <!-- Terms Checkbox -->
           <div class="form-group" style="margin-top: 1.15rem; margin-bottom: 1.35rem;">
-            <label class="checkbox-label" style="font-size: 0.82rem; line-height: 1.45;">
+            <label for="termsCheck" class="checkbox-label" style="font-size: 0.82rem; line-height: 1.45;">
               <input type="checkbox" id="termsCheck" required>
               <span>I agree to the <a href="#" class="link-btn" onclick="openModal('termsModal');return false;">Terms of Service</a> and <a href="#" class="link-btn" onclick="openModal('privacyModal');return false;">Privacy Policy</a></span>
             </label>
@@ -259,7 +284,7 @@
           <!-- Submit Button -->
           <button type="submit" class="btn-primary-auth" id="submitBtn">
             <div class="spinner"></div>
-            <span class="btn-text"><i class="fas fa-user-plus"></i> Create account</span>
+            <span class="btn-text"><i class="fas fa-paper-plane" style="margin-right: 0.4rem;"></i> Request access</span>
           </button>
 
           <!-- Divider -->
@@ -402,23 +427,42 @@
       confirmEyeIcon.className = isPwd ? 'far fa-eye-slash' : 'far fa-eye';
     });
 
-    // Password Strength Meter
-    pwdInput.addEventListener('input', () => {
+    // Live Password Rules Checklist & Strength Meter [A5]
+    function updatePasswordRules() {
       const val = pwdInput.value;
-      let score = 0;
-      if (val.length >= 8) score++;
-      if (val.length >= 12) score++;
-      if (/[A-Za-z]/.test(val) && /\d/.test(val)) score++;
-      if (/[^A-Za-z0-9]/.test(val) || (val.length >= 14)) score++;
+      const confirmVal = confirmPwd.value;
 
+      // Rule: Length >= 12
+      const isLength = val.length >= 12;
+      setRuleState('chkLength', 'icoLength', isLength);
+
+      // Rule: Has Letter
+      const isLetter = /[A-Za-z]/.test(val);
+      setRuleState('chkLetter', 'icoLetter', isLetter);
+
+      // Rule: Has Digit
+      const isDigit = /\d/.test(val);
+      setRuleState('chkDigit', 'icoDigit', isDigit);
+
+      // Rule: Passwords Match
+      const isMatch = val.length > 0 && confirmVal.length > 0 && val === confirmVal;
+      setRuleState('chkMatch', 'icoMatch', isMatch);
+
+      // Strength Meter: remains empty until first keystroke
       const segments = [seg1, seg2, seg3, seg4];
       segments.forEach(s => s.style.backgroundColor = '#E2E8F0');
 
       if (!val) {
-        strengthLabel.textContent = 'Weak';
+        strengthLabel.textContent = '--';
         strengthLabel.style.color = 'var(--sp-text-muted)';
         return;
       }
+
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (val.length >= 12) score++;
+      if (/[A-Za-z]/.test(val) && /\d/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val) || (val.length >= 16)) score++;
 
       if (score === 1) {
         seg1.style.backgroundColor = '#EF4444';
@@ -430,17 +474,33 @@
         strengthLabel.textContent = 'Fair';
         strengthLabel.style.color = '#F59E0B';
       } else if (score === 3) {
-        seg1.style.backgroundColor = '#3B82F6';
-        seg2.style.backgroundColor = '#3B82F6';
-        seg3.style.backgroundColor = '#3B82F6';
+        seg1.style.backgroundColor = '#0071E3';
+        seg2.style.backgroundColor = '#0071E3';
+        seg3.style.backgroundColor = '#0071E3';
         strengthLabel.textContent = 'Good';
-        strengthLabel.style.color = '#3B82F6';
+        strengthLabel.style.color = '#0071E3';
       } else if (score >= 4) {
         segments.forEach(s => s.style.backgroundColor = '#10B981');
         strengthLabel.textContent = 'Strong';
         strengthLabel.style.color = '#10B981';
       }
-    });
+    }
+
+    function setRuleState(elId, icoId, isValid) {
+      const el = document.getElementById(elId);
+      const ico = document.getElementById(icoId);
+      if (!el || !ico) return;
+      if (isValid) {
+        el.style.color = '#10B981';
+        ico.className = 'fas fa-check-circle';
+      } else {
+        el.style.color = 'var(--sp-text-muted)';
+        ico.className = 'far fa-circle';
+      }
+    }
+
+    pwdInput.addEventListener('input', updatePasswordRules);
+    confirmPwd.addEventListener('input', updatePasswordRules);
 
     function validateEmail(email) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -478,7 +538,7 @@
         return;
       }
       if (password !== confirm) {
-        showError('Passwords do not match. Please check and try again.');
+        showError('Passwords do not match. Please verify.');
         return;
       }
       if (!termsCheck.checked) {
@@ -500,9 +560,18 @@
         const data = await res.json().catch(() => ({}));
 
         if (res.ok) {
-          showSuccess('Account created successfully! Redirecting to sign in…');
-          form.reset();
-          setTimeout(() => { window.location.href = '/login.html'; }, 1400);
+          // [A4] Swap form for "Request received" state
+          form.style.display = 'none';
+          const cardTitle = document.getElementById('cardTitle');
+          const cardSubtitle = document.getElementById('cardSubtitle');
+          const divider = document.querySelector('.auth-divider');
+          const socialGrid = document.querySelector('.social-buttons-grid');
+          const switchBox = form.nextElementSibling;
+          if (cardTitle) cardTitle.style.display = 'none';
+          if (cardSubtitle) cardSubtitle.style.display = 'none';
+          if (divider) divider.style.display = 'none';
+          if (socialGrid) socialGrid.style.display = 'none';
+          document.getElementById('requestReceivedState').style.display = 'block';
           return;
         }
 
