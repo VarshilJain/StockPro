@@ -41,7 +41,8 @@ _BULLISH_SIGNALS = [
     ("Price above SMA50", None, 0),  # Custom check
     ("RSI in 50-70 zone", None, 0),  # Custom check
     ("High Relative Volume", "High_Relative_Volume_30", 1),
-    ("ADX Trend Confirmed", "adx_trigger", 1),
+    ("ADX Trend Confirmed", "adx_bullish", 1),
+    ("ADX Bullish Trigger (+DI Cross)", "adx_trigger", 1),
     ("Near 52-Week High", "near_52w_high", 1),
     ("New 52-Week High", "new_52w_high", 1),
     ("VCP Pattern Active", "screen_vcp", 1),

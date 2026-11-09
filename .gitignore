@@ -27,4 +27,6 @@ output.txt
 *.db
 *.sqlite
 *.exe
+*.pkl
+cache_data/
 

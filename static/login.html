@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign in — StockPro Analytics</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <meta name="description" content="Sign in to your StockPro Analytics account to access real-time stock signals, technical analysis, and AI-powered market insights.">
+  <meta name="description" content="Sign in to your StockPro Analytics account to access stock screening signals, technical analysis, and market insights.">
   
   <!-- Modern Typography & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,11 +53,11 @@
       <div class="features-list">
         <div class="feature-item">
           <div class="feature-icon-box">
-            <i class="fas fa-chart-pie"></i>
+            <i class="fas fa-chart-line"></i>
           </div>
           <div class="feature-text">
-            <h4>Real-time Insights</h4>
-            <p>Live market data and smart analytics at your fingertips.</p>
+            <h4>Technical & Swing Analytics</h4>
+            <p>Daily pattern analysis, delivery spikes, and swing setups.</p>
           </div>
         </div>
 
@@ -357,6 +357,18 @@
       errorAlert.style.display = 'none';
     }
 
+    // Check for session ended or status query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const reasonParam = urlParams.get('reason');
+    const msgParam = urlParams.get('message');
+    if (reasonParam === 'session_terminated' || reasonParam === 'concurrent_login') {
+      showError('Your session ended because this account was signed in on another device.');
+      sessionStorage.clear();
+      localStorage.removeItem('stockpro_access_token');
+    } else if (msgParam) {
+      showError(decodeURIComponent(msgParam));
+    }
+
     // Password Visibility Toggle
     const togglePwdBtn = document.getElementById('togglePwdBtn');
     const pwdEyeIcon   = document.getElementById('pwdEyeIcon');
@@ -394,7 +406,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email, password, remember_me: Boolean(rememberMe && rememberMe.checked) }),
         });
 
         if (res.ok) {
@@ -466,7 +478,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ credential: response.credential }),
+          body: JSON.stringify({ credential: response.credential, remember_me: Boolean(rememberMe && rememberMe.checked) }),
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {

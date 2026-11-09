@@ -12,7 +12,7 @@ from config import (
     STOCKPRO_FRONTEND_ORIGINS,
 )
 from routers import stocks, fundamentals, auth as auth_router, scans, dashboard as dashboard_router, screens, admin as admin_router, watchlist as watchlist_router
-from routers import export as export_router, alerts as alerts_router, confluence as confluence_router
+from routers import export as export_router, alerts as alerts_router, confluence as confluence_router, breadth as breadth_router
 
 logger = logging.getLogger("stockpro")
 
@@ -104,6 +104,7 @@ app.include_router(watchlist_router.router)                         # /api/watch
 app.include_router(export_router.router)                            # /api/export/...
 app.include_router(alerts_router.router)                            # /api/alerts/...
 app.include_router(confluence_router.router)                        # /api/confluence/..., /api/market-breadth
+app.include_router(breadth_router.router)                           # /api/breadth/...
 
 
 # ──────────────────────────────────────────────────────────────

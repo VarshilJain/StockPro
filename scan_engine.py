@@ -42,7 +42,7 @@ _BINARY_FIELDS: frozenset[str] = frozenset([
     # Volume
     "High_Relative_Volume_30",
     # ADX
-    "adx_trigger",
+    "adx_trigger", "adx_bullish",
     # Convergence Scanners
     "convergence_5", "convergence_3", "convergence_4",
     # Delivery Momentum Signal
@@ -117,7 +117,8 @@ FIELD_LABELS: dict[str, str] = {
     "rsi_lt_30": "RSI < 30",
     "rsi_gt_70": "RSI > 70",
     "High_Relative_Volume_30": "High Relative Volume (30d)",
-    "adx_trigger": "ADX Trigger",
+    "adx_trigger": "ADX Crossover Trigger (+DI crosses -DI, ADX>=20)",
+    "adx_bullish": "ADX Expanding Bullish Momentum (ADX>=25, +DI>-DI, Rising)",
     "NR": "Narrow Range (NR)",
     "convergence_5": "Convergence 5 (EMA 4,9,18,50,200)",
     "convergence_3": "Convergence 3 (EMA 4,9,18 + >100,150,200)",
@@ -166,7 +167,7 @@ FIELD_GROUPS: list[dict] = [
     },
     {
         "label": "Volume & ADX",
-        "fields": ["High_Relative_Volume_30", "adx_trigger"],
+        "fields": ["High_Relative_Volume_30", "adx_trigger", "adx_bullish"],
     },
     {
         "label": "Composite Signals",
@@ -312,7 +313,7 @@ def _get_latest_active_date(conn) -> date:
         FROM historical_data
         WHERE Timestamp >= DATE_SUB((SELECT MAX(Timestamp) FROM historical_data), INTERVAL 30 DAY)
         GROUP BY Timestamp
-        HAVING COUNT(*) >= 500 AND SUM(Volume) > 0
+        HAVING COUNT(*) >= 500 AND SUM(Volume) > 0 AND SUM(CASE WHEN stage_bucket != 'unknown' THEN 1 ELSE 0 END) >= 500
         ORDER BY Timestamp DESC
         LIMIT 1
     """)

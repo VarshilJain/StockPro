@@ -148,20 +148,74 @@ DELIVERY_LAG_DAYS          = 0      # Default delivery publication lag (1 for T+
 
 # Pattern Screens & Base Detection
 BASE_MIN_DROP_PCT = 5.0             # Minimum drop from a local high to establish a base pivot
-VCP_MAX_PIVOT_DIST_PCT = 20.0       # Max percent distance from pivot for breakouts
+VCP_MAX_PIVOT_DIST_PCT = 20.0       # Max percent distance from pivot for general base breakouts
+PCS_MAX_PIVOT_DIST_PCT = 6.0        # Max percent distance from pivot for VCP tightened coil
 VCP_MIN_CONTRACTIONS = 2            # Minimum successive contractions for VCP
-BLUE_SKY_ATH_PROXIMITY_PCT = 3.0    # Max percent distance from ATH for a base to qualify
-BLUE_SKY_CLOSE_ATH_PROXIMITY_PCT = 5.0 # Max percent distance from ATH for Close to qualify
-BLUE_SKY_PIVOT_ATH_PROXIMITY = 0.97 # (Deprecated) Replaced by 1 - BLUE_SKY_ATH_PROXIMITY_PCT/100
-MULTI_YEAR_BASE_MIN_DAYS = 365      # Minimum length (days) for a multi-year base
+BLUE_SKY_ATH_PROXIMITY_PCT = 5.0    # Max percent distance from ATH for base ceiling to qualify (BananaPatterns lvl 1 ATH)
+BLUE_SKY_CLOSE_ATH_PROXIMITY_PCT = 20.0 # Max percent distance from ATH for Close to qualify (BananaPatterns ext [-20, 0])
+BLUE_SKY_PIVOT_ATH_PROXIMITY = 0.95 # Base ceiling within 5% of ATH
+MULTI_YEAR_BASE_MIN_DAYS = 250      # Minimum length (trading days, ~1 calendar year) for a multi-year base
 IPO_BASE_MIN_WEEKS = 2              # Min weeks since listing
 IPO_BASE_MAX_WEEKS = 50             # Max weeks since listing
 IPO_BASE_MIN_DAYS = 21              # Min length (days) for IPO base
 IPO_BASE_MIN_DEPTH_PCT = 2.0        # Min depth percent for IPO base
 IPO_BASE_MAX_DEPTH_PCT = 35.0       # Max depth percent for IPO base
 
+
+# VCP Enhancement: Base Width & Stage 2 Base Count
+VCP_MIN_BASE_DAYS = 15              # Minimum base width in trading days (>= 3 weeks)
+VCP_MAX_BASE_COUNT = 3              # Max Stage 2 base number to qualify (Base 1-3 = prime)
+BASE_COUNT_MIN_ADVANCE_PCT = 20.0   # Min % rally after breakout to count as new base
+
+# VCP Enhancement: 52-Week High Proximity (Minervini Trend Template)
+VCP_MAX_OFF_52W_HIGH_PCT = 15.0     # Close must be within 15% of rolling 52-week high
+VCP_MIN_ABOVE_52W_LOW_PCT = 30.0    # Close must be >= 30% above rolling 52-week low
+
+# VCP Enhancement: Volume Dry-Up (VDU) Thresholds
+VCP_VDU_BAR_RATIO = 0.60            # Single bar: Volume < 60% of 20-day avg volume
+VCP_VDU_CLUSTER_RATIO = 0.75        # 5-day vol SMA <= 75% of 50-day vol SMA
+VCP_VDU_ASYMMETRY_RATIO = 0.80      # Down-day avg volume < 80% of up-day avg volume
+
+# VCP Enhancement: Volatility Compression (ATR%)
+VCP_ATR_COMPRESSION_RATIO = 0.65    # Current ATR% / ATR%_at_base_start must be <= 0.65
+VCP_ATR_PERIOD = 14                 # ATR computation period in trading days
+
 # Missing Constants from Audit
 BASE_SWING_LOOKBACK_DAYS = 21       # Lookback window for swing high detection
 STAGE3_NET_PROGRESS_WINDOW = 30     # Days to check for net price progress in Stage 3
 STAGE3_MAX_PROGRESS_PCT = 5.0       # Max percent progress allowed to be considered "flattening"
+
+# ---------------------------------------------------------------------------
+# VCP Enhancement v2.0: Two-Tier Architecture (Hard Gates & 100-Point Scoring)
+# ---------------------------------------------------------------------------
+VCP_MIN_HISTORY_BARS = 252          # Minimum required daily bars to evaluate VCP
+VCP_ZIGZAG_MIN_REVERSAL_PCT = 2.0   # Floor minimum reversal % for adaptive ZigZag swings
+VCP_ZIGZAG_ATR_MULT = 1.5           # ATR%14 multiplier for adaptive ZigZag swings
+VCP_BASE_TRIGGER_DROP_PCT = 8.0     # Drop from recent peak required to trigger Base Start
+VCP_GATE_MIN_WIDTH_DAYS = 15        # Minimum consolidation trading days (3 trading weeks)
+VCP_GATE_MAX_WIDTH_DAYS = 65        # Maximum consolidation trading days (13 trading weeks)
+VCP_GATE_MAX_CONTRACTION_RATIO = 0.75 # Hard limit: each D_k must be <= 0.75 * D_{k-1}
+VCP_GATE_MAX_PIVOT_DIST_PCT = 6.0   # Maximum distance below pivot allowed (0 to 6%)
+VCP_GATE_MIN_52W_LOW_PCT = 30.0     # Minimum % above 52-week low
+VCP_GATE_MAX_52W_HIGH_PCT = 25.0    # Maximum % below 52-week high
+VCP_GATE_MIN_RS_RANK = 70           # Minimum 12-month Relative Strength percentile
+
+# VCP Scoring Weights (100 Points Total)
+VCP_WEIGHT_PROGRESSION = 15.0       # Progression mean ratio D_k / D_{k-1}
+VCP_WEIGHT_FINAL_DEPTH = 10.0       # Tightness of final contraction wave
+VCP_WEIGHT_WAVE_COUNT = 5.0         # Number of contraction waves
+VCP_WEIGHT_VOL_COMPRESSION = 15.0   # Final contraction volume vs 50-day SMA
+VCP_WEIGHT_QUIETEST_DAY = 5.0       # 10-bar absolute base volume dry-up
+VCP_WEIGHT_UP_DOWN_VOL = 5.0        # Up/Down volume asymmetry across base
+VCP_WEIGHT_RS_RANK = 10.0           # Relative strength leadership
+VCP_WEIGHT_52W_HIGH = 10.0          # Proximity to 52-week high
+VCP_WEIGHT_BASE_COUNT = 10.0        # Early Stage 2 base maturity
+VCP_WEIGHT_ATR_COMPRESSION = 10.0   # Normalized 14-day ATR% squeeze
+VCP_WEIGHT_PIVOT_PROXIMITY = 5.0    # Tight positioning under pivot
+
+# VCP Grade Cutoffs
+VCP_GRADE_A_CUTOFF = 80.0           # Grade A: Elite Setup (Score >= 80)
+VCP_GRADE_B_CUTOFF = 65.0           # Grade B: High Quality (Score 65 - 79)
+VCP_GRADE_C_CUTOFF = 50.0           # Grade C: Developing / Speculative (Score 50 - 64)
+
 

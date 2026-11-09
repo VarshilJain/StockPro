@@ -344,7 +344,7 @@ def update_user_status(admin_user: dict, target_user_id: int, is_active: bool, i
         
         # If deactivating, also invalidate their current session
         if not is_active:
-            cur.execute("UPDATE users SET token_version = token_version + 1 WHERE id = %s", (target_user_id,))
+            cur.execute("UPDATE users SET active_session_id = NULL, token_version = token_version + 1 WHERE id = %s", (target_user_id,))
 
         conn.commit()
 
@@ -366,7 +366,7 @@ def update_user_status(admin_user: dict, target_user_id: int, is_active: bool, i
 
 def revoke_user_sessions(admin_user: dict, target_user_id: int, ip_address: Optional[str] = None) -> dict:
     """
-    Increment token_version to immediately invalidate all active JWT sessions for target user.
+    Increment token_version and clear active_session_id to immediately invalidate all active JWT sessions for target user.
     """
     conn = get_connection()
     cur = conn.cursor(dictionary=True)
@@ -377,7 +377,7 @@ def revoke_user_sessions(admin_user: dict, target_user_id: int, ip_address: Opti
             raise KeyError("User not found.")
 
         new_version = target.get("token_version", 1) + 1
-        cur.execute("UPDATE users SET token_version = %s WHERE id = %s", (new_version, target_user_id))
+        cur.execute("UPDATE users SET active_session_id = NULL, token_version = %s WHERE id = %s", (new_version, target_user_id))
         conn.commit()
 
         log_audit(

@@ -6,11 +6,12 @@ from __future__ import annotations
 import json
 import logging
 import re
+import secrets
 from datetime import datetime, timedelta
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, field_validator
 
 from auth import (
@@ -35,6 +36,8 @@ router = APIRouter(prefix="/api/auth", tags=["Auth"])
 # ──────────────────────────────────────────────
 COOKIE_NAME = "access_token"
 COOKIE_MAX_AGE = ACCESS_TOKEN_EXPIRE_HOURS * 3600  # seconds
+REMEMBER_ME_DAYS = 30
+REMEMBER_ME_COOKIE_MAX_AGE = REMEMBER_ME_DAYS * 86400  # seconds (30 days)
 
 
 # ──────────────────────────────────────────────
@@ -70,10 +73,12 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    remember_me: bool = False
 
 
 class GoogleAuthRequest(BaseModel):
     credential: str
+    remember_me: bool = False
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -241,23 +246,40 @@ def login(body: LoginRequest, request: Request, response: Response):
     # Reset account failure attempts
     login_rate_limiter.reset_account(body.email)
 
-    # Update last login info
+    # Atomic session update with exclusive row lock to serialize concurrent logins safely
+    new_session_id = secrets.token_hex(16)
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
+        conn.start_transaction()
+        cursor.execute("SELECT id, token_version FROM users WHERE id = %s FOR UPDATE", (user["id"],))
+        lock_row = cursor.fetchone()
+        new_token_version = ((lock_row.get("token_version") if lock_row else user.get("token_version")) or 0) + 1
         cursor.execute(
-            "UPDATE users SET last_login_at = NOW(), last_login_ip = %s WHERE id = %s",
-            (ip, user["id"]),
+            """
+            UPDATE users
+            SET active_session_id = %s, token_version = %s, last_login_at = NOW(), last_login_ip = %s
+            WHERE id = %s
+            """,
+            (new_session_id, new_token_version, ip, user["id"]),
         )
         conn.commit()
         cursor.close()
         conn.close()
     except Exception:
-        pass
+        logger.exception("DB error updating active_session_id during login for user_id=%s", user["id"])
+        raise HTTPException(status_code=500, detail="Login failed. Please try again.")
+
+    if body.remember_me:
+        token_expires = timedelta(days=REMEMBER_ME_DAYS)
+        cookie_max_age = REMEMBER_ME_COOKIE_MAX_AGE
+    else:
+        token_expires = timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        cookie_max_age = COOKIE_MAX_AGE
 
     token = create_access_token(
-        {"sub": str(user["id"]), "ver": user.get("token_version", 1)},
-        expires_delta=timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
+        {"sub": str(user["id"]), "sid": new_session_id, "ver": new_token_version},
+        expires_delta=token_expires,
     )
     csrf_token = generate_csrf_token()
 
@@ -266,7 +288,7 @@ def login(body: LoginRequest, request: Request, response: Response):
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        max_age=COOKIE_MAX_AGE,
+        max_age=cookie_max_age,
         samesite="lax",
         secure=COOKIE_SECURE,
         path="/",
@@ -277,7 +299,7 @@ def login(body: LoginRequest, request: Request, response: Response):
         key=CSRF_COOKIE_NAME,
         value=csrf_token,
         httponly=False,
-        max_age=COOKIE_MAX_AGE,
+        max_age=cookie_max_age,
         samesite="lax",
         secure=COOKIE_SECURE,
         path="/",
@@ -401,10 +423,40 @@ def google_login(body: GoogleAuthRequest, request: Request, response: Response):
         logger.exception("DB error during Google authentication for email=%s", email)
         raise HTTPException(status_code=500, detail="Authentication failed. Please try again.")
 
-    # 3. Create Session Token & CSRF Token
+    # 3. Create Session Token & CSRF Token with atomic session update
+    new_session_id = secrets.token_hex(16)
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        conn.start_transaction()
+        cursor.execute("SELECT id, token_version FROM users WHERE id = %s FOR UPDATE", (user_id,))
+        lock_row = cursor.fetchone()
+        new_token_version = ((lock_row.get("token_version") if lock_row else 0) or 0) + 1
+        cursor.execute(
+            """
+            UPDATE users
+            SET active_session_id = %s, token_version = %s, last_login_at = NOW(), last_login_ip = %s
+            WHERE id = %s
+            """,
+            (new_session_id, new_token_version, ip, user_id),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception:
+        logger.exception("DB error updating active_session_id during Google login for user_id=%s", user_id)
+        raise HTTPException(status_code=500, detail="Authentication failed. Please try again.")
+
+    if body.remember_me:
+        token_expires = timedelta(days=REMEMBER_ME_DAYS)
+        cookie_max_age = REMEMBER_ME_COOKIE_MAX_AGE
+    else:
+        token_expires = timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        cookie_max_age = COOKIE_MAX_AGE
+
     token = create_access_token(
-        {"sub": str(user_id)},
-        expires_delta=timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
+        {"sub": str(user_id), "sid": new_session_id, "ver": new_token_version},
+        expires_delta=token_expires,
     )
     csrf_token = generate_csrf_token()
 
@@ -413,7 +465,7 @@ def google_login(body: GoogleAuthRequest, request: Request, response: Response):
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        max_age=COOKIE_MAX_AGE,
+        max_age=cookie_max_age,
         samesite="lax",
         secure=COOKIE_SECURE,
         path="/",
@@ -424,7 +476,7 @@ def google_login(body: GoogleAuthRequest, request: Request, response: Response):
         key=CSRF_COOKIE_NAME,
         value=csrf_token,
         httponly=False,
-        max_age=COOKIE_MAX_AGE,
+        max_age=cookie_max_age,
         samesite="lax",
         secure=COOKIE_SECURE,
         path="/",
@@ -443,13 +495,71 @@ def google_login(body: GoogleAuthRequest, request: Request, response: Response):
 
 
 @router.post("/logout")
-def logout(request: Request, response: Response):
-    """Clear both auth and CSRF cookies."""
+def logout(request: Request, response: Response, access_token: Optional[str] = Cookie(default=None)):
+    """Clear both auth and CSRF cookies, and immediately invalidate the active session in DB."""
     ip = get_client_ip(request)
+    if access_token:
+        try:
+            payload = decode_token(access_token)
+            if payload and payload.get("sub"):
+                user_id = int(payload["sub"])
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE users SET active_session_id = NULL, token_version = token_version + 1 WHERE id = %s",
+                    (user_id,),
+                )
+                conn.commit()
+                cursor.close()
+                conn.close()
+                logger.info("SECURITY_EVENT: AUTH_LOGOUT user_id=%s, ip=%s", user_id, ip)
+        except Exception:
+            logger.exception("Error clearing active_session_id on logout")
+
     response.delete_cookie(key=COOKIE_NAME, path="/", secure=COOKIE_SECURE, samesite="lax")
     response.delete_cookie(key=CSRF_COOKIE_NAME, path="/", secure=COOKIE_SECURE, samesite="lax")
-    logger.info("SECURITY_EVENT: AUTH_LOGOUT ip=%s", ip)
     return {"message": "Logged out."}
+
+
+@router.post("/refresh")
+def refresh_token(request: Request, response: Response, current_user: dict = Depends(get_current_user)):
+    """
+    Refresh access token for the currently active session.
+    Rejects requests from terminated/superseded sessions with HTTP 401 Unauthorized.
+    """
+    ip = get_client_ip(request)
+    user_id = current_user["id"]
+    active_sid = current_user.get("active_session_id")
+    token_ver = current_user.get("token_version", 1)
+
+    token_expires = timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    cookie_max_age = COOKIE_MAX_AGE
+    new_token = create_access_token(
+        {"sub": str(user_id), "sid": active_sid, "ver": token_ver},
+        expires_delta=token_expires,
+    )
+    csrf_token = generate_csrf_token()
+
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=new_token,
+        httponly=True,
+        max_age=cookie_max_age,
+        samesite="lax",
+        secure=COOKIE_SECURE,
+        path="/",
+    )
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=csrf_token,
+        httponly=False,
+        max_age=cookie_max_age,
+        samesite="lax",
+        secure=COOKIE_SECURE,
+        path="/",
+    )
+    logger.info("SECURITY_EVENT: AUTH_TOKEN_REFRESH user_id=%s, ip=%s", user_id, ip)
+    return {"message": "Token refreshed successfully.", "csrf_token": csrf_token}
 
 
 @router.get("/config")
@@ -572,7 +682,7 @@ def reset_password(body: ResetPasswordRequest, request: Request):
             new_hash = hash_password(body.new_password)
             new_version = user.get("token_version", 1) + 1
             cursor.execute(
-                "UPDATE users SET hashed_password = %s, token_version = %s WHERE id = %s",
+                "UPDATE users SET hashed_password = %s, token_version = %s, active_session_id = NULL WHERE id = %s",
                 (new_hash, new_version, user["id"]),
             )
             conn.commit()
@@ -615,7 +725,7 @@ def reset_password(body: ResetPasswordRequest, request: Request):
 
             new_hash = hash_password(body.new_password)
             new_ver = user.get("token_version", 1) + 1
-            cursor.execute("UPDATE users SET hashed_password = %s, token_version = %s WHERE id = %s", (new_hash, new_ver, user["id"]))
+            cursor.execute("UPDATE users SET hashed_password = %s, token_version = %s, active_session_id = NULL WHERE id = %s", (new_hash, new_ver, user["id"]))
             conn.commit()
             cursor.close()
             conn.close()
@@ -656,7 +766,7 @@ def change_password(body: ChangePasswordRequest, request: Request, current_user:
 
         new_hash = hash_password(body.new_password)
         new_ver = user.get("token_version", 1) + 1
-        cursor.execute("UPDATE users SET hashed_password = %s, token_version = %s WHERE id = %s", (new_hash, new_ver, user_id))
+        cursor.execute("UPDATE users SET hashed_password = %s, token_version = %s, active_session_id = NULL WHERE id = %s", (new_hash, new_ver, user_id))
         conn.commit()
         cursor.close()
         conn.close()

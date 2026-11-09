@@ -65,23 +65,38 @@ def decode_token(token: str) -> Optional[dict]:
 # ──────────────────────────────────────────────
 # FastAPI dependencies
 # ──────────────────────────────────────────────
+SESSION_TERMINATED_DETAIL = "Your session ended because this account was signed in on another device."
+
 _CREDENTIALS_EXCEPTION = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Not authenticated",
     headers={"WWW-Authenticate": "Bearer"},
 )
 
+_SESSION_TERMINATED_EXCEPTION = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail=SESSION_TERMINATED_DETAIL,
+    headers={"WWW-Authenticate": "Bearer", "X-Session-Terminated": "1"},
+)
 
-def get_current_user(access_token: Optional[str] = Cookie(default=None)) -> dict:
+
+def get_current_user(
+    access_token: Optional[str] = Cookie(default=None),
+    authorization: Optional[str] = Header(default=None),
+) -> dict:
     """
-    FastAPI dependency. Reads the httpOnly `access_token` cookie, validates the
-    JWT, then fetches and returns the matching active user row from the DB.
-    Raises 401 if the token is missing, invalid, expired, or the user is inactive.
+    FastAPI dependency. Reads the httpOnly `access_token` cookie (or Bearer Authorization header),
+    validates the JWT, then fetches and returns the matching active user row from the DB.
+    Enforces single active session per account, raising 401 if superseded or revoked.
     """
-    if not access_token:
+    token = access_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+
+    if not token:
         raise _CREDENTIALS_EXCEPTION
 
-    payload = decode_token(access_token)
+    payload = decode_token(token)
     if payload is None:
         raise _CREDENTIALS_EXCEPTION
 
@@ -96,9 +111,9 @@ def get_current_user(access_token: Optional[str] = Cookie(default=None)) -> dict
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        # Check columns to support installations before role migration
+        # Check columns including active_session_id
         cursor.execute(
-            "SELECT id, email, name, role, is_active, created_at, token_version, approval_status, expires_at FROM users WHERE id = %s",
+            "SELECT id, email, name, role, is_active, created_at, token_version, active_session_id, approval_status, expires_at FROM users WHERE id = %s",
             (user_id,),
         )
         user = cursor.fetchone()
@@ -121,12 +136,24 @@ def get_current_user(access_token: Optional[str] = Cookie(default=None)) -> dict
         logger.warning("Expired user access attempted user_id=%s, expired_at=%s", user_id, user["expires_at"])
         raise _CREDENTIALS_EXCEPTION
 
-    # Session revocation check
+    # ─────────────────────────────────────────────────────────────
+    # Single active session and token revocation validation
+    # ─────────────────────────────────────────────────────────────
+    token_sid = payload.get("sid")
     token_ver = payload.get("ver")
-    if token_ver is not None and user.get("token_version") is not None:
-        if token_ver < user["token_version"]:
-            logger.warning("Revoked session token used by user_id=%s", user_id)
-            raise _CREDENTIALS_EXCEPTION
+    db_sid = user.get("active_session_id")
+    db_ver = user.get("token_version", 1)
+
+    if token_sid is not None:
+        # Session-bound token: must strictly match current database active_session_id
+        if not db_sid or token_sid != db_sid or (token_ver is not None and db_ver is not None and token_ver != db_ver):
+            logger.warning("Terminated or superseded session used by user_id=%s (token_sid=%s, db_sid=%s)", user_id, token_sid, db_sid)
+            raise _SESSION_TERMINATED_EXCEPTION
+    else:
+        # Legacy/test tokens without sid: check if active_session_id is already assigned or token_version is superseded
+        if db_sid is not None or (token_ver is not None and db_ver is not None and token_ver < db_ver):
+            logger.warning("Revoked or superseded session token used by user_id=%s (token_ver=%s, db_ver=%s)", user_id, token_ver, db_ver)
+            raise _SESSION_TERMINATED_EXCEPTION
 
     if "role" not in user or not user["role"]:
         user["role"] = "user"

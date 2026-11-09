@@ -1685,6 +1685,13 @@
 
       <!-- SECTION 3: MARKET DATA -->
       <section id="sec-market-data" class="admin-section">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+          <div style="font-size:1.05rem; font-weight:600; color:var(--text-primary);"><i class="fas fa-database text-primary"></i> Market Universe & Telemetry</div>
+          <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="promptDataRefresh()">
+            <i class="fas fa-cloud-arrow-down"></i> Sync Verification
+          </button>
+        </div>
+
         <div class="kpi-grid">
           <div class="kpi-card">
             <div class="kpi-card-header"><span class="kpi-card-label">Total Tickers</span><div class="kpi-card-icon"><i class="fas fa-tags"></i></div></div>
@@ -1705,45 +1712,6 @@
             <div class="kpi-card-header"><span class="kpi-card-label">Data Sync Status</span><div class="kpi-card-icon"><i class="fas fa-arrows-rotate"></i></div></div>
             <div class="kpi-card-value" id="mdSyncBadge" style="font-size:1.4rem; color:#34C759;">UP TO DATE</div>
             <div class="kpi-card-sub">Latest Date: <span id="mdLatestTradingDate">2026-09-25</span></div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title"><i class="fas fa-table-list text-primary"></i> Universe Symbols Inspector</div>
-            <div class="panel-filters">
-              <div class="panel-search">
-                <i class="fas fa-search"></i>
-                <input type="text" id="symbolSearchInput" placeholder="Filter ticker (e.g. RELIANCE)..." oninput="debounceSymbolSearch()">
-              </div>
-              <button class="admin-btn admin-btn-primary admin-btn-sm" onclick="promptDataRefresh()">
-                <i class="fas fa-cloud-arrow-down"></i> Sync Verification
-              </button>
-            </div>
-          </div>
-
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Ticker</th>
-                  <th>Earliest Date</th>
-                  <th>Latest Date</th>
-                  <th>Total Rows</th>
-                  <th>Delivery Status</th>
-                </tr>
-              </thead>
-              <tbody id="symbolsTableBody">
-                <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Loading symbols...</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="panel-footer">
-            <span id="symbolPaginationInfo">Showing page 1</span>
-            <div class="pagination-btns">
-              <button class="admin-btn admin-btn-secondary admin-btn-sm" id="symbolPrevBtn" onclick="prevSymbolPage()"><i class="fas fa-chevron-left"></i></button>
-              <button class="admin-btn admin-btn-secondary admin-btn-sm" id="symbolNextBtn" onclick="nextSymbolPage()"><i class="fas fa-chevron-right"></i></button>
-            </div>
           </div>
         </div>
       </section>
@@ -2203,6 +2171,30 @@
         icon.className = next === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
       }
     }
+
+    // Global Session Termination Interceptor
+    (function() {
+      const originalFetch = window.fetch;
+      let isSessionRedirecting = false;
+      window.fetch = async function(...args) {
+        const response = await originalFetch.apply(this, args);
+        if (response.status === 401 && !isSessionRedirecting) {
+          try {
+            const clone = response.clone();
+            const data = await clone.json().catch(() => ({}));
+            const isTerminated = response.headers.get('X-Session-Terminated') === '1' ||
+              (data.detail && typeof data.detail === 'string' && data.detail.includes('another device'));
+            if (isTerminated) {
+              isSessionRedirecting = true;
+              sessionStorage.clear();
+              localStorage.removeItem('stockpro_access_token');
+              window.location.href = '/login.html?reason=session_terminated&redirect=/admin';
+            }
+          } catch (e) {}
+        }
+        return response;
+      };
+    })();
 
     async function logoutAdmin() {
       try {
@@ -2701,57 +2693,10 @@
           syncBadge.style.color = '#FF9500';
         }
 
-        loadSymbolsTable();
       } catch (err) {
         console.error(err);
       }
     }
-
-    let symbolSearchTimeout = null;
-    function debounceSymbolSearch() {
-      clearTimeout(symbolSearchTimeout);
-      symbolSearchTimeout = setTimeout(() => { symbolPage = 1; loadSymbolsTable(); }, 300);
-    }
-
-    async function loadSymbolsTable() {
-      const q = document.getElementById('symbolSearchInput').value.trim();
-      try {
-        const res = await fetch(`/api/admin/market-data/symbols?page=${symbolPage}&limit=20&search=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
-        const data = await res.json();
-
-        const tbody = document.getElementById('symbolsTableBody');
-        tbody.innerHTML = '';
-        if (!data.symbols.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:2rem;">No matching symbols.</td></tr>';
-          return;
-        }
-
-        data.symbols.forEach(s => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td><strong>${s.ticker}</strong></td>
-            <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${s.first_date}</td>
-            <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${s.last_date}</td>
-            <td style="font-family:'JetBrains Mono',monospace;">${s.rows_count.toLocaleString()}</td>
-            <td>
-              <span class="badge ${s.has_delivery ? 'badge-success' : 'badge-muted'}">
-                <i class="fas fa-${s.has_delivery ? 'check' : 'minus'}"></i> ${s.has_delivery ? 'Delivery Active' : 'No Delivery'}
-              </span>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        document.getElementById('symbolPaginationInfo').innerText = `Showing Page ${data.page} of ${data.total_pages} (${data.total_count} total)`;
-        document.getElementById('symbolPrevBtn').disabled = data.page <= 1;
-        document.getElementById('symbolNextBtn').disabled = data.page >= data.total_pages;
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    function prevSymbolPage() { if (symbolPage > 1) { symbolPage--; loadSymbolsTable(); } }
-    function nextSymbolPage() { symbolPage++; loadSymbolsTable(); }
 
     function promptDataRefresh() {
       openConfirmModal(

@@ -12,11 +12,11 @@ if errorlevel 1 (
 REM Step 2: Fetch official real NSE India delivery reports into MySQL ohlc_data table
 python nse_delivery_fetcher.py 40
 
-REM Step 3: Compute signals on the full dataset (reads from MySQL ohlc_data),
-REM         then writes the enriched rows directly into historical_data table.
-python test.py
+REM Step 3: Compute daily indicators & signals incrementally,
+REM         writing only today's enriched rows directly into historical_data table.
+python incremental_signals.py
 if errorlevel 1 (
-    echo [ERROR] test.py failed. Aborting pipeline.
+    echo [ERROR] incremental_signals.py failed. Aborting pipeline.
     exit /b 1
 )
 
@@ -27,7 +27,26 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Step 5: Compute Pattern Screens & VCP v2.0 Scoring (PCS, APB, MYB, IPO, Trend Resumption)
+python update_vcp_data.py --days 14 --workers 10
+if errorlevel 1 (
+    echo [ERROR] VCP / Pattern screens calculation failed.
+    exit /b 1
+)
+
+REM Step 6: Compute Market Breadth (% Stocks Above EMAs: 10, 20, 50, 100, 150, 200)
+python market_breadth_service.py
+if errorlevel 1 (
+    echo [ERROR] Market Breadth calculation failed.
+    exit /b 1
+)
+
 echo.
+REM Step 7: Compute Market Strength Pattern Screens (VCP & Cup with Handle Stages Cache)
+python market_strength_screens_service.py
+if errorlevel 1 (
+    echo [ERROR] Market Strength Screens cache generation failed.
+    exit /b 1
+)
+
 echo Pipeline complete.
-
-

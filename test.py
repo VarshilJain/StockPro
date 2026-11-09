@@ -89,7 +89,7 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
     dx = 100 * (di_diff / di_sum.replace(0, np.nan))
 
     adx = dx.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
-    return adx.fillna(0)
+    return adx.fillna(0), plus_di.fillna(0), minus_di.fillna(0)
 
 
 def hammer(df):
@@ -180,160 +180,12 @@ def get_nr(row):
     else: return 0
 
 
-def detect_base(group: pd.DataFrame) -> pd.DataFrame:
-    """
-    detect_base: V1 Base Detection Algorithm
-    
-    Known Limitations:
-    1. Only walks forward from simple N-day trailing highs, which can miss complex double-bottom structures.
-    2. Deeply broken bases might artificially reset and create multiple 'micro bases' instead of one large base.
-    3. Contraction logic uses a simplified zigzag detector that may overcount minor noise.
-    4. Base lows are strict absolute minimums, ignoring momentary false breakdowns (shakeouts).
-    """
-    closes = group['Close'].values
-    highs = group['High'].values
-    lows = group['Low'].values
-    dates = group.index.values
-    
-    n = len(group)
-    base_active = np.zeros(n, dtype=int)
-    base_start_date = np.empty(n, dtype=object)
-    base_length_days = np.zeros(n, dtype=int)
-    base_high_arr = np.zeros(n, dtype=float)
-    base_low_arr = np.zeros(n, dtype=float)
-    base_depth_pct = np.zeros(n, dtype=float)
-    pct_from_pivot = np.zeros(n, dtype=float)
-    contraction_count = np.zeros(n, dtype=int)
-    breakout_today = np.zeros(n, dtype=int)
-    last_breakout_level = np.full(n, np.nan, dtype=float)
-    
-    in_base = False
-    cur_base_high = 0.0
-    cur_base_start_date = None
-    cur_base_low = float('inf')
-    cur_contractions = 0
-    cur_days_in_base = 0
-    cur_last_breakout_level = np.nan
-    
-    # State machine running peak parameters
-    running_peak = 0.0
-    running_peak_idx = 0
-    
-    leg_high = 0.0
-    leg_low = float('inf')
-    last_swing_low = float('inf')
-    prev_swing_low = float('inf')
-    last_swing_high = float('inf')
-    trend = 0
-    
-    for i in range(n):
-        c = closes[i]
-        h = highs[i]
-        l = lows[i]
-        d = dates[i]
-        
-        if i == 0:
-            running_peak = h
-            running_peak_idx = 0
-            
-        # 1. Breakout Check
-        is_breakout = False
-        if in_base and c > cur_base_high:
-            is_breakout = True
-            breakout_today[i] = 1
-            cur_last_breakout_level = cur_base_high
-            
-        # 2. Base Initiation / Pullback Trigger Check
-        if not in_base:
-            # Update running peak
-            if h > running_peak:
-                running_peak = h
-                running_peak_idx = i
-                
-            start_idx = max(0, i - BASE_SWING_LOOKBACK_DAYS)
-            window_highs = highs[start_idx:i+1]
-            recent_high = window_highs.max()
-            
-            if recent_high > 0 and ((recent_high - c) / recent_high * 100) >= BASE_MIN_DROP_PCT:
-                in_base = True
-                cur_base_high = running_peak
-                cur_base_start_date = dates[running_peak_idx]
-                cur_days_in_base = i - running_peak_idx
-                cur_base_low = np.min(lows[running_peak_idx:i+1])
-                cur_contractions = 0
-                
-                leg_high = h
-                leg_low = l
-                last_swing_low = float('inf')
-                prev_swing_low = float('inf')
-                last_swing_high = cur_base_high
-                trend = -1
+from pattern_screens_logic import detect_base as detect_base_enhanced, compute_screen_pcs as compute_screen_pcs_enhanced
 
-        # 3. Base Tracking Logic
-        if in_base:
-            cur_days_in_base = i - running_peak_idx
-            if l < cur_base_low:
-                cur_base_low = l
-                
-            if trend == -1:
-                if l < leg_low:
-                    leg_low = l
-                if i > 0 and c > highs[i-1]:
-                    trend = 1
-                    last_swing_low = leg_low
-                    leg_high = h
-            elif trend == 1:
-                if h > leg_high:
-                    leg_high = h
-                if i > 0 and c < lows[i-1]:
-                    trend = -1
-                    if leg_high < last_swing_high and last_swing_low > prev_swing_low:
-                        cur_contractions += 1
-                    last_swing_high = leg_high
-                    prev_swing_low = last_swing_low
-                    leg_low = l
-            
-            base_active[i] = 1
-            base_start_date[i] = cur_base_start_date
-            base_length_days[i] = cur_days_in_base
-            base_high_arr[i] = cur_base_high
-            base_low_arr[i] = cur_base_low
-            base_depth_pct[i] = (cur_base_high - cur_base_low) / cur_base_high * 100
-            pct_from_pivot[i] = (cur_base_high - c) / cur_base_high * 100
-            contraction_count[i] = cur_contractions
-            
-            if is_breakout:
-                in_base = False
-                running_peak = h
-                running_peak_idx = i
-                cur_base_high = 0.0
-                cur_base_low = float('inf')
-                cur_contractions = 0
-                cur_days_in_base = 0
-        else:
-            base_active[i] = 0
-            base_start_date[i] = d
-            base_length_days[i] = 0
-            base_high_arr[i] = 0.0
-            base_low_arr[i] = 0.0
-            base_depth_pct[i] = 0.0
-            pct_from_pivot[i] = 0.0
-            contraction_count[i] = 0
-            
-        last_breakout_level[i] = cur_last_breakout_level
-        
-    group = group.copy()
-    group['base_active'] = base_active
-    group['base_start_date'] = pd.to_datetime(base_start_date)
-    group['base_length_days'] = base_length_days
-    group['base_high'] = base_high_arr
-    group['base_low'] = base_low_arr
-    group['base_depth_pct'] = base_depth_pct
-    group['pct_from_pivot'] = pct_from_pivot
-    group['contraction_count'] = contraction_count
-    group['breakout_today'] = breakout_today
-    group['last_breakout_level'] = last_breakout_level
-    return group
+
+def detect_base(group: pd.DataFrame) -> pd.DataFrame:
+    """Delegates base detection to the enhanced Minervini VCP engine."""
+    return detect_base_enhanced(group)
 
 
 def classify_stages(all_results: pd.DataFrame) -> pd.DataFrame:
@@ -447,11 +299,17 @@ def main():
         "hit_2y_high_14d", "hit_5y_high_14d", "hit_10y_high_14d",
         "RSI14", "oversold", "overbought", "rsi_lt_30", "rsi_gt_70",
         "rsi_divergence_type", "rsi_divergence_direction", "rsi_divergence_score",
-        "adx_trigger", "convergence_5", "convergence_3", "convergence_4",
+        "adx_trigger", "adx_bullish", "convergence_5", "convergence_3", "convergence_4",
         "RCS_30D",
         "all_time_high", "is_at_ath", "days_since_ath", "first_listed_date", "weeks_since_listing",
         "rs_rank", "base_active", "base_start_date", "base_length_days", "base_high", "base_low",
         "base_depth_pct", "pct_from_pivot", "contraction_count", "breakout_today", "last_breakout_level",
+        "base_count", "pct_off_52w_high", "pct_above_52w_low", "vdu_flag", "atr_compression_ratio",
+        "last_contraction_depth_pct", "contractions_shrinking",
+        "base_width_weeks", "pivot_price", "contraction_depths", "vcp_score", "vcp_grade", "breakout_flag",
+        "score_progression", "score_final_depth", "score_contraction_count", "score_vol_final",
+        "score_quietest_day", "score_up_down_vol", "score_rs_rank", "score_off_52wh",
+        "score_base_count", "score_atr_compression", "score_pivot_proximity",
         "screen_vcp", "screen_blue_sky", "screen_multi_year_breakout", "screen_ipo_base", "screen_high_relative_volume", "screen_high_delivery_volume",
         "stage", "stage_bucket"
     ]
@@ -632,8 +490,14 @@ def main():
                 group.at[label, "rsi_divergence_direction"] = div["divergence_direction"]
                 group.at[label, "rsi_divergence_score"] = div["score"]
 
-        adx = compute_adx(group, 14)
-        group["adx_trigger"] = (adx >= ADX_THRESHOLD).astype(int)
+        adx, plus_di, minus_di = compute_adx(group, 14)
+        # Option C: Directional Crossover Trigger (Event: +DI crosses above -DI AND ADX >= 20)
+        plus_di_cross_above = (plus_di > minus_di) & (plus_di.shift(1) <= minus_di.shift(1))
+        group["adx_trigger"] = (plus_di_cross_above & (adx >= 20)).astype(int)
+
+        # Option B: Expanding Bullish Momentum (State: ADX >= 25 AND +DI > -DI AND ADX rising vs yesterday)
+        adx_rising = adx > adx.shift(1)
+        group["adx_bullish"] = ((adx >= ADX_THRESHOLD) & (plus_di > minus_di) & adx_rising).astype(int)
 
         # ---------------------------------------------------------
         # NEW COLUMNS: ATH, Listing, Base Detection
@@ -674,20 +538,15 @@ def main():
     # PATTERN SCREENS
     # ---------------------------------------------------------
     
-    # screen_vcp
-    all_results['screen_vcp'] = (
-        (all_results['Close'] > all_results['SMA50']) &
-        (all_results['SMA50'] > all_results['SMA200']) &
-        (all_results['base_active'] == 1) &
-        (all_results['contraction_count'] >= VCP_MIN_CONTRACTIONS) &
-        (all_results['pct_from_pivot'] <= VCP_MAX_PIVOT_DIST_PCT)
-    ).astype(int)
+    # screen_vcp (Price Compression Setup / Minervini VCP)
+    all_results['screen_vcp'] = compute_screen_pcs_enhanced(all_results)
+
     
     # screen_blue_sky (All-Time Peak Breakout - APB)
     all_results['screen_blue_sky'] = (
         (all_results['base_active'] == 1) &
         (all_results['base_high'] >= all_results['all_time_high'] * (1 - BLUE_SKY_ATH_PROXIMITY_PCT / 100.0)) &
-        (all_results['pct_from_pivot'] <= 5.0) &
+        (all_results['pct_from_pivot'] <= 20.0) &
         (all_results['Close'] >= all_results['all_time_high'] * (1 - BLUE_SKY_CLOSE_ATH_PROXIMITY_PCT / 100.0)) &
         (all_results['rs_rank'].between(70, 99))
     ).astype(int)

@@ -12,12 +12,22 @@ from database import get_connection
 def _fetch_symbol_df(symbol: str, lookback_days: int = 250) -> pd.DataFrame:
     conn = get_connection()
     cursor = conn.cursor()
+    alt_sym = f"{symbol}.NS" if not symbol.endswith(".NS") and not symbol.startswith("^") else (symbol[:-3] if symbol.endswith(".NS") else symbol)
     query = (
         "SELECT Timestamp, Open, High, Low, Close, Volume "
-        "FROM historical_data WHERE Symbol = %s ORDER BY Timestamp ASC"
+        "FROM historical_data WHERE (Symbol = %s OR Symbol = %s) ORDER BY Timestamp ASC"
     )
-    cursor.execute(query, (symbol,))
+    cursor.execute(query, (symbol, alt_sym))
     rows = cursor.fetchall()
+
+    if not rows:
+        query_ohlc = (
+            "SELECT date as Timestamp, open as Open, high as High, low as Low, close as Close, volume as Volume "
+            "FROM ohlc_data WHERE (ticker = %s OR ticker = %s) AND close IS NOT NULL ORDER BY date ASC"
+        )
+        cursor.execute(query_ohlc, (symbol, alt_sym))
+        rows = cursor.fetchall()
+
     cursor.close()
     conn.close()
 

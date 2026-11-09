@@ -547,24 +547,6 @@
         return instance;
     }
 
-    // Global '/' hotkey to focus the primary symbol picker of the current visible section
-    window.addEventListener('keydown', (e) => {
-        if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-            const active = document.activeElement;
-            const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT' || active.isContentEditable);
-            if (!isInput) {
-                e.preventDefault();
-                // Find visible section's combobox
-                const visiblePicker = document.querySelector('.content-section.active .symbol-combobox-input, .content-section:not([style*="display: none"]) .symbol-combobox-input');
-                if (visiblePicker) {
-                    visiblePicker.focus();
-                    visiblePicker.select();
-                } else if (_comboboxInstances.length > 0) {
-                    _comboboxInstances[0].focus();
-                }
-            }
-        }
-    });
 
     /* ═══════════════════════════════════════════════════════════════
        3. TABLE STANDARD & UTILITIES [G19, S2, T3, AL4, F2]

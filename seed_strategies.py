@@ -22,7 +22,7 @@ STRATEGIES = [
             "conditions": [
                 {"field": "new_52w_high", "operator": "=="},
                 {"field": "RCS_30D", "operator": ">", "value": 0},
-                {"field": "adx_trigger", "operator": "=="}
+                {"field": "adx_bullish", "operator": "=="}
             ]
         }
     },
@@ -52,7 +52,7 @@ STRATEGIES = [
             "logic": "AND",
             "conditions": [
                 {"field": "convergence_5", "operator": "=="},
-                {"field": "adx_trigger", "operator": "=="}
+                {"field": "adx_bullish", "operator": "=="}
             ]
         }
     }

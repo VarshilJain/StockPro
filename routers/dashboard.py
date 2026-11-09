@@ -96,7 +96,7 @@ def _get_latest_data_date(conn) -> Optional[date]:
     return None
 
 
-def _get_data_version(conn) -> Optional[str]:
+def _get_data_version(conn=None) -> Optional[str]:
     """
     Return a string fingerprint of the current data state:
         str(MAX(Timestamp))  from historical_data
@@ -104,6 +104,7 @@ def _get_data_version(conn) -> Optional[str]:
     This value changes every time test.py runs its DELETE + batch INSERT,
     making it a perfect cache-invalidation key.
     Returns None when the table is empty.
+    If conn is omitted and cache is valid, returns immediately without opening a DB connection.
     """
     import time
     now = time.monotonic()
@@ -112,18 +113,28 @@ def _get_data_version(conn) -> Optional[str]:
         if fetched_at is not None and (now - fetched_at) < _version_ttl_seconds:
             return _data_version_cache["version"]
 
-    # Re-query the DB
-    cur = conn.cursor()
-    cur.execute("SELECT MAX(Timestamp) FROM historical_data")
-    row = cur.fetchone()
-    cur.close()
-    version = str(row[0]) if (row and row[0]) else None
+    close_conn = False
+    if conn is None:
+        from database import get_connection
+        conn = get_connection()
+        close_conn = True
 
-    with _cache_lock:
-        _data_version_cache["version"]    = version
-        _data_version_cache["fetched_at"] = time.monotonic()
+    try:
+        # Re-query the DB
+        cur = conn.cursor()
+        cur.execute("SELECT MAX(Timestamp) FROM historical_data")
+        row = cur.fetchone()
+        cur.close()
+        version = str(row[0]) if (row and row[0]) else None
 
-    return version
+        with _cache_lock:
+            _data_version_cache["version"]    = version
+            _data_version_cache["fetched_at"] = time.monotonic()
+
+        return version
+    finally:
+        if close_conn and conn:
+            conn.close()
 
 
 def _serialize_widget(row: dict) -> dict:
@@ -734,7 +745,8 @@ def get_dashboard_today(current_user: dict = Depends(get_current_user)):
             {"id": "rsi-divergence", "name": "RSI Divergence", "acronym": "RSI", "key": "rsi_cnt", "flag": "rsi_divergence_type", "icon": "fa-arrows-alt-h"},
             {"id": "ema-convergence", "name": "EMA Convergence", "acronym": "C3", "key": "conv_cnt", "flag": "convergence_3", "icon": "fa-compress-arrows-alt"},
             {"id": "golden-crossover", "name": "Golden Crossover", "acronym": "50/200", "key": "gc_cnt", "flag": "signal5", "icon": "fa-crosshairs"},
-            {"id": "stage-2", "name": "Stage 2 Stocks", "acronym": "Stage 2", "key": "s2_cnt", "flag": "s2", "icon": "fa-arrow-trend-up"}
+            {"id": "stage-2", "name": "Stage 2 Stocks", "acronym": "Stage 2", "key": "s2_cnt", "flag": "s2", "icon": "fa-arrow-trend-up"},
+            {"id": "trend-resumption", "name": "Trend Resumption", "acronym": "TR", "key": "tr_cnt", "flag": "trend_resumption", "icon": "fa-chart-line"}
         ]
 
         def _clean_sym(s):
@@ -763,6 +775,43 @@ def get_dashboard_today(current_user: dict = Depends(get_current_user)):
                     })
                     if len(top_stocks) >= 3:
                         break
+
+            # Special case for Trend Resumption
+            if sc["id"] == "trend-resumption":
+                try:
+                    latest_d = latest_ts.date() if hasattr(latest_ts, 'date') else str(latest_ts).split()[0]
+                    cur.execute("SELECT COUNT(*) as c FROM trend_resumption_results WHERE date = %s", (latest_d,))
+                    c_row = cur.fetchone()
+                    if c_row:
+                        cnt = int(c_row["c"])
+                    if prev_ts:
+                        prev_d = prev_ts.date() if hasattr(prev_ts, 'date') else str(prev_ts).split()[0]
+                        cur.execute("SELECT COUNT(*) as c FROM trend_resumption_results WHERE date = %s", (prev_d,))
+                        p_row = cur.fetchone()
+                        if p_row:
+                            p_cnt = int(p_row["c"])
+                    delta = cnt - p_cnt
+                    cur.execute("""
+                        SELECT symbol, close, open, rs_rank
+                        FROM trend_resumption_results
+                        WHERE date = %s
+                        ORDER BY rs_rank DESC
+                        LIMIT 3
+                    """, (latest_d,))
+                    top_stocks = []
+                    for tr_r in cur.fetchall():
+                        c_val = float(tr_r["close"]) if tr_r.get("close") else 0
+                        o_val = float(tr_r["open"]) if tr_r.get("open") else c_val
+                        chg = round(((c_val - o_val) / o_val) * 100, 2) if o_val else 0
+                        top_stocks.append({
+                            "symbol": _clean_sym(tr_r["symbol"]),
+                            "full_symbol": tr_r["symbol"],
+                            "rs_rank": float(tr_r["rs_rank"] or 0),
+                            "close": c_val,
+                            "change_pct": chg
+                        })
+                except Exception as exc:
+                    logger.warning("Error fetching trend resumption for dashboard: %s", exc)
 
             # Special case for RSI divergence if count on single day is 0: check recent divergence window
             if sc["id"] == "rsi-divergence" and cnt == 0:

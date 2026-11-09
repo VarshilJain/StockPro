@@ -17,9 +17,12 @@ CREATE TABLE IF NOT EXISTS users (
     auth_provider    VARCHAR(32)  NOT NULL DEFAULT 'local',
     created_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     is_active        TINYINT(1)   NOT NULL DEFAULT 1,
+    token_version    INT          NOT NULL DEFAULT 1,
+    active_session_id VARCHAR(64) NULL DEFAULT NULL,
     INDEX idx_users_email (email),
     INDEX idx_users_role (role),
-    INDEX idx_users_google_id (google_id)
+    INDEX idx_users_google_id (google_id),
+    INDEX idx_users_active_session (active_session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """
 
@@ -56,6 +59,13 @@ def main():
         if not cursor.fetchone():
             print("Adding `auth_provider` column to existing `users` table...")
             cursor.execute("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(32) NOT NULL DEFAULT 'local' AFTER google_id")
+
+        # Check if active_session_id column exists
+        cursor.execute("SHOW COLUMNS FROM users LIKE 'active_session_id'")
+        if not cursor.fetchone():
+            print("Adding `active_session_id` column to existing `users` table...")
+            cursor.execute("ALTER TABLE users ADD COLUMN active_session_id VARCHAR(64) NULL DEFAULT NULL AFTER token_version")
+            cursor.execute("ALTER TABLE users ADD INDEX idx_users_active_session (active_session_id)")
 
         # Ensure hashed_password allows NULL for OAuth users
         cursor.execute("ALTER TABLE users MODIFY hashed_password VARCHAR(255) NULL")

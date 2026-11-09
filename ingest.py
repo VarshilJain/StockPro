@@ -159,24 +159,44 @@ def _ensure_table(cursor) -> None:
 
 def _get_watermarks(cursor) -> dict:
     """
-    Return {ticker: last_stored_date} for every ticker already in ohlc_data.
+    Return {ticker: (last_stored_date, last_stored_close)} for every ticker already in ohlc_data.
     Tickers with no rows at all are simply absent from the returned dict.
     """
-    cursor.execute("SELECT ticker, MAX(date) FROM ohlc_data GROUP BY ticker")
-    return {row[0]: row[1] for row in cursor.fetchall()}
+    cursor.execute("""
+        SELECT o.ticker, o.date, o.close
+        FROM ohlc_data o
+        INNER JOIN (
+            SELECT ticker, MAX(date) AS max_date
+            FROM ohlc_data
+            GROUP BY ticker
+        ) m ON o.ticker = m.ticker AND o.date = m.max_date
+    """)
+    return {row[0]: (row[1], float(row[2]) if row[2] is not None else None) for row in cursor.fetchall()}
 
 
-def _fetch_incremental(ticker: str, last_date) -> pd.DataFrame:
+def _fetch_incremental(ticker: str, watermark) -> pd.DataFrame:
     """
     Download OHLCV data from yfinance.
 
-    - last_date is None  -> first-ever fetch for this ticker; download full max history.
-    - last_date is set   -> incremental fetch from (last_date + 1 day) to today.
+    - watermark is None -> first-ever fetch for this ticker; download full max history.
+    - watermark is set  -> incremental fetch from (last_date + 1 day) to today.
+                          If a corporate action / split is detected (>30% move), automatically
+                          backfills full 2-year history to self-heal past prices.
 
     Returns a cleaned DataFrame with lowercase columns:
         [ticker, date, open, high, low, close, volume]
     or an empty DataFrame if nothing new is available.
     """
+    if watermark is None:
+        last_date = None
+        last_close = None
+    elif isinstance(watermark, tuple):
+        last_date = watermark[0]
+        last_close = watermark[1]
+    else:
+        last_date = watermark
+        last_close = None
+
     today = datetime.date.today()
     now = datetime.datetime.now()
     market_close_time = datetime.time(15, 30)
@@ -233,6 +253,34 @@ def _fetch_incremental(ticker: str, last_date) -> pd.DataFrame:
         log.warning("  [WARN] %s — missing columns %s; skipping", ticker, missing)
         return pd.DataFrame()
 
+    # Automatic corporate action / stock split detector
+    if last_close is not None and last_close > 0 and not df.empty:
+        first_new_close = float(df["Close"].iloc[0])
+        pct_change = (first_new_close - last_close) / last_close
+
+        # Guardrail for known glitch feeds (e.g. NV20.NS returning index quote ~12000)
+        if ticker == "NV20.NS" and (first_new_close > 100 or df["Close"].max() > 100):
+            log.warning("  [GLITCH-FILTER] %s — skipping bogus index quote (close=%.2f, expected NAV ~14)", ticker, first_new_close)
+            return pd.DataFrame()
+
+        # In NSE, circuit limits are max 20%. Any move < -30% or > 35% indicates a corporate action.
+        if (pct_change < -0.30 or pct_change > 0.35) and not ticker.startswith("^"):
+            log.warning(
+                "  [SPLIT/CORP-ACTION DETECTED] %s move %.1f%% (prev: %.2f, new: %.2f) — backfilling 2-year history...",
+                ticker, pct_change * 100.0, last_close, first_new_close,
+            )
+            df_full = yf.download(
+                ticker,
+                period="2y",
+                interval="1d",
+                progress=False,
+                auto_adjust=True,
+            )
+            if df_full is not None and not df_full.empty:
+                if isinstance(df_full.columns, pd.MultiIndex):
+                    df_full.columns = df_full.columns.get_level_values(0)
+                df = df_full
+
     df = df[["Open", "High", "Low", "Close", "Volume"]].copy()
     df.index.name = "date"
     df.reset_index(inplace=True)
@@ -266,15 +314,16 @@ def _fetch_incremental(ticker: str, last_date) -> pd.DataFrame:
     return df
 
 
-def _fetch_with_retry(ticker: str, last_date) -> pd.DataFrame:
+def _fetch_with_retry(ticker: str, watermark) -> pd.DataFrame:
     """
     Wraps _fetch_incremental with network retries and per-call jitter.
     If a new ticker returns 0 rows (delisted/no-data), immediately records it in
     missing_symbols.txt and returns empty without wasting time on retries.
     """
+    last_date = watermark[0] if isinstance(watermark, tuple) else watermark
     for attempt in range(FETCH_RETRIES):
         try:
-            df = _fetch_incremental(ticker, last_date)
+            df = _fetch_incremental(ticker, watermark)
             if df is None or df.empty:
                 if last_date is None:
                     _mark_symbol_missing(ticker)
@@ -296,11 +345,12 @@ def _fetch_with_retry(ticker: str, last_date) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def _fetch_worker(ticker: str, last_date) -> tuple:
+def _fetch_worker(ticker: str, watermark) -> tuple:
     t0 = time.perf_counter()
+    last_date = watermark[0] if isinstance(watermark, tuple) else watermark
     is_new = last_date is None
     try:
-        df = _fetch_with_retry(ticker, last_date)
+        df = _fetch_with_retry(ticker, watermark)
     except Exception as exc:
         log.error("Worker error fetching %s: %s", ticker, exc)
         df = pd.DataFrame()
