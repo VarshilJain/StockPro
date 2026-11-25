@@ -112,7 +112,12 @@ UPDATE_SQL = """
         stage = %s,
         screen_blue_sky = %s,
         screen_multi_year_breakout = %s,
-        screen_ipo_base = %s
+        screen_ipo_base = %s,
+        myb_stage = %s,
+        myb_level = %s,
+        myb_dist_pct = %s,
+        myb_bo_date = %s,
+        myb_age_bars = %s
     WHERE Symbol = %s AND Timestamp = %s
 """
 
@@ -202,10 +207,11 @@ def process_single_symbol(sym: str, cutoff_date: Optional[str]) -> int:
 
         # 3. Multi-Year Breakout (MYB):
         from myb_state_machine_v2 import compute_myb_stage_v2
-        myb_df = compute_myb_stage_v2(df)
-        is_myb_fresh = myb_df['myb_stage'] == 'fresh_breakout'
-        is_myb_climbing = myb_df['myb_stage'] == 'climbing'
-        is_myb_forming = myb_df['myb_stage'] == 'forming'
+        eval_bars = 5
+        if cutoff_date is not None:
+            cutoff_bars = int((pd.to_datetime(df['Timestamp']) >= pd.to_datetime(cutoff_date)).sum())
+            eval_bars = max(5, cutoff_bars + 1)
+        myb_df = compute_myb_stage_v2(df, eval_bars=eval_bars)
         is_myb = myb_df['screen_multi_year_breakout'] == 1
 
         df['screen_multi_year_breakout'] = np.where(is_myb, 1, 0)
@@ -214,8 +220,22 @@ def process_single_symbol(sym: str, cutoff_date: Optional[str]) -> int:
         df['pivot_price'] = np.where(is_myb, myb_df['myb_pivot'], df['pivot_price'])
         df['pct_from_pivot'] = np.where(is_myb, myb_df['myb_pct_from_pivot'], df['pct_from_pivot'])
 
-        # Update stage_bucket for MYB setups
+        # Multi-Year Base Length: use true base_age_at_event from myb_df!
+        has_myb_base = is_myb & myb_df['myb_base_length_days'].notna()
+        df['base_length_days'] = np.where(has_myb_base, myb_df['myb_base_length_days'], df['base_length_days'])
+        df['base_width_weeks'] = np.where(has_myb_base, myb_df['myb_base_width_weeks'], df['base_width_weeks'])
+
+        # Update stage_bucket and MYB fields
         df['stage_bucket'] = np.where(is_myb, myb_df['myb_stage'], df['stage_bucket'])
+        df['myb_stage'] = np.where(is_myb, myb_df['myb_stage'], None)
+        df['myb_level'] = np.where(is_myb, myb_df['myb_pivot'], None)
+        df['myb_dist_pct'] = np.where(is_myb, myb_df['myb_pct_from_pivot'], None)
+        df['myb_bo_date'] = np.where(is_myb, myb_df['myb_bo_date'], None)
+        df['myb_age_bars'] = np.where(is_myb, myb_df['myb_age_bars'], None)
+
+        # If today is breakout day (days_since == 1), mark breakout_today = 1
+        is_bo_today = is_myb & (myb_df['myb_age_bars'] == 1)
+        df['breakout_today'] = np.where(is_bo_today, 1, df['breakout_today'])
 
         # 4. Ensure screen_ipo_base = 1 across stages:
         is_ipo_forming = (df['screen_ipo_base'] == 1)
@@ -251,6 +271,19 @@ def process_single_symbol(sym: str, cutoff_date: Optional[str]) -> int:
                 b_start = None
             elif hasattr(b_start, 'date'):
                 b_start = b_start.date()
+
+            bo_date = r.get('myb_bo_date')
+            if pd.isna(bo_date) or str(bo_date) in ('NaT', 'None', '', 'nan'):
+                bo_date = None
+            elif hasattr(bo_date, 'date'):
+                bo_date = bo_date.date()
+            elif isinstance(bo_date, str):
+                try:
+                    bo_date = pd.to_datetime(bo_date).date()
+                except Exception:
+                    bo_date = None
+            else:
+                bo_date = None
 
 
             vals = (
@@ -296,6 +329,11 @@ def process_single_symbol(sym: str, cutoff_date: Optional[str]) -> int:
                 int(r.get('screen_blue_sky', 0)),
                 int(r.get('screen_multi_year_breakout', 0)),
                 int(r.get('screen_ipo_base', 0)),
+                sanitize_val(r.get('myb_stage')),
+                sanitize_val(r.get('myb_level')),
+                sanitize_val(r.get('myb_dist_pct')),
+                bo_date,
+                sanitize_val(r.get('myb_age_bars')),
                 sym,
                 ts
             )

@@ -215,6 +215,7 @@ def _fetch_incremental(ticker: str, watermark) -> pd.DataFrame:
             interval="1d",
             progress=False,
             auto_adjust=True,
+            repair=True,
         )
     else:
         # Incremental fetch: only missing days up to max_allowed_date
@@ -237,6 +238,7 @@ def _fetch_incremental(ticker: str, watermark) -> pd.DataFrame:
             interval="1d",
             progress=False,
             auto_adjust=True,
+            repair=True,
         )
 
     if df is None or df.empty:
@@ -275,6 +277,7 @@ def _fetch_incremental(ticker: str, watermark) -> pd.DataFrame:
                 interval="1d",
                 progress=False,
                 auto_adjust=True,
+                repair=True,
             )
             if df_full is not None and not df_full.empty:
                 if isinstance(df_full.columns, pd.MultiIndex):

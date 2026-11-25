@@ -1420,7 +1420,7 @@ body.chart-fullscreen-active .chart-layout {
 }
 
 .chart-canvas-wrap.is-fullscreen #lwChart {
-    flex: 1 1 auto !important;
+    flex: 0 0 auto !important;
     min-height: 140px !important;
     width: 100% !important;
     height: auto !important;

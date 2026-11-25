@@ -138,7 +138,92 @@ def export_screen_results(
         max_date = row["max_date"]
 
         db_rows = []
-        if screen_name in ("stage-2", "stage-2-stocks"):
+        if screen_name in ("vcp", "cup-and-handle", "cup_and_handle", "cwh"):
+            from market_strength_screens_service import get_market_strength_stages_data
+            data = get_market_strength_stages_data(screen_name, min_market_cap=min_market_cap)
+            stages = data.get("stages", {})
+            latest_list = stages.get("fresh_breakout", {}).get("symbols", [])
+            last_5d_list = stages.get("climbing", {}).get("symbols", [])
+
+            seen = set()
+            rows_to_export = []
+
+            # 1. Latest Date setups (which are in both Latest Date & Last 5 Days)
+            for s in latest_list:
+                sym = s.get("symbol") or s.get("Symbol")
+                if not sym or sym in seen:
+                    continue
+                seen.add(sym)
+                row = {
+                    "Symbol": sym,
+                    "Category": "Latest Date & Last 5 Days",
+                    "In Latest Date": "Yes",
+                    "In Last 5 Days": "Yes",
+                    "Market Cap (Cr)": s.get("market_cap_cr"),
+                    "Close": s.get("close"),
+                    "Open": s.get("open"),
+                    "Pivot Price": s.get("pivot_price") or s.get("base_high"),
+                    "Pct From Pivot": s.get("pct_from_pivot"),
+                    "RS Rank": s.get("rs_rank"),
+                    "Trend Score": s.get("trend_score"),
+                    "Setup Date": s.get("base_start_date"),
+                    "Days Since": s.get("days_since", 0),
+                }
+                if screen_name in ("vcp",):
+                    p_seq = s.get("pullback_sequence") or ""
+                    row["Contraction Depths"] = p_seq
+                    c_count = len([x for x in p_seq.split(">") if x.strip()]) if p_seq else 0
+                    row["Contraction Count"] = c_count
+                    row["VCP Score"] = s.get("vcp_score")
+                    row["Last Contraction Depth"] = s.get("pill")
+                else:
+                    row["Cup Depth (%)"] = s.get("cup_depth")
+                    row["Cup Weeks"] = s.get("cup_weeks")
+                    row["Cup Days"] = s.get("cup_days")
+                    row["Handle Depth (%)"] = s.get("handle_depth")
+                    row["Handle Days"] = s.get("handle_days")
+                rows_to_export.append(row)
+
+            # 2. Remaining Last 5 Days setups from earlier sessions
+            for s in last_5d_list:
+                sym = s.get("symbol") or s.get("Symbol")
+                if not sym or sym in seen:
+                    continue
+                seen.add(sym)
+                row = {
+                    "Symbol": sym,
+                    "Category": "Last 5 Days (Earlier Session)",
+                    "In Latest Date": "No",
+                    "In Last 5 Days": "Yes",
+                    "Market Cap (Cr)": s.get("market_cap_cr"),
+                    "Close": s.get("close"),
+                    "Open": s.get("open"),
+                    "Pivot Price": s.get("pivot_price") or s.get("base_high"),
+                    "Pct From Pivot": s.get("pct_from_pivot"),
+                    "RS Rank": s.get("rs_rank"),
+                    "Trend Score": s.get("trend_score"),
+                    "Setup Date": s.get("base_start_date"),
+                    "Days Since": s.get("days_since"),
+                }
+                if screen_name in ("vcp",):
+                    p_seq = s.get("pullback_sequence") or ""
+                    row["Contraction Depths"] = p_seq
+                    c_count = len([x for x in p_seq.split(">") if x.strip()]) if p_seq else 0
+                    row["Contraction Count"] = c_count
+                    row["VCP Score"] = s.get("vcp_score")
+                    row["Last Contraction Depth"] = s.get("pill")
+                else:
+                    row["Cup Depth (%)"] = s.get("cup_depth")
+                    row["Cup Weeks"] = s.get("cup_weeks")
+                    row["Cup Days"] = s.get("cup_days")
+                    row["Handle Depth (%)"] = s.get("handle_depth")
+                    row["Handle Days"] = s.get("handle_days")
+                rows_to_export.append(row)
+
+            today_str = date.today().isoformat()
+            return _make_csv_response(rows_to_export, f"stockpro_{screen_name}_{today_str}.csv")
+
+        elif screen_name in ("stage-2", "stage-2-stocks"):
             cursor.execute("""
                 SELECT Symbol, Timestamp, Close, Open, SMA50, SMA200, IFNULL(rs_rank, 0) as rs_rank, stage, stage_bucket
                 FROM historical_data
@@ -149,9 +234,8 @@ def export_screen_results(
             """, (max_date, max_date))
             db_rows = cursor.fetchall()
 
-        elif screen_name in ("vcp", "blue-sky", "multi-year-breakout", "ipo-base"):
+        elif screen_name in ("blue-sky", "multi-year-breakout", "ipo-base"):
             screen_col_map = {
-                "vcp": "screen_vcp",
                 "blue-sky": "screen_blue_sky",
                 "multi-year-breakout": "screen_multi_year_breakout",
                 "ipo-base": "screen_ipo_base",

@@ -2056,7 +2056,8 @@ def get_screen_stages(
                    score_progression, score_final_depth, score_contraction_count, score_vol_final,
                    score_quietest_day, score_up_down_vol, score_rs_rank, score_off_52wh,
                    score_base_count, score_atr_compression, score_pivot_proximity,
-                   coil, dry, SMA50, SMA200
+                   coil, dry, SMA50, SMA200,
+                   myb_stage, myb_level, myb_dist_pct, myb_bo_date, myb_age_bars
             FROM historical_data
             WHERE Timestamp >= %s AND Timestamp < %s + INTERVAL 1 DAY
               AND {db_col} = 1
@@ -2115,11 +2116,15 @@ def get_screen_stages(
 
             if screen_name == "multi-year-breakout":
                 bucket = r.get("stage_bucket") or "forming"
+                if r.get("myb_bo_date"):
+                    bo_date_str = str(r["myb_bo_date"])
                 bo_len = breakout_base_lens.get(sym)
                 bo_w = breakout_base_wks.get(sym)
                 if bo_len and bo_len >= 250:
                     base_len = bo_len
                     base_wks = bo_w
+                elif base_len and base_len >= 250:
+                    pass
                 elif base_len is None or base_len < 250:
                     base_len = 250
                     base_wks = 50.0
@@ -2154,7 +2159,10 @@ def get_screen_stages(
                     "base_start_date": str(r["base_start_date"]) if r.get("base_start_date") else None,
                     "breakout_today": r.get("breakout_today"),
                     "last_breakout_level": last_b,
-                    "breakout_date": breakout_dates.get(sym),
+                    "breakout_date": bo_date_str or breakout_dates.get(sym),
+                    "myb_bo_date": str(r.get("myb_bo_date")) if r.get("myb_bo_date") else bo_date_str,
+                    "myb_age_bars": r.get("myb_age_bars"),
+                    "days_since": r.get("myb_age_bars"),
                     # Enhanced VCP fields
                     "base_count": r.get("base_count"),
                     "pct_off_52w_high": float(r["pct_off_52w_high"]) if r.get("pct_off_52w_high") is not None else None,

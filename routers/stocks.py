@@ -150,10 +150,10 @@ def _build_heatmap_data(group_by: str = "sector", timeframe: str = "1D"):
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
         
-        # Check data version
-        cur.execute("SELECT MAX(Timestamp) as max_ts FROM historical_data")
+        # Check data version (date + row count so partial backfills or updates bust the cache)
+        cur.execute("SELECT MAX(Timestamp) as max_ts, COUNT(*) as cnt FROM historical_data WHERE Timestamp = (SELECT MAX(Timestamp) FROM historical_data)")
         ver_row = cur.fetchone()
-        version = str(ver_row["max_ts"]) if ver_row and ver_row["max_ts"] else None
+        version = f"{ver_row['max_ts']}_{ver_row['cnt']}" if ver_row and ver_row["max_ts"] else None
         
         with _heatmap_lock:
             cache_entry = _heatmap_cache.get(cache_key, {})

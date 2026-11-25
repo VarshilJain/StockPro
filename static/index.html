@@ -7480,6 +7480,21 @@
 
 
 
+        // Autoscale helpers: ensure only candlestick prices control Y-axis scaling
+        const _ignoreAutoscaleProvider = () => null;
+        const _candleAutoscaleProvider = (original) => {
+            const res = original();
+            if (res === null) return null;
+            const pad = (res.priceRange.maxValue - res.priceRange.minValue) * 0.08;
+            return {
+                priceRange: {
+                    minValue: res.priceRange.minValue - pad,
+                    maxValue: res.priceRange.maxValue + pad,
+                },
+                margins: res.margins,
+            };
+        };
+
         function switchSingleCardTimeframe(sym, tf, event) {
 
             if (event) event.stopPropagation();
@@ -7530,6 +7545,14 @@
 
             }
 
+            if (chart) {
+                try {
+                    chart.priceScale('right').applyOptions({
+                        autoScale: true,
+                        scaleMargins: { top: 0.1, bottom: 0.1 }
+                    });
+                } catch (e) {}
+            }
             chart.timeScale().fitContent();
 
             item.currentTf = tf;
@@ -8899,6 +8922,15 @@
 
                 const sym = typeof data === 'string' ? data : data.symbol;
 
+                if (isCupAndHandle && data && data.pattern_points) {
+                    window._cwhCardMap = window._cwhCardMap || {};
+                    window._cwhCardMap[sym] = {
+                        symbol: sym,
+                        pattern_points: data.pattern_points,
+                        pivot_price: data.pivot_price || data.base_high
+                    };
+                }
+
                 const safeSymId = sym.replace(/[^a-zA-Z0-9_-]/g, '_');
 
                 const rsRank = data.rs_rank || '--';
@@ -9720,88 +9752,67 @@
 
                     const isFreshOrClimbing = (data.myb_stage === 'fresh' || data.myb_stage === 'climbing' || bucket === 'fresh_breakout' || bucket === 'climbing');
 
-                    const ageLabel = isFreshOrClimbing ? 'Breakout age' : 'Base age';
-
-                    let ageVal = '--';
-
+                    // Base age: Duration of the multi-year consolidation base
+                    let baseAgeVal = '--';
                     if (data.base_width_weeks != null && data.base_width_weeks > 0) {
-
-                        ageVal = Number(data.base_width_weeks).toFixed(1) + ' wks';
-
+                        const wks = Number(data.base_width_weeks).toFixed(1);
+                        const yrs = (data.base_width_weeks / 50.4).toFixed(1);
+                        baseAgeVal = `${wks} wks (${yrs} yrs)`;
                     } else if (data.base_length_days != null && data.base_length_days > 0) {
-
-                        ageVal = (data.base_length_days / 5).toFixed(1) + ' wks';
-
-                    } else if (isFreshOrClimbing && data.myb_age_bars != null) {
-
-                        ageVal = (data.myb_age_bars / 5).toFixed(1) + ' wks';
-
+                        const wks = (data.base_length_days / 5).toFixed(1);
+                        const yrs = (data.base_length_days / 252).toFixed(1);
+                        baseAgeVal = `${wks} wks (${yrs} yrs)`;
                     }
 
-
+                    // Breakout age: Trading days elapsed since breakout
+                    let boAgeHtml = '';
+                    if (isFreshOrClimbing) {
+                        const rawBoAge = data.days_since != null ? data.days_since : data.myb_age_bars;
+                        let boAgeVal = '--';
+                        if (rawBoAge != null && !isNaN(rawBoAge)) {
+                            const nDays = Number(rawBoAge);
+                            boAgeVal = nDays === 1 ? '1 day' : `${nDays} days`;
+                        }
+                        boAgeHtml = `
+                            <div style="display:flex; justify-content:space-between;">
+                                <span style="color:var(--text-muted);">Breakout age</span>
+                                <span style="font-weight:600; color:var(--accent-primary);">${boAgeVal}</span>
+                            </div>
+                        `;
+                    }
 
                     const coilVal = data.coil != null ? Number(data.coil).toFixed(2) : '--';
-
                     const boDate = data.myb_bo_date || data.breakout_date;
-
                     const mybBreakoutDateHtml = isFreshOrClimbing && boDate ? `
-
                         <div style="display:flex; justify-content:space-between; grid-column: span 2; border-top: 1px dashed var(--card-border); padding-top: 6px; margin-top: 4px;">
-
                             <span style="color:var(--text-muted);">Breakout Date</span>
-
                             <span style="font-weight:600; color:var(--accent-primary);">${boDate}</span>
-
                         </div>
-
                     ` : '';
 
-
-
                     gridHtml = `
-
                         <div style="display:flex; justify-content:space-between;">
-
                             <span style="color:var(--text-muted);">Pivot price</span>
-
                             <span style="font-weight:600; color:var(--accent-primary);">${pivotPrice}</span>
-
                         </div>
-
                         <div style="display:flex; justify-content:space-between;">
-
                             <span style="color:var(--text-muted);">Now vs pivot</span>
-
                             ${distPivotHtml}
-
                         </div>
-
                         <div style="display:flex; justify-content:space-between;">
-
                             <span style="color:var(--text-muted);">RS rating</span>
-
                             <span style="font-weight:600;">${rsRank}</span>
-
                         </div>
-
                         <div style="display:flex; justify-content:space-between;">
-
-                            <span style="color:var(--text-muted);">${ageLabel}</span>
-
-                            <span style="font-weight:600;">${ageVal}</span>
-
+                            <span style="color:var(--text-muted);">Base age</span>
+                            <span style="font-weight:600;">${baseAgeVal}</span>
                         </div>
-
-                        <div style="display:flex; justify-content:space-between; grid-column: span 2;">
-
+                        ${boAgeHtml}
+                        <div style="display:flex; justify-content:space-between; ${isFreshOrClimbing ? '' : 'grid-column: span 2;'}">
                             <span style="color:var(--text-muted);">Tightening (coil)</span>
-
                             <span style="font-weight:600;">${coilVal}</span>
-
                         </div>
-
                         ${mybBreakoutDateHtml}
-
                     `;
 
                 } else {
@@ -10347,12 +10358,17 @@
 
 
                     const priceSeries = priceChart.addCandlestickSeries({
-
                         upColor: '#10b981', downColor: '#ef4444', borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#ef4444', wickVisible: true,
-
-                        priceFormat: { type: 'price', precision: 2, minMove: 0.01 }
-
+                        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+                        autoscaleInfoProvider: _candleAutoscaleProvider
                     });
+                    try {
+                        priceChart.priceScale('right').applyOptions({
+                            autoScale: true,
+                            scaleMargins: { top: 0.1, bottom: 0.1 }
+                        });
+                        priceChart.timeScale().fitContent();
+                    } catch (e) {}
 
                     priceSeries.setData(candleData);
 
@@ -10559,19 +10575,13 @@
                         if (pricePoints.length >= 2) {
 
                             const pricePivotLine = priceChart.addLineSeries({
-
                                 color: lineColor,
-
                                 lineWidth: 2,
-
                                 lineStyle: LightweightCharts.LineStyle.Solid,
-
                                 priceLineVisible: false,
-
                                 lastValueVisible: false,
-
                                 crosshairMarkerVisible: false,
-
+                                autoscaleInfoProvider: _ignoreAutoscaleProvider
                             });
 
                             pricePivotLine.setData(pricePoints);
@@ -10869,24 +10879,23 @@
 
 
                     // Candlestick series with full wicks (sticks)
-
                     const series = chart.addCandlestickSeries({
-
                         upColor: '#10b981',
-
                         downColor: '#ef4444',
-
                         borderVisible: false,
-
                         wickUpColor: '#10b981',
-
                         wickDownColor: '#ef4444',
-
                         wickVisible: true,
-
                         priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
-
+                        autoscaleInfoProvider: _candleAutoscaleProvider
                     });
+                    try {
+                        chart.priceScale('right').applyOptions({
+                            autoScale: true,
+                            scaleMargins: { top: 0.1, bottom: 0.1 }
+                        });
+                        chart.timeScale().fitContent();
+                    } catch (e) {}
 
 
 
@@ -10964,7 +10973,7 @@
 
                     } else if (targetScreen === 'golden-crossover') {
 
-                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA50' });
+                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA50', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s50.setData(calcEMA(initialData, 50));
 
@@ -10972,7 +10981,7 @@
 
 
 
-                        const s200 = chart.addLineSeries({ color: '#ab47bc', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA200' });
+                        const s200 = chart.addLineSeries({ color: '#ab47bc', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA200', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s200.setData(calcEMA(initialData, 200));
 
@@ -10980,7 +10989,7 @@
 
                     } else if (targetScreen === 'stage-2' || targetScreen === 'stage-2-stocks') {
 
-                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'SMA50' });
+                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'SMA50', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s50.setData(calcSMA(initialData, 50));
 
@@ -10988,7 +10997,7 @@
 
 
 
-                        const s200 = chart.addLineSeries({ color: '#ab47bc', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'SMA200' });
+                        const s200 = chart.addLineSeries({ color: '#ab47bc', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'SMA200', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s200.setData(calcSMA(initialData, 200));
 
@@ -10996,7 +11005,7 @@
 
                     } else if (targetScreen === 'trend-resumption') {
 
-                        const s5 = chart.addLineSeries({ color: '#06b6d4', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA5' });
+                        const s5 = chart.addLineSeries({ color: '#06b6d4', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA5', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s5.setData(calcEMA(initialData, 5));
 
@@ -11004,7 +11013,7 @@
 
 
 
-                        const s21 = chart.addLineSeries({ color: '#3b82f6', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA21' });
+                        const s21 = chart.addLineSeries({ color: '#3b82f6', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA21', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s21.setData(calcEMA(initialData, 21));
 
@@ -11012,7 +11021,7 @@
 
 
 
-                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA50' });
+                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA50', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s50.setData(calcEMA(initialData, 50));
 
@@ -11020,7 +11029,7 @@
 
 
 
-                        const s200 = chart.addLineSeries({ color: '#ab47bc', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA200' });
+                        const s200 = chart.addLineSeries({ color: '#ab47bc', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, title: 'EMA200', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s200.setData(calcEMA(initialData, 200));
 
@@ -11050,7 +11059,7 @@
 
                         }
 
-                        const s21 = chart.addLineSeries({ color: '#06b6d4', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, title: 'EMA21' });
+                        const s21 = chart.addLineSeries({ color: '#06b6d4', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, title: 'EMA21', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s21.setData(calcEMA(initialData, 21));
 
@@ -11058,7 +11067,7 @@
 
 
 
-                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, title: 'SMA50' });
+                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, title: 'SMA50', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s50.setData(calcSMA(initialData, 50));
 
@@ -11068,7 +11077,7 @@
 
                         // 1. Moving averages (50 SMA orange, 200 SMA purple)
 
-                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, title: 'SMA50' });
+                        const s50 = chart.addLineSeries({ color: '#ff9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, title: 'SMA50', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s50.setData(calcSMA(initialData, 50));
 
@@ -11076,7 +11085,7 @@
 
 
 
-                        const s200 = chart.addLineSeries({ color: '#ab47bc', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, title: 'SMA200' });
+                        const s200 = chart.addLineSeries({ color: '#ab47bc', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, title: 'SMA200', autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                         s200.setData(calcSMA(initialData, 200));
 
@@ -11178,7 +11187,8 @@
 
                                     const l3 = ((x - 0) * (x - x2)) / ((1 - 0) * (1 - x2));
 
-                                    const val = y1 * l1 + y2 * l2 + y3 * l3;
+                                    const rawVal = y1 * l1 + y2 * l2 + y3 * l3;
+                                    const val = Math.max(Math.min(y1, y2, y3) * 0.7, rawVal);
 
                                     return { time: c.time, value: Number(val.toFixed(2)) };
 
@@ -11193,21 +11203,14 @@
                             if (arcData.length > 0) {
 
                                 const cupSeries = chart.addLineSeries({
-
                                     color: '#38bdf8',
-
                                     lineWidth: 2,
-
                                     lineStyle: LightweightCharts.LineStyle.Solid,
-
                                     priceLineVisible: false,
-
                                     lastValueVisible: false,
-
                                     crosshairMarkerVisible: false,
-
-                                    title: 'Cup Arc'
-
+                                    title: 'Cup Arc',
+                                    autoscaleInfoProvider: _ignoreAutoscaleProvider
                                 });
 
                                 cupSeries.setData(arcData);
@@ -11277,21 +11280,14 @@
                                 if (handleData.length >= 2) {
 
                                     const handleSeries = chart.addLineSeries({
-
                                         color: '#f59e0b',
-
                                         lineWidth: 2,
-
                                         lineStyle: LightweightCharts.LineStyle.Solid,
-
                                         priceLineVisible: false,
-
                                         lastValueVisible: false,
-
                                         crosshairMarkerVisible: false,
-
-                                        title: 'Handle'
-
+                                        title: 'Handle',
+                                        autoscaleInfoProvider: _ignoreAutoscaleProvider
                                     });
 
                                     handleSeries.setData(handleData);
@@ -11372,7 +11368,7 @@
 
                         cfgList.forEach(cfg => {
 
-                            const ls = chart.addLineSeries({ color: cfg.c, lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
+                            const ls = chart.addLineSeries({ color: cfg.c, lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
                             ls.setData(cfg.fn(initialData));
 
@@ -13023,21 +13019,30 @@
             _fullChartReturnState = null;
 
             _fullChartDivergenceState = null;
+            _fullChartCwhState = null;
 
             if (_fullChartPricePivotLine) {
-
                 try { _lwChart.removeSeries(_fullChartPricePivotLine); } catch (e) {}
-
                 _fullChartPricePivotLine = null;
-
             }
-
             if (_fullChartRsiPivotLine) {
-
                 try { _subPanelChart.removeSeries(_fullChartRsiPivotLine); } catch (e) {}
-
                 _fullChartRsiPivotLine = null;
-
+            }
+            if (_fullChartCwhCupSeries) {
+                try { _lwChart.removeSeries(_fullChartCwhCupSeries); } catch (e) {}
+                _fullChartCwhCupSeries = null;
+            }
+            if (_fullChartCwhHandleSeries) {
+                try { _lwChart.removeSeries(_fullChartCwhHandleSeries); } catch (e) {}
+                _fullChartCwhHandleSeries = null;
+            }
+            if (_fullChartCwhPriceLine) {
+                try { _candleSeries.removePriceLine(_fullChartCwhPriceLine); } catch (e) {}
+                _fullChartCwhPriceLine = null;
+            }
+            if (_candleSeries) {
+                try { _candleSeries.setMarkers([]); } catch (e) {}
             }
 
 
@@ -13399,9 +13404,33 @@
                 };
 
             } else {
-
                 _fullChartDivergenceState = null;
+            }
 
+            if (currentPatternScreenName === 'cup-and-handle' && !isFromWatchlist) {
+                let cwhObj = (window._cwhCardMap && window._cwhCardMap[symbol]) || null;
+                if (!cwhObj || !cwhObj.pattern_points) {
+                    if (currentPatternData && currentPatternData.stages) {
+                        for (const bKey of Object.keys(currentPatternData.stages)) {
+                            const found = (currentPatternData.stages[bKey]?.symbols || []).find(s => (s.symbol === symbol || s.Symbol === symbol));
+                            if (found && found.pattern_points) {
+                                cwhObj = found;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (cwhObj && cwhObj.pattern_points) {
+                    _fullChartCwhState = {
+                        symbol: symbol,
+                        pattern_points: cwhObj.pattern_points,
+                        pivot_price: cwhObj.pivot_price || cwhObj.base_high
+                    };
+                } else {
+                    _fullChartCwhState = null;
+                }
+            } else {
+                _fullChartCwhState = null;
             }
 
 
@@ -14921,6 +14950,7 @@
         let _macdHistogram = null, _macdLineSeries = null, _macdSignalSeries = null;
 
         let _fullChartPricePivotLine = null, _fullChartRsiPivotLine = null, _fullChartDivergenceState = null;
+        let _fullChartCwhState = null, _fullChartCwhCupSeries = null, _fullChartCwhHandleSeries = null, _fullChartCwhPriceLine = null;
 
         let _volChart = null;
 
@@ -14962,7 +14992,7 @@
 
                     height: 380,
 
-                    layout: { background: { color: bg }, textColor: text },
+                    layout: { background: { color: bg }, textColor: text, fontSize: 12 },
 
                     grid: { vertLines: { color: grid }, horzLines: { color: grid } },
 
@@ -14970,65 +15000,52 @@
 
                     rightPriceScale: { borderColor: border },
 
-                    timeScale: { borderColor: border, timeVisible: false },
+                    timeScale: {
+                        borderColor: border,
+                        timeVisible: false,
+                        visible: true,
+                        borderVisible: true,
+                        minBarSpacing: 3,
+                    },
 
                 });
 
                 _candleSeries = _lwChart.addCandlestickSeries({
-
                     upColor: '#10b981', downColor: '#ef4444',
-
                     borderUpColor: '#10b981', borderDownColor: '#ef4444',
-
                     wickUpColor: '#10b981', wickDownColor: '#ef4444',
-
+                    autoscaleInfoProvider: _candleAutoscaleProvider
                 });
 
                 _areaSeries = _lwChart.addAreaSeries({
-
                     topColor: 'rgba(16, 185, 129, 0.4)',
-
                     bottomColor: 'rgba(16, 185, 129, 0.0)',
-
                     lineColor: '#10b981',
-
                     lineWidth: 2,
-
-                    visible: false
-
+                    visible: false,
+                    autoscaleInfoProvider: _ignoreAutoscaleProvider
                 });
 
                 _lineSeries = _lwChart.addLineSeries({
-
                     color: '#3b82f6',
-
                     lineWidth: 2,
-
-                    visible: false
-
+                    visible: false,
+                    autoscaleInfoProvider: _ignoreAutoscaleProvider
                 });
 
                 _barSeries = _lwChart.addBarSeries({
-
                     upColor: '#10b981', downColor: '#ef4444',
-
-                    visible: false
-
+                    visible: false,
+                    autoscaleInfoProvider: _candleAutoscaleProvider
                 });
 
-                _ema4Series = _lwChart.addLineSeries({ color: '#00e5ff', lineWidth: 1.5, title: 'EMA4', priceLineVisible: false });
-
-                _ema5Series = _lwChart.addLineSeries({ color: '#22c55e', lineWidth: 1.5, title: 'EMA5', priceLineVisible: false, visible: false });
-
-                _ema9Series = _lwChart.addLineSeries({ color: '#ffeb3b', lineWidth: 1.5, title: 'EMA9', priceLineVisible: false });
-
-                _ema18Series = _lwChart.addLineSeries({ color: '#ff9800', lineWidth: 1.5, title: 'EMA18', priceLineVisible: false });
-
-                _ema21Series = _lwChart.addLineSeries({ color: '#ffffff', lineWidth: 1.5, title: 'EMA21', priceLineVisible: false, visible: false });
-
-                _ema50Series = _lwChart.addLineSeries({ color: '#8d6e63', lineWidth: 1.5, title: 'EMA50', priceLineVisible: false, visible: false });
-
-                _ema200Series = _lwChart.addLineSeries({ color: '#ab47bc', lineWidth: 1.5, title: 'EMA200', priceLineVisible: false, visible: false });
+                _ema4Series = _lwChart.addLineSeries({ color: '#00e5ff', lineWidth: 1.5, title: 'EMA4', priceLineVisible: false, autoscaleInfoProvider: _ignoreAutoscaleProvider });
+                _ema5Series = _lwChart.addLineSeries({ color: '#22c55e', lineWidth: 1.5, title: 'EMA5', priceLineVisible: false, visible: false, autoscaleInfoProvider: _ignoreAutoscaleProvider });
+                _ema9Series = _lwChart.addLineSeries({ color: '#ffeb3b', lineWidth: 1.5, title: 'EMA9', priceLineVisible: false, autoscaleInfoProvider: _ignoreAutoscaleProvider });
+                _ema18Series = _lwChart.addLineSeries({ color: '#ff9800', lineWidth: 1.5, title: 'EMA18', priceLineVisible: false, autoscaleInfoProvider: _ignoreAutoscaleProvider });
+                _ema21Series = _lwChart.addLineSeries({ color: '#ffffff', lineWidth: 1.5, title: 'EMA21', priceLineVisible: false, visible: false, autoscaleInfoProvider: _ignoreAutoscaleProvider });
+                _ema50Series = _lwChart.addLineSeries({ color: '#8d6e63', lineWidth: 1.5, title: 'EMA50', priceLineVisible: false, visible: false, autoscaleInfoProvider: _ignoreAutoscaleProvider });
+                _ema200Series = _lwChart.addLineSeries({ color: '#ab47bc', lineWidth: 1.5, title: 'EMA200', priceLineVisible: false, visible: false, autoscaleInfoProvider: _ignoreAutoscaleProvider });
 
 
 
@@ -15038,13 +15055,18 @@
 
                     height: 100,
 
-                    layout: { background: { color: '#1f2937' }, textColor: '#9ca3af' },
+                    layout: { background: { color: bg }, textColor: text, fontSize: 11 },
 
                     grid: { vertLines: { color: 'rgba(75,85,99,0.1)' }, horzLines: { color: 'rgba(75,85,99,0.1)' } },
 
-                    rightPriceScale: { borderColor: 'rgba(75,85,99,0.3)' },
+                    rightPriceScale: { borderColor: border },
 
-                    timeScale: { borderColor: 'rgba(75,85,99,0.3)', timeVisible: false },
+                    timeScale: {
+                        borderColor: border,
+                        timeVisible: false,
+                        visible: true,
+                        borderVisible: true,
+                    },
 
                 });
 
@@ -15060,13 +15082,18 @@
 
                     height: 120,
 
-                    layout: { background: { color: '#1f2937' }, textColor: '#9ca3af' },
+                    layout: { background: { color: bg }, textColor: text, fontSize: 11 },
 
                     grid: { vertLines: { color: 'rgba(75,85,99,0.1)' }, horzLines: { color: 'rgba(75,85,99,0.1)' } },
 
-                    rightPriceScale: { borderColor: 'rgba(75,85,99,0.3)' },
+                    rightPriceScale: { borderColor: border },
 
-                    timeScale: { borderColor: 'rgba(75,85,99,0.3)', timeVisible: false },
+                    timeScale: {
+                        borderColor: border,
+                        timeVisible: false,
+                        visible: true,
+                        borderVisible: true,
+                    },
 
                 });
 
@@ -15282,7 +15309,7 @@
 
                     const fsHeader = document.getElementById('fsHeader');
 
-                    const headerH = (fsHeader && fsHeader.offsetHeight > 0) ? fsHeader.offsetHeight : 40;
+                    const headerH = (fsHeader && fsHeader.offsetHeight > 0) ? Math.ceil(fsHeader.getBoundingClientRect().height) : 42;
 
 
 
@@ -15290,9 +15317,13 @@
 
                     const comp = window.getComputedStyle(wrap);
 
-                    const padL = parseFloat(comp.paddingLeft) || 8;
+                    const padT = parseFloat(comp.paddingTop) || 0;
 
-                    const padR = parseFloat(comp.paddingRight) || 8;
+                    const padB = parseFloat(comp.paddingBottom) || 0;
+
+                    const padL = parseFloat(comp.paddingLeft) || 0;
+
+                    const padR = parseFloat(comp.paddingRight) || 0;
 
                     const wrapW = wrap.clientWidth || window.innerWidth || 360;
 
@@ -15310,7 +15341,9 @@
 
 
 
-                    const availH = Math.max(160, wrapH - headerH - totalGaps);
+                    // Subtract container padding, header, gaps, and a 4px safety buffer so timeScale dates are never clipped
+
+                    const availH = Math.max(160, Math.floor(wrapH - padT - padB - headerH - totalGaps - 4));
 
 
 
@@ -15322,17 +15355,17 @@
 
                     if (isVolVisible && isSubVisible) {
 
-                        volHeight = isLandscape ? Math.max(45, Math.min(80, Math.round(availH * 0.16))) : Math.max(60, Math.min(110, Math.round(availH * 0.16)));
+                        volHeight = isLandscape ? Math.max(45, Math.min(80, Math.round(availH * 0.16))) : Math.max(55, Math.min(100, Math.round(availH * 0.16)));
 
-                        subHeight = isLandscape ? Math.max(50, Math.min(90, Math.round(availH * 0.18))) : Math.max(70, Math.min(130, Math.round(availH * 0.18)));
+                        subHeight = isLandscape ? Math.max(50, Math.min(90, Math.round(availH * 0.18))) : Math.max(65, Math.min(120, Math.round(availH * 0.18)));
 
                     } else if (isVolVisible) {
 
-                        volHeight = isLandscape ? Math.max(50, Math.min(95, Math.round(availH * 0.20))) : Math.max(70, Math.min(150, Math.round(availH * 0.20)));
+                        volHeight = isLandscape ? Math.max(50, Math.min(90, Math.round(availH * 0.18))) : Math.max(65, Math.min(130, Math.round(availH * 0.18)));
 
                     } else if (isSubVisible) {
 
-                        subHeight = isLandscape ? Math.max(55, Math.min(110, Math.round(availH * 0.22))) : Math.max(80, Math.min(160, Math.round(availH * 0.22)));
+                        subHeight = isLandscape ? Math.max(55, Math.min(100, Math.round(availH * 0.20))) : Math.max(75, Math.min(140, Math.round(availH * 0.20)));
 
                     }
 
@@ -15344,15 +15377,29 @@
 
 
 
+                    const lwDiv = document.getElementById('lwChart');
+
+                    if (lwDiv) lwDiv.style.height = `${mainHeight}px`;
+
+
+
                     _lwChart.resize(targetWidth, mainHeight);
 
                     if (_volChart && isVolVisible) {
+
+                        const volDiv = document.getElementById('volChart');
+
+                        if (volDiv) volDiv.style.height = `${volHeight}px`;
 
                         _volChart.resize(targetWidth, volHeight);
 
                     }
 
                     if (_subPanelChart && isSubVisible) {
+
+                        const subDiv = document.getElementById('subPanelChart');
+
+                        if (subDiv) subDiv.style.height = `${subHeight}px`;
 
                         _subPanelChart.resize(targetWidth, subHeight);
 
@@ -15374,11 +15421,31 @@
 
                         const subH = isMobilePhone ? 90 : 120;
 
+
+
+                        const lwDiv = document.getElementById('lwChart');
+
+                        if (lwDiv) lwDiv.style.height = `${chartH}px`;
+
                         _lwChart.resize(targetWidth, chartH);
 
-                        if (_volChart) _volChart.resize(targetWidth, volH);
+
+
+                        if (_volChart) {
+
+                            const volDiv = document.getElementById('volChart');
+
+                            if (volDiv) volDiv.style.height = `${volH}px`;
+
+                            _volChart.resize(targetWidth, volH);
+
+                        }
 
                         if (_subPanelChart && subVisible) {
+
+                            const subDiv = document.getElementById('subPanelChart');
+
+                            if (subDiv) subDiv.style.height = `${subH}px`;
 
                             _subPanelChart.resize(targetWidth, subH);
 
@@ -15892,6 +15959,20 @@
 
 
 
+            const lwDiv = document.getElementById('lwChart');
+
+            if (lwDiv) lwDiv.style.height = '';
+
+            const volDiv = document.getElementById('volChart');
+
+            if (volDiv) volDiv.style.height = '';
+
+            const subDiv = document.getElementById('subPanelChart');
+
+            if (subDiv) subDiv.style.height = '';
+
+
+
             // Restore wrap back to its exact placeholder position
 
             if (_fsPlaceholder && _fsPlaceholder.parentNode) {
@@ -16391,17 +16472,32 @@
 
 
             if (_fullChartDivergenceState && _currentChartTimeframe === 'D') {
-
                 if (_fullChartDivergenceState.symbol === sym) {
-
                     await renderFullChartDivergenceLines(sym, _fullChartDivergenceState, ohlcv);
-
-                } else {
-
                     _fullChartDivergenceState = null;
-
+                } else {
+                    _fullChartDivergenceState = null;
                 }
+            }
 
+            // Cup and Handle Overlay on Full Chart (Daily timeframe)
+            if (_fullChartCwhCupSeries) {
+                try { _lwChart.removeSeries(_fullChartCwhCupSeries); } catch (e) {}
+                _fullChartCwhCupSeries = null;
+            }
+            if (_fullChartCwhHandleSeries) {
+                try { _lwChart.removeSeries(_fullChartCwhHandleSeries); } catch (e) {}
+                _fullChartCwhHandleSeries = null;
+            }
+            if (_fullChartCwhPriceLine) {
+                try { _candleSeries.removePriceLine(_fullChartCwhPriceLine); } catch (e) {}
+                _fullChartCwhPriceLine = null;
+            }
+
+            if (_fullChartCwhState && _currentChartTimeframe === 'D') {
+                if (_fullChartCwhState.symbol === sym) {
+                    renderFullChartCwhOverlay(sym, _fullChartCwhState, ohlcv);
+                }
             }
 
 
@@ -16527,6 +16623,15 @@
 
 
                 await renderStockChartData();
+                if (_lwChart) {
+                    try {
+                        _lwChart.priceScale('right').applyOptions({
+                            autoScale: true,
+                            scaleMargins: { top: 0.1, bottom: 0.1 }
+                        });
+                        _lwChart.timeScale().fitContent();
+                    } catch (e) {}
+                }
 
             } catch (e) {
 
@@ -16725,19 +16830,13 @@
                 if (pricePoints.length >= 2 && _lwChart) {
 
                     _fullChartPricePivotLine = _lwChart.addLineSeries({
-
                         color: lineColor,
-
                         lineWidth: 2,
-
                         lineStyle: LightweightCharts.LineStyle.Solid,
-
                         priceLineVisible: false,
-
                         lastValueVisible: false,
-
-                        title: `${activeDiv.divergence_type.toUpperCase()} ${activeDiv.divergence_direction.toUpperCase()}`
-
+                        title: `${activeDiv.divergence_type.toUpperCase()} ${activeDiv.divergence_direction.toUpperCase()}`,
+                        autoscaleInfoProvider: _ignoreAutoscaleProvider
                     });
 
                     const trendlinePoints = [pricePoints[0], pricePoints[pricePoints.length - 1]];
@@ -16863,6 +16962,166 @@
         }
 
 
+
+        function renderFullChartCwhOverlay(sym, cwhState, ohlcv) {
+            if (!cwhState || !cwhState.pattern_points || !_lwChart || !_candleSeries) return;
+            const pts = cwhState.pattern_points;
+            const pLeft = pts.left_rim;
+            const pBottom = pts.cup_bottom;
+            const pRight = pts.right_rim;
+            const pHandle = pts.handle_low;
+
+            if (!pLeft || !pBottom || !pRight) return;
+
+            const candleData = (ohlcv || []).map(r => ({
+                time: r.Date || r.Timestamp || r.time,
+                close: Number(r.Close || r.close),
+                high: Number(r.High || r.high),
+                low: Number(r.Low || r.low)
+            })).filter(c => c.time && !isNaN(c.close));
+
+            if (candleData.length === 0) return;
+
+            const findNearestDate = (dStr) => {
+                if (!dStr) return null;
+                const clean = String(dStr).split('T')[0].split(' ')[0].trim();
+                if (!clean) return null;
+                if (candleData.some(c => c.time === clean)) return clean;
+                let closest = null, minDiff = Infinity;
+                const targetTs = new Date(clean).getTime();
+                for (const c of candleData) {
+                    const diff = Math.abs(new Date(c.time).getTime() - targetTs);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closest = c.time;
+                    }
+                }
+                return closest;
+            };
+
+            const leftDateStr = findNearestDate(pLeft.date);
+            const bottomDateStr = findNearestDate(pBottom.date);
+            const rightDateStr = findNearestDate(pRight.date);
+            const handleDateStr = pHandle?.date ? findNearestDate(pHandle.date) : null;
+
+            if (!leftDateStr || !rightDateStr) return;
+
+            // 1. Pivot Price Line (Right Rim level)
+            const pivotVal = Number(pRight.price || cwhState.pivot_price);
+            if (pivotVal && !isNaN(pivotVal)) {
+                _fullChartCwhPriceLine = _candleSeries.createPriceLine({
+                    price: pivotVal,
+                    color: '#10b981',
+                    lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Dashed,
+                    axisLabelVisible: true,
+                    title: 'Pivot ₹' + pivotVal.toFixed(1)
+                });
+            }
+
+            // 2. Cup Arc (Lagrange quadratic interpolation across candles between left rim & right rim)
+            const cupCandles = candleData.filter(c => c.time >= leftDateStr && c.time <= rightDateStr);
+            if (cupCandles.length >= 3) {
+                const y1 = Number(pLeft.price);
+                const y2 = Number(pBottom.price);
+                const y3 = Number(pRight.price);
+
+                let bIdx = cupCandles.findIndex(c => c.time >= bottomDateStr);
+                if (bIdx <= 0 || bIdx >= cupCandles.length - 1) {
+                    bIdx = Math.floor(cupCandles.length / 2);
+                }
+                const x2 = bIdx / (cupCandles.length - 1);
+
+                const arcData = cupCandles.map((c, i) => {
+                    const x = i / (cupCandles.length - 1);
+                    const l1 = ((x - x2) * (x - 1)) / ((-x2) * (-1));
+                    const l2 = ((x - 0) * (x - 1)) / ((x2 - 0) * (x2 - 1));
+                    const l3 = ((x - 0) * (x - x2)) / ((1 - 0) * (1 - x2));
+                    const val = y1 * l1 + y2 * l2 + y3 * l3;
+                    return { time: c.time, value: Number(val.toFixed(2)) };
+                });
+
+                _fullChartCwhCupSeries = _lwChart.addLineSeries({
+                    color: '#38bdf8',
+                    lineWidth: 2.5,
+                    lineStyle: LightweightCharts.LineStyle.Solid,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    crosshairMarkerVisible: false,
+                    title: 'Cup Arc',
+                    autoscaleInfoProvider: _ignoreAutoscaleProvider
+                });
+                _fullChartCwhCupSeries.setData(arcData);
+            }
+
+            // 3. Handle Line (Right Rim -> Handle Low -> Current Price)
+            if (handleDateStr && pHandle?.price) {
+                const hPts = [];
+                hPts.push({ time: rightDateStr, value: Number(pRight.price) });
+                if (handleDateStr >= rightDateStr) {
+                    hPts.push({ time: handleDateStr, value: Number(pHandle.price) });
+                }
+                if (candleData.length > 0) {
+                    const lastC = candleData[candleData.length - 1];
+                    if (lastC.time > (hPts[hPts.length - 1]?.time || '')) {
+                        hPts.push({ time: lastC.time, value: lastC.close });
+                    }
+                }
+                hPts.sort((a, b) => (a.time > b.time ? 1 : (a.time < b.time ? -1 : 0)));
+                const deduped = [];
+                const seen = new Set();
+                for (const p of hPts) {
+                    if (!seen.has(p.time)) {
+                        seen.add(p.time);
+                        deduped.push(p);
+                    }
+                }
+                if (deduped.length >= 2) {
+                    _fullChartCwhHandleSeries = _lwChart.addLineSeries({
+                        color: '#f59e0b',
+                        lineWidth: 2.5,
+                        lineStyle: LightweightCharts.LineStyle.Solid,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                        title: 'Handle',
+                        autoscaleInfoProvider: _ignoreAutoscaleProvider
+                    });
+                    _fullChartCwhHandleSeries.setData(deduped);
+                }
+            }
+
+            // 4. Markers
+            const markerDefs = [
+                { time: leftDateStr, position: 'aboveBar', color: '#10b981', shape: 'circle', text: 'Left Rim ₹' + Number(pLeft.price).toFixed(1) },
+                { time: bottomDateStr, position: 'belowBar', color: '#38bdf8', shape: 'circle', text: 'Cup Low ₹' + Number(pBottom.price).toFixed(1) },
+                { time: rightDateStr, position: 'aboveBar', color: '#10b981', shape: 'circle', text: 'Pivot ₹' + Number(pRight.price).toFixed(1) },
+            ];
+            if (handleDateStr && pHandle?.price) {
+                markerDefs.push({ time: handleDateStr, position: 'belowBar', color: '#f59e0b', shape: 'circle', text: 'Handle Low ₹' + Number(pHandle.price).toFixed(1) });
+            }
+            const validTimes = new Set(candleData.map(c => c.time));
+            const validMarkers = markerDefs.filter(m => m.time && validTimes.has(m.time));
+            validMarkers.sort((a, b) => (a.time > b.time ? 1 : (a.time < b.time ? -1 : 0)));
+            if (validMarkers.length > 0) {
+                _candleSeries.setMarkers(validMarkers);
+            }
+
+            // Auto-fit chart visible range around the cup base
+            if (cupCandles.length > 0) {
+                const firstIdx = candleData.findIndex(c => c.time >= leftDateStr);
+                const lastIdx = candleData.length - 1;
+                if (firstIdx !== -1) {
+                    const fromIdx = Math.max(0, firstIdx - 15);
+                    const toIdx = Math.min(candleData.length - 1 + 6, lastIdx + 5);
+                    setTimeout(() => {
+                        try {
+                            _lwChart.timeScale().setVisibleLogicalRange({ from: fromIdx, to: toIdx });
+                        } catch (e) { }
+                    }, 50);
+                }
+            }
+        }
 
         function renderIndicatorPanel(d, emas = {}) {
 
@@ -21920,59 +22179,76 @@
 
 
             const rows = [];
-
-            const header = ['Symbol', 'Market Cap (Cr)', 'RS Rank', 'Close', 'Open', 'Stage / Bucket', 'Date / Session'];
-
+            const isVcp = currentPatternScreenName === 'vcp';
+            const isCwh = currentPatternScreenName === 'cup-and-handle';
+            const header = isVcp ?
+                ['Symbol', 'Category', 'Market Cap (Cr)', 'RS Rank', 'Close', 'Open', 'Pivot Price', 'Pct From Pivot', 'Contraction Depths', 'VCP Score', 'Trend Score', 'Date'] :
+                (isCwh ?
+                    ['Symbol', 'Category', 'Market Cap (Cr)', 'RS Rank', 'Close', 'Open', 'Pivot Price', 'Pct From Pivot', 'Cup Depth (%)', 'Handle Depth (%)', 'Trend Score', 'Date'] :
+                    ['Symbol', 'Market Cap (Cr)', 'RS Rank', 'Close', 'Open', 'Stage / Bucket', 'Date / Session']);
             rows.push(header);
 
-
-
             const stages = currentPatternData.stages;
-
             for (const [bucketKey, bucketData] of Object.entries(stages)) {
-
                 const symbols = bucketData.symbols || [];
-
                 for (const s of symbols) {
-
                     if (patternMcapFilter && patternMcapFilter !== 'all') {
-
                         const minCap = parseFloat(patternMcapFilter);
-
                         if (!isNaN(minCap) && (s.market_cap_cr == null || s.market_cap_cr <= minCap)) continue;
-
                     }
-
                     if (currentPatternScreenName === 'high-relative-volume') {
-
                         if (s.avg_volume == null || s.avg_volume <= 50000) continue;
-
                     } else if (currentPatternScreenName === 'high-delivery-volume') {
-
                         if (s.delivery_qty == null || s.delivery_qty <= 100000 || s.delivery_pct == null || s.delivery_pct <= 0.75 || s.delivery_pct >= 0.99) continue;
-
                     }
 
-                    rows.push([
+                    let bucketLabel = bucketKey;
+                    if (isVcp || isCwh) {
+                        bucketLabel = (bucketKey === 'fresh_breakout') ? 'Latest Date' : 'Last 5 Days';
+                    }
 
-                        s.symbol || '',
-
-                        s.market_cap_cr != null ? s.market_cap_cr : '',
-
-                        s.rs_rank != null ? s.rs_rank : '',
-
-                        s.close != null ? s.close : '',
-
-                        s.open != null ? s.open : '',
-
-                        bucketKey,
-
-                        s.base_start_date || s.breakout_date || ''
-
-                    ]);
-
+                    if (isVcp) {
+                        rows.push([
+                            s.symbol || '',
+                            bucketLabel,
+                            s.market_cap_cr != null ? s.market_cap_cr : '',
+                            s.rs_rank != null ? s.rs_rank : '',
+                            s.close != null ? s.close : '',
+                            s.open != null ? s.open : '',
+                            s.pivot_price != null ? s.pivot_price : (s.base_high || ''),
+                            s.pct_from_pivot != null ? s.pct_from_pivot : '',
+                            s.pullback_sequence || '',
+                            s.vcp_score != null ? s.vcp_score : '',
+                            s.trend_score || '',
+                            s.base_start_date || s.breakout_date || ''
+                        ]);
+                    } else if (isCwh) {
+                        rows.push([
+                            s.symbol || '',
+                            bucketLabel,
+                            s.market_cap_cr != null ? s.market_cap_cr : '',
+                            s.rs_rank != null ? s.rs_rank : '',
+                            s.close != null ? s.close : '',
+                            s.open != null ? s.open : '',
+                            s.pivot_price != null ? s.pivot_price : (s.base_high || ''),
+                            s.pct_from_pivot != null ? s.pct_from_pivot : '',
+                            s.cup_depth != null ? s.cup_depth : '',
+                            s.handle_depth != null ? s.handle_depth : '',
+                            s.trend_score || '',
+                            s.base_start_date || s.breakout_date || ''
+                        ]);
+                    } else {
+                        rows.push([
+                            s.symbol || '',
+                            s.market_cap_cr != null ? s.market_cap_cr : '',
+                            s.rs_rank != null ? s.rs_rank : '',
+                            s.close != null ? s.close : '',
+                            s.open != null ? s.open : '',
+                            bucketKey,
+                            s.base_start_date || s.breakout_date || ''
+                        ]);
+                    }
                 }
-
             }
 
 
